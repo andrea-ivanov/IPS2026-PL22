@@ -1,9 +1,9 @@
-package model.grado;
+package model;
 
 import lombok.*;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
-public class GradoDisplayDTO { //TODO: CAMBIAR ATRIBUTOS DE CARA A FUTURO
+public class GradoDisplayDTO {
     private String id; 
     private String nombre;
     private String facultad;
