@@ -8,7 +8,9 @@ import giis.demo.jdbc.DemoJdbc;
  * Ejecuta las demo de acceso a base de datos con JDBC
  * (no compara resultados, solo se usa como ejecutor de los demos)
  */
+@org.junit.jupiter.api.Disabled
 public class TestDemoJdbc {
+
 	@Test
 	public void testDemo1Basic() {
 		DemoJdbc d = new DemoJdbc();

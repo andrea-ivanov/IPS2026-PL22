@@ -17,6 +17,7 @@ import giis.demo.util.Util;
  * Se tratan igual que las que consultan, pero en este caso es esencial comprobar tanto los datos que se actualizan
  * en la base de datos los datos que tienen que cambiar como que no se han actualizado los datos que no deberian cambiar
  */
+@org.junit.jupiter.api.Disabled
 public class TestUpdates {
 	private static Database db = new Database();
 

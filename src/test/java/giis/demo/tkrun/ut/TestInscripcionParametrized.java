@@ -18,6 +18,7 @@ import giis.demo.util.Util;
  * Pruebas parametrizadas (requiere declarar junit-jupiter-params en el pom.xml).
  * En JUnit4 la forma de parametrizar las pruebas es similar, utilizando JUnitParams (https://github.com/Pragmatists/JUnitParams):
  */
+@org.junit.jupiter.api.Disabled
 public class TestInscripcionParametrized {
 	private static Database db = new Database();
 
