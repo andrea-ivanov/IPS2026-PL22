@@ -4,8 +4,8 @@
 INSERT INTO Administrador (nombre, email) VALUES ('Admin Principal', 'admin@uni.es');
 INSERT INTO Secretario (nombre, email) VALUES ('Secretaria Uno', 'sec1@uni.es');
 
-INSERT INTO Alumno (nombre, email) VALUES ('Juan Perez', 'juan@uni.es');
-INSERT INTO Alumno (nombre, email) VALUES ('Maria Gomez', 'maria@uni.es');
+INSERT INTO Alumno (uo, nombre, email) VALUES ('UO250000', 'Juan Perez', 'juan@uni.es');
+INSERT INTO Alumno (uo, nombre, email) VALUES ('UO260000', 'Maria Gomez', 'maria@uni.es');
 
 INSERT INTO Grado (nombre) VALUES ('Ingeniería Informática');
 INSERT INTO Grado (nombre) VALUES ('Ingeniería de Telecomunicaciones');
