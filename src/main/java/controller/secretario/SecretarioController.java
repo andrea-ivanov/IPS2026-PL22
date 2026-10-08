@@ -1,4 +1,4 @@
-package controller;
+package controller.secretario;
 
 import view.SecretarioView;
 import model.MatriculaDisplayDTO;

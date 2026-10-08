@@ -1,9 +1,12 @@
-package controller;
+package controller.login;
 
-import view.MainView;
-import view.AdminOfertaView;
-import view.SecretarioView; // Tu vista de secretario
+import view.login.MainView;
+import view.admin.AdminOfertaView;
+import view.secretario.SecretarioView; // Tu vista de secretario
 import java.awt.EventQueue;
+
+import controller.admin.AdminOfertaController;
+import controller.secretario.SecretarioController;
 
 public class MainController {
     private MainView view;
@@ -19,7 +22,8 @@ public class MainController {
 
     private void gestionarAcceso() {
         String rolSeleccionado = (String) view.getCbRoles().getSelectedItem();
-        if (rolSeleccionado == null) return;
+        if (rolSeleccionado == null)
+            return;
 
         switch (rolSeleccionado) {
             case "Administrador":
@@ -29,10 +33,12 @@ public class MainController {
                 abrirVistaSecretario();
                 break;
             case "Profesor":
-                javax.swing.JOptionPane.showMessageDialog(view.getFrame(), "Vista de Profesor pendiente de implementar.");
+                javax.swing.JOptionPane.showMessageDialog(view.getFrame(),
+                        "Vista de Profesor pendiente de implementar.");
                 break;
             case "Estudiante":
-                javax.swing.JOptionPane.showMessageDialog(view.getFrame(), "Vista de Estudiante pendiente de implementar.");
+                javax.swing.JOptionPane.showMessageDialog(view.getFrame(),
+                        "Vista de Estudiante pendiente de implementar.");
                 break;
         }
     }
@@ -54,7 +60,7 @@ public class MainController {
     private void initView() {
         view.getFrame().setVisible(true);
     }
-    
+
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
@@ -65,6 +71,7 @@ public class MainController {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
+                ;
             }
         });
     }

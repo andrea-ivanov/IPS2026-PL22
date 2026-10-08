@@ -1,4 +1,4 @@
-package view;
+package view.admin;
 
 import javax.swing.*;
 import java.awt.*;
@@ -21,9 +21,9 @@ public class AdminOfertaView {
 
         JPanel panelNorte = new JPanel();
         panelNorte.add(new JLabel("Estado:"));
-        cbEstadoGrado = new JComboBox<>(new String[]{"TODOS", "VIGENTE", "EN_EXTINCION", "EXTINTO"});
+        cbEstadoGrado = new JComboBox<>(new String[] { "TODOS", "VIGENTE", "EN_EXTINCION", "EXTINTO" });
         panelNorte.add(cbEstadoGrado);
-        
+
         btnCargarMocks = new JButton("Cargar Datos (Prueba)");
         panelNorte.add(btnCargarMocks);
         frame.getContentPane().add(panelNorte, BorderLayout.NORTH);
@@ -34,8 +34,19 @@ public class AdminOfertaView {
         frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
     }
 
-    public JFrame getFrame() { return frame; }
-    public JComboBox<String> getCbEstadoGrado() { return cbEstadoGrado; }
-    public JButton getBtnCargarMocks() { return btnCargarMocks; }
-    public JTable getTabGrados() { return tabGrados; }
+    public JFrame getFrame() {
+        return frame;
+    }
+
+    public JComboBox<String> getCbEstadoGrado() {
+        return cbEstadoGrado;
+    }
+
+    public JButton getBtnCargarMocks() {
+        return btnCargarMocks;
+    }
+
+    public JTable getTabGrados() {
+        return tabGrados;
+    }
 }

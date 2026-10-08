@@ -1,4 +1,4 @@
-package view;
+package view.login;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,8 +13,8 @@ public class MainView {
     }
 
     private void initialize() {
-        frame = new JFrame("Sistema de Matriculación - Menú Principal");
-        frame.setBounds(100, 100, 450, 250);
+        frame = new JFrame("Sistema de Matriculación - Login");
+        frame.setBounds(100, 100, 450, 200);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(new FlowLayout(FlowLayout.CENTER, 20, 40));
 
@@ -22,8 +22,8 @@ public class MainView {
         panelCentral.setLayout(new GridLayout(3, 1, 10, 10));
 
         panelCentral.add(new JLabel("Selecciona tu rol de acceso:", SwingConstants.CENTER));
-        
-        cbRoles = new JComboBox<>(new String[]{"Administrador", "Secretario", "Profesor", "Estudiante"});
+
+        cbRoles = new JComboBox<>(new String[] { "Administrador", "Secretario", "Profesor", "Estudiante" });
         panelCentral.add(cbRoles);
 
         btnAcceder = new JButton("Acceder");
@@ -32,7 +32,15 @@ public class MainView {
         frame.getContentPane().add(panelCentral);
     }
 
-    public JFrame getFrame() { return frame; }
-    public JComboBox<String> getCbRoles() { return cbRoles; }
-    public JButton getBtnAcceder() { return btnAcceder; }
+    public JFrame getFrame() {
+        return frame;
+    }
+
+    public JComboBox<String> getCbRoles() {
+        return cbRoles;
+    }
+
+    public JButton getBtnAcceder() {
+        return btnAcceder;
+    }
 }
