@@ -1,12 +1,8 @@
 package controller;
 
 import view.MainView;
-import view.rolesView.AdminOfertaView;
-import view.rolesView.EstudianteView;
-import view.rolesView.SecretarioView;
-import view.rolesView.ProfesorView;
-
-import javax.swing.JOptionPane;
+import view.AdminOfertaView;
+import view.SecretarioView; // Tu vista de secretario
 import java.awt.EventQueue;
 
 public class MainController {
@@ -18,61 +14,44 @@ public class MainController {
     }
 
     public void initController() {
-        view.getBtnEntrar().addActionListener(e -> hacerLogin());
+        view.getBtnAcceder().addActionListener(e -> gestionarAcceso());
     }
 
-    private void hacerLogin() {
-        // Obtener el texto del JComboBox (ya sea seleccionado o escrito)
-        String usuario = (String) view.getCbUsuarios().getSelectedItem();
-
-        if (usuario == null || usuario.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(view.getFrame(), "Por favor, introduce un usuario.", "Error",
-                    JOptionPane.ERROR_MESSAGE);
+    private void gestionarAcceso() {
+        String rolSeleccionado = (String) view.getCbRoles().getSelectedItem();
+        if (rolSeleccionado == null)
             return;
+
+        switch (rolSeleccionado) {
+            case "Administrador":
+                abrirVistaAdministrador();
+                break;
+            case "Secretario":
+                abrirVistaSecretario();
+                break;
+            case "Profesor":
+                javax.swing.JOptionPane.showMessageDialog(view.getFrame(),
+                        "Vista de Profesor pendiente de implementar.");
+                break;
+            case "Estudiante":
+                javax.swing.JOptionPane.showMessageDialog(view.getFrame(),
+                        "Vista de Estudiante pendiente de implementar.");
+                break;
         }
-
-        usuario = usuario.trim();
-
-        if (usuario.equalsIgnoreCase("admin")) {
-            abrirVistaAdministrador();
-        } else if (usuario.equalsIgnoreCase("secretario")) {
-            abrirVistaSecretario();
-        } else if (usuario.equalsIgnoreCase("profesor")) {
-            abrirVistaProfesor();
-        } else if (usuario.equalsIgnoreCase("UO")) {
-            abrirVistaEstudiante("UO (Alumno)");
-        } else {
-            JOptionPane.showMessageDialog(view.getFrame(),
-                    "Usuario no reconocido.", "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void abrirVistaProfesor() {
-        ProfesorView profView = new ProfesorView();
-        ProfesorController profController = new ProfesorController(profView);
-        profController.initController();
-        view.getFrame().dispose(); // Cerramos el login
     }
 
     private void abrirVistaAdministrador() {
         AdminOfertaView adminView = new AdminOfertaView();
         AdminOfertaController adminController = new AdminOfertaController(adminView);
         adminController.initController();
-        view.getFrame().dispose(); // Cerramos el login
+        view.getFrame().setVisible(false);
     }
 
     private void abrirVistaSecretario() {
         SecretarioView secView = new SecretarioView();
         SecretarioController secController = new SecretarioController(secView);
         secController.initController();
-        view.getFrame().dispose(); // Cerramos el login
-    }
-
-    private void abrirVistaEstudiante(String uo) {
-        EstudianteView estView = new EstudianteView();
-        EstudianteController estController = new EstudianteController(estView, uo);
-        estController.initController();
-        view.getFrame().dispose(); // Cerramos el login
+        view.getFrame().setVisible(false);
     }
 
     private void initView() {

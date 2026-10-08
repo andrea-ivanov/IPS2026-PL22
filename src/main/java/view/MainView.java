@@ -5,8 +5,8 @@ import java.awt.*;
 
 public class MainView {
     private JFrame frame;
-    private JComboBox<String> cbUsuarios;
-    private JButton btnEntrar;
+    private JComboBox<String> cbRoles;
+    private JButton btnAcceder;
 
     public MainView() {
         initialize();
@@ -16,23 +16,31 @@ public class MainView {
         frame = new JFrame("Sistema de Matriculación - Login");
         frame.setBounds(100, 100, 450, 200);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().setLayout(new FlowLayout(FlowLayout.CENTER, 20, 50));
+        frame.getContentPane().setLayout(new FlowLayout(FlowLayout.CENTER, 20, 40));
 
-        JLabel lblUsuario = new JLabel("Usuario:");
-        frame.getContentPane().add(lblUsuario);
+        JPanel panelCentral = new JPanel();
+        panelCentral.setLayout(new GridLayout(3, 1, 10, 10));
 
-        // Desplegable de selección de rol/usuario
-        String[] usuariosDemo = {"admin", "secretario", "profesor", "UO"};
-        cbUsuarios = new JComboBox<>(usuariosDemo);
-        cbUsuarios.setEditable(false); // No permite modificar el texto manualmente
-        cbUsuarios.setPreferredSize(new Dimension(200, 30));
-        frame.getContentPane().add(cbUsuarios);
+        panelCentral.add(new JLabel("Selecciona tu rol de acceso:", SwingConstants.CENTER));
 
-        btnEntrar = new JButton("Entrar");
-        frame.getContentPane().add(btnEntrar);
+        cbRoles = new JComboBox<>(new String[] { "Administrador", "Secretario", "Profesor", "Estudiante" });
+        panelCentral.add(cbRoles);
+
+        btnAcceder = new JButton("Acceder");
+        panelCentral.add(btnAcceder);
+
+        frame.getContentPane().add(panelCentral);
     }
 
-    public JFrame getFrame() { return frame; }
-    public JComboBox<String> getCbUsuarios() { return cbUsuarios; }
-    public JButton getBtnEntrar() { return btnEntrar; }
+    public JFrame getFrame() {
+        return frame;
+    }
+
+    public JComboBox<String> getCbRoles() {
+        return cbRoles;
+    }
+
+    public JButton getBtnAcceder() {
+        return btnAcceder;
+    }
 }
