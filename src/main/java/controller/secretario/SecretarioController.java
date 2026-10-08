@@ -1,6 +1,6 @@
-package controller;
+package controller.secretario;
 
-import view.SecretarioView;
+import view.secretario.SecretarioView;
 import giis.demo.util.SwingUtil;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -24,17 +24,20 @@ public class SecretarioController {
                 String idSeleccionado = SwingUtil.getSelectedKey(view.getTabMatriculas());
                 if (!"".equals(idSeleccionado)) {
                     System.out.println("Matrícula seleccionada ID: " + idSeleccionado);
-                    // TODO: Aquí abrirás la ventana de gestión del ciclo de vida 
-                    // (Aceptar, Modificar o Cancelar con motivos: IMPAGO, FUERZA_MAYOR, INCOMPATIBILIDAD)[cite: 1]
+                    // TODO: Aquí abrirás la ventana de gestión del ciclo de vida
+                    // (Aceptar, Modificar o Cancelar con motivos: IMPAGO, FUERZA_MAYOR,
+                    // INCOMPATIBILIDAD)[cite: 1]
                 }
             }
         });
     }
 
     private void cargarMatriculas() {
-        // Aquí puedes meter mocks o conectar con tu modelo de entidades para listar las matrículas y alumnos
-        List<Object> mockData = new ArrayList<>(); 
-        // TableModel tmodel = SwingUtil.getTableModelFromPojos(mockData, new String[]{"id", "estudiante", "grado", "estado"});
+        // Aquí puedes meter mocks o conectar con tu modelo de entidades para listar las
+        // matrículas y alumnos
+        List<Object> mockData = new ArrayList<>();
+        // TableModel tmodel = SwingUtil.getTableModelFromPojos(mockData, new
+        // String[]{"id", "estudiante", "grado", "estado"});
         // view.getTabMatriculas().setModel(tmodel);
         // SwingUtil.autoAdjustColumns(view.getTabMatriculas());
     }
