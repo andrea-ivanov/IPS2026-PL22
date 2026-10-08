@@ -1,7 +1,7 @@
 package controller.secretario;
 
-import view.SecretarioView;
 import model.MatriculaDisplayDTO;
+import view.secretario.SecretarioView;
 import giis.demo.util.SwingUtil;
 
 import javax.swing.*;
