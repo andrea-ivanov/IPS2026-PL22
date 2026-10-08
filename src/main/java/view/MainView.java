@@ -21,10 +21,10 @@ public class MainView {
         JLabel lblUsuario = new JLabel("Usuario:");
         frame.getContentPane().add(lblUsuario);
 
-        // Desplegable (editable para que puedan escribir un UO si no está en la lista)
-        String[] usuariosDemo = {"admin", "secretario", "UO123456", "UO987654"};
+        // Desplegable de selección de rol/usuario
+        String[] usuariosDemo = {"admin", "secretario", "profesor", "UO"};
         cbUsuarios = new JComboBox<>(usuariosDemo);
-        cbUsuarios.setEditable(true); // Permite escribir texto libre (como un cuadro de texto)
+        cbUsuarios.setEditable(false); // No permite modificar el texto manualmente
         cbUsuarios.setPreferredSize(new Dimension(200, 30));
         frame.getContentPane().add(cbUsuarios);
 

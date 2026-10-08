@@ -4,6 +4,7 @@ import view.MainView;
 import view.rolesView.AdminOfertaView;
 import view.rolesView.EstudianteView;
 import view.rolesView.SecretarioView;
+import view.rolesView.ProfesorView;
 
 import javax.swing.JOptionPane;
 import java.awt.EventQueue;
@@ -36,12 +37,21 @@ public class MainController {
             abrirVistaAdministrador();
         } else if (usuario.equalsIgnoreCase("secretario")) {
             abrirVistaSecretario();
-        } else if (usuario.toUpperCase().startsWith("UO")) {
-            abrirVistaEstudiante(usuario.toUpperCase());
+        } else if (usuario.equalsIgnoreCase("profesor")) {
+            abrirVistaProfesor();
+        } else if (usuario.equalsIgnoreCase("UO")) {
+            abrirVistaEstudiante("UO (Alumno)");
         } else {
             JOptionPane.showMessageDialog(view.getFrame(),
-                    "Usuario no reconocido. Usa 'admin', 'secretario', o 'UO...'", "Error", JOptionPane.ERROR_MESSAGE);
+                    "Usuario no reconocido.", "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void abrirVistaProfesor() {
+        ProfesorView profView = new ProfesorView();
+        ProfesorController profController = new ProfesorController(profView);
+        profController.initController();
+        view.getFrame().dispose(); // Cerramos el login
     }
 
     private void abrirVistaAdministrador() {
