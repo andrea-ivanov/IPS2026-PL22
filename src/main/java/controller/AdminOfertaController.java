@@ -1,7 +1,7 @@
 package controller;
 
 import model.GradoDisplayDTO;
-import view.AdminOfertaView;
+import view.rolesView.AdminOfertaView;
 import giis.demo.util.SwingUtil;
 
 import javax.swing.table.TableModel;
@@ -38,7 +38,8 @@ public class AdminOfertaController {
         mockData.add(new GradoDisplayDTO("1", "Ingeniería Informática", "Ciencias", "VIGENTE"));
         mockData.add(new GradoDisplayDTO("2", "Matemáticas", "Ciencias Básicas", "EN_EXTINCION"));
 
-        TableModel tmodel = SwingUtil.getTableModelFromPojos(mockData, new String[]{"id", "nombre", "facultad", "estado"});
+        TableModel tmodel = SwingUtil.getTableModelFromPojos(mockData,
+                new String[] { "id", "nombre", "facultad", "estado" });
         view.getTabGrados().setModel(tmodel);
         SwingUtil.autoAdjustColumns(view.getTabGrados());
     }
