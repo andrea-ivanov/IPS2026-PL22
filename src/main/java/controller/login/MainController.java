@@ -37,8 +37,7 @@ public class MainController {
                         "Vista de Profesor pendiente de implementar.");
                 break;
             case "Estudiante":
-                javax.swing.JOptionPane.showMessageDialog(view.getFrame(),
-                        "Vista de Estudiante pendiente de implementar.");
+                abrirVistaEstudiante();
                 break;
         }
     }
@@ -55,6 +54,17 @@ public class MainController {
         SecretarioController secController = new SecretarioController(secView);
         secController.initController();
         view.getFrame().setVisible(false);
+    }
+
+    private void abrirVistaEstudiante() {
+        // Como el login no pide UO directamente, se lo preguntamos con un popup
+        String uo = javax.swing.JOptionPane.showInputDialog(view.getFrame(), "Introduce tu UO (ej: UO250000):");
+        if (uo != null && !uo.trim().isEmpty()) {
+            view.estudiante.EstudianteView estView = new view.estudiante.EstudianteView();
+            controller.estudiante.EstudianteController estController = new controller.estudiante.EstudianteController(estView, uo.trim());
+            estController.initController();
+            view.getFrame().setVisible(false);
+        }
     }
 
     private void initView() {
