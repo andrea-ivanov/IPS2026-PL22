@@ -5,6 +5,9 @@ import view.admin.AdminOfertaView;
 import view.secretario.SecretarioView; // Tu vista de secretario
 import java.awt.EventQueue;
 
+import controller.admin.AdminOfertaController;
+import controller.secretario.SecretarioController;
+
 public class MainController {
     private MainView view;
 
