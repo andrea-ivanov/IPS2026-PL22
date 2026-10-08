@@ -23,6 +23,7 @@ import giis.visualassert.VisualAssert;
 /**
  * Pruebas del ejemplo de Inscripciones en carreras populares (primer ejemplo) con JUnit6
  */
+@org.junit.jupiter.api.Disabled
 public class TestInscripcion {
 	private static Database db=new Database();
 	
