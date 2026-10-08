@@ -1,4 +1,4 @@
-package view.rolesView;
+package view.estudiante;
 
 import javax.swing.*;
 import java.awt.*;

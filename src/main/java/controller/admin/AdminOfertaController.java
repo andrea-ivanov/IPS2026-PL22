@@ -1,7 +1,7 @@
-package controller;
+package controller.admin;
 
 import model.GradoDisplayDTO;
-import view.rolesView.AdminOfertaView;
+import view.admin.AdminOfertaView;
 import giis.demo.util.SwingUtil;
 
 import javax.swing.table.TableModel;

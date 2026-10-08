@@ -1,4 +1,4 @@
-package view.rolesView;
+package view.admin;
 
 import javax.swing.*;
 import java.awt.*;

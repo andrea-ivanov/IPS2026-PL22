@@ -1,6 +1,6 @@
-package controller;
+package controller.estudiante;
 
-import view.rolesView.EstudianteView;
+import view.estudiante.EstudianteView;
 
 public class EstudianteController {
     private EstudianteView view;

@@ -1,6 +1,6 @@
-package controller;
+package controller.secretario;
 
-import view.SecretarioView;
+import view.secretario.SecretarioView;
 import giis.demo.util.SwingUtil;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;

@@ -1,8 +1,8 @@
-package controller;
+package controller.login;
 
-import view.MainView;
-import view.AdminOfertaView;
-import view.SecretarioView; // Tu vista de secretario
+import view.login.MainView;
+import view.admin.AdminOfertaView;
+import view.secretario.SecretarioView; // Tu vista de secretario
 import java.awt.EventQueue;
 
 public class MainController {

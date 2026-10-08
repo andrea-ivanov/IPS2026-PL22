@@ -1,4 +1,4 @@
-package view.rolesView;
+package view.profesor;
 
 import javax.swing.*;
 import java.awt.*;

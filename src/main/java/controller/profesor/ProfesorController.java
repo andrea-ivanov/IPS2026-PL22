@@ -1,6 +1,6 @@
-package controller;
+package controller.profesor;
 
-import view.rolesView.ProfesorView;
+import view.profesor.ProfesorView;
 
 public class ProfesorController {
     private ProfesorView view;
