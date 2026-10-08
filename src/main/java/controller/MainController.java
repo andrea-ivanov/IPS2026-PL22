@@ -2,6 +2,7 @@ package controller;
 
 import view.MainView;
 import view.AdminOfertaView;
+import view.SecretarioView; // Tu vista de secretario
 import java.awt.EventQueue;
 
 public class MainController {
@@ -13,15 +14,40 @@ public class MainController {
     }
 
     public void initController() {
-        view.getBtnAdminOferta().addActionListener(e -> abrirVistaAdministrador());
+        view.getBtnAcceder().addActionListener(e -> gestionarAcceso());
+    }
+
+    private void gestionarAcceso() {
+        String rolSeleccionado = (String) view.getCbRoles().getSelectedItem();
+        if (rolSeleccionado == null) return;
+
+        switch (rolSeleccionado) {
+            case "Administrador":
+                abrirVistaAdministrador();
+                break;
+            case "Secretario":
+                abrirVistaSecretario();
+                break;
+            case "Profesor":
+                javax.swing.JOptionPane.showMessageDialog(view.getFrame(), "Vista de Profesor pendiente de implementar.");
+                break;
+            case "Estudiante":
+                javax.swing.JOptionPane.showMessageDialog(view.getFrame(), "Vista de Estudiante pendiente de implementar.");
+                break;
+        }
     }
 
     private void abrirVistaAdministrador() {
         AdminOfertaView adminView = new AdminOfertaView();
         AdminOfertaController adminController = new AdminOfertaController(adminView);
-        
         adminController.initController();
-        
+        view.getFrame().setVisible(false);
+    }
+
+    private void abrirVistaSecretario() {
+        SecretarioView secView = new SecretarioView();
+        SecretarioController secController = new SecretarioController(secView);
+        secController.initController();
         view.getFrame().setVisible(false);
     }
 

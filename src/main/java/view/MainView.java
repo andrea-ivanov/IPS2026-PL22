@@ -5,7 +5,8 @@ import java.awt.*;
 
 public class MainView {
     private JFrame frame;
-    private JButton btnAdminOferta;
+    private JComboBox<String> cbRoles;
+    private JButton btnAcceder;
 
     public MainView() {
         initialize();
@@ -15,14 +16,23 @@ public class MainView {
         frame = new JFrame("Sistema de Matriculación - Menú Principal");
         frame.setBounds(100, 100, 450, 250);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().setLayout(new FlowLayout(FlowLayout.CENTER, 20, 50));
+        frame.getContentPane().setLayout(new FlowLayout(FlowLayout.CENTER, 20, 40));
 
-        btnAdminOferta = new JButton("Acceder como Administrador (Oferta Académica)");
-        frame.getContentPane().add(btnAdminOferta);
+        JPanel panelCentral = new JPanel();
+        panelCentral.setLayout(new GridLayout(3, 1, 10, 10));
+
+        panelCentral.add(new JLabel("Selecciona tu rol de acceso:", SwingConstants.CENTER));
         
-        // Aqui ir añadiendo los botones para entrar a las otras ventanas, como hice arriba
+        cbRoles = new JComboBox<>(new String[]{"Administrador", "Secretario", "Profesor", "Estudiante"});
+        panelCentral.add(cbRoles);
+
+        btnAcceder = new JButton("Acceder");
+        panelCentral.add(btnAcceder);
+
+        frame.getContentPane().add(panelCentral);
     }
 
     public JFrame getFrame() { return frame; }
-    public JButton getBtnAdminOferta() { return btnAdminOferta; }
+    public JComboBox<String> getCbRoles() { return cbRoles; }
+    public JButton getBtnAcceder() { return btnAcceder; }
 }
