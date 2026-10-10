@@ -116,16 +116,21 @@ public class SecretarioView {
         panel.add(filterPanel, BorderLayout.WEST);
         
         // --- TABLA DE RESULTADOS ---
-        // AÑADIDO: Columna DNI independiente
         String[] columnNames = {"ID", "DNI", "Estudiante", "Grado", "Curso", "Grupo", "Estado", "Acción"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 7; // El botón ahora está en la columna 7
+                return column == 7; // El botón "Gestionar" está en la columna 7
             }
         };
         tabMatriculas = new JTable(model);
         tabMatriculas.setRowHeight(25);
+        
+        // OCULTAR LA COLUMNA ID VISUALMENTE (Índice 0)
+        tabMatriculas.getColumnModel().getColumn(0).setMinWidth(0);
+        tabMatriculas.getColumnModel().getColumn(0).setMaxWidth(0);
+        tabMatriculas.getColumnModel().getColumn(0).setWidth(0);
+        
         setupTableGestionarButton(tabMatriculas, 7);
         panel.add(new JScrollPane(tabMatriculas), BorderLayout.CENTER);
         
@@ -146,7 +151,7 @@ public class SecretarioView {
         lblDetalleEstado = new JLabel("-");
         lblDetalleEstado.setFont(new Font("Tahoma", Font.BOLD, 12));
 
-        infoPanel.add(new JLabel("ID Matrícula:")); infoPanel.add(lblDetalleId);
+        infoPanel.add(new JLabel("ID Matrícula Interno:")); infoPanel.add(lblDetalleId);
         infoPanel.add(new JLabel("Estudiante:")); infoPanel.add(lblDetalleEstudiante);
         infoPanel.add(new JLabel("Grado:")); infoPanel.add(lblDetalleGrado);
         infoPanel.add(new JLabel("Curso / Grupo:")); infoPanel.add(lblDetalleCurso);
@@ -184,13 +189,12 @@ public class SecretarioView {
         lblTituloCabecera.setText("Secretaría: Consulta de Matrículas");
     }
     
-    // AÑADIDO: Recibe el parámetro DNI extraído de la nueva columna
     public void showDetalleView(String id, String dni, String estudiante, String grado, String curso, String grupo, String estado) {
         this.idMatriculaSeleccionada = id;
         this.estadoMatriculaSeleccionada = estado.toUpperCase();
         
         lblDetalleId.setText(id);
-        lblDetalleEstudiante.setText(dni + " - " + estudiante); // En la ficha de detalle sí hay espacio de sobra para concatenarlos
+        lblDetalleEstudiante.setText(dni + " - " + estudiante); 
         lblDetalleGrado.setText(grado);
         lblDetalleCurso.setText(curso + " - Grupo " + grupo);
         lblDetalleEstado.setText(estado);
@@ -242,7 +246,6 @@ public class SecretarioView {
             if (isPushed) {
                 int row = table.getSelectedRow();
                 if (row >= 0) {
-                    // AÑADIDO: Capturamos la columna nueva (índice 1) y desplazamos el resto
                     String id = table.getValueAt(row, 0).toString();
                     String dni = table.getValueAt(row, 1).toString();
                     String est = table.getValueAt(row, 2).toString();

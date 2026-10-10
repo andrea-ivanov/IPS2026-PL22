@@ -1,18 +1,20 @@
 package controller.secretario;
 
 import model.MatriculaDisplayDTO;
+import repository.MatriculaRepository;
 import view.secretario.SecretarioView;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import java.util.ArrayList;
 import java.util.List;
 
 public class SecretarioController {
     private SecretarioView view;
+    private MatriculaRepository repository;
 
     public SecretarioController(SecretarioView view) {
         this.view = view;
+        this.repository = new MatriculaRepository(); // Inicializamos el repositorio
         this.initView();
     }
 
@@ -32,24 +34,22 @@ public class SecretarioController {
         String cursoSelec = view.getTxtFiltroCurso().getText().toLowerCase().trim();
         String grupoSelec = view.getTxtFiltroGrupo().getText().toLowerCase().trim();
         
-        List<MatriculaDisplayDTO> listaCompleta = obtenerMocksBD();
+        // PEDIMOS LOS DATOS AL REPOSITORIO
+        List<MatriculaDisplayDTO> listaCompleta = repository.getTodasLasMatriculas();
         
         DefaultTableModel model = (DefaultTableModel) view.getTabMatriculas().getModel();
         model.setRowCount(0);
 
         for (MatriculaDisplayDTO m : listaCompleta) {
             boolean coincideEstado = "TODOS".equals(estadoSelec) || m.getEstado().equalsIgnoreCase(estadoSelec);
-            
             boolean coincideEstudiante = estudianteSelec.isEmpty() || 
                                          m.getEstudiante().toLowerCase().contains(estudianteSelec) || 
                                          m.getDni().toLowerCase().contains(estudianteSelec);
-                                         
             boolean coincideGrado = gradoSelec.isEmpty() || m.getGrado().toLowerCase().contains(gradoSelec);
             boolean coincideCurso = cursoSelec.isEmpty() || m.getCurso().toLowerCase().contains(cursoSelec);
             boolean coincideGrupo = grupoSelec.isEmpty() || m.getGrupo().toLowerCase().contains(grupoSelec);
             
             if (coincideEstado && coincideEstudiante && coincideGrado && coincideCurso && coincideGrupo) {
-                // AÑADIDO: El DNI ahora va en su propia columna aislada
                 model.addRow(new Object[]{
                     m.getId(), 
                     m.getDni(),
@@ -67,26 +67,27 @@ public class SecretarioController {
         view.getTabMatriculas().setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         view.getTabMatriculas().setFillsViewportHeight(true);
     }
-
-    // --- GESTIÓN DEL CICLO DE VIDA ---
     
     private void aceptarSolicitud() {
         String idMatricula = view.getIdMatriculaSeleccionada();
         int confirm = JOptionPane.showConfirmDialog(view.getFrame(), 
-                "¿Estás seguro de que deseas aceptar la solicitud " + idMatricula + " y registrar su pago?", 
+                "¿Estás seguro de que deseas aceptar la solicitud (Nº de referencia interno: " + idMatricula + ") y registrar su pago?", 
                 "Aceptar Solicitud y Pago", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
                 
         if (confirm == JOptionPane.YES_OPTION) {
-            JOptionPane.showMessageDialog(view.getFrame(), "Solicitud " + idMatricula + " ACEPTADA correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            // ACTUALIZAMOS EN EL REPOSITORIO
+            repository.actualizarEstadoMatricula(idMatricula, "PAGADA");
+            
+            JOptionPane.showMessageDialog(view.getFrame(), "Solicitud ACEPTADA correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             view.showListadoView();
-            cargarMatriculasFiltradas();
+            cargarMatriculasFiltradas(); // Refrescar la tabla
         }
     }
 
     private void modificarMatricula() {
         String idMatricula = view.getIdMatriculaSeleccionada();
         JOptionPane.showMessageDialog(view.getFrame(), 
-                "Se abrirá el formulario para editar datos de la matrícula: " + idMatricula, 
+                "Se abrirá el formulario para editar datos de la matrícula interna: " + idMatricula, 
                 "Modificar Matrícula", JOptionPane.INFORMATION_MESSAGE);
     }
 
@@ -96,28 +97,18 @@ public class SecretarioController {
         
         String motivoSeleccionado = (String) JOptionPane.showInputDialog(
                 view.getFrame(),
-                "Seleccione el motivo de cancelación obligatorio para la matrícula " + idMatricula + ":",
+                "Seleccione el motivo de cancelación obligatorio:",
                 "Confirmar Cancelación",
-                JOptionPane.WARNING_MESSAGE,
-                null,
-                motivos,
-                motivos[0]);
+                JOptionPane.WARNING_MESSAGE, null, motivos, motivos[0]);
 
         if (motivoSeleccionado != null) {
-            JOptionPane.showMessageDialog(view.getFrame(), "Matrícula " + idMatricula + " cancelada correctamente.\nMotivo registrado: " + motivoSeleccionado, "Cancelación Completada", JOptionPane.INFORMATION_MESSAGE);
+            // CANCELAMOS EN EL REPOSITORIO
+            repository.cancelarMatricula(idMatricula, motivoSeleccionado);
+            
+            JOptionPane.showMessageDialog(view.getFrame(), "Matrícula cancelada correctamente.\nMotivo: " + motivoSeleccionado, "Cancelada", JOptionPane.INFORMATION_MESSAGE);
             view.showListadoView();
-            cargarMatriculasFiltradas();
+            cargarMatriculasFiltradas(); // Refrescar la tabla
         }
-    }
-
-    // --- DATOS DE PRUEBA (MOCKS) ---
-    private List<MatriculaDisplayDTO> obtenerMocksBD() {
-        List<MatriculaDisplayDTO> datos = new ArrayList<>();
-        datos.add(new MatriculaDisplayDTO("M001", "Alejandro El Harchi Argüelles", "71649234A", "Ing. Informática", "3º Curso", "A", "SOLICITADA"));
-        datos.add(new MatriculaDisplayDTO("M002", "Lucía Gómez", "53819200B", "Ing. Informática", "1º Curso", "B", "PAGADA"));
-        datos.add(new MatriculaDisplayDTO("M003", "Carlos Pérez", "12345678C", "Matemáticas", "2º Curso", "A", "ACTIVA"));
-        datos.add(new MatriculaDisplayDTO("M004", "Sofía Martín", "87654321D", "Física", "4º Curso", "C", "CANCELADA"));
-        return datos;
     }
 
     private void initView() {

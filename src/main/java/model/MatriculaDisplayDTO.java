@@ -3,7 +3,7 @@ package model;
 public class MatriculaDisplayDTO {
     private String id;
     private String estudiante;
-    private String dni; 
+    private String dni;
     private String grado;
     private String curso;
     private String grupo;
