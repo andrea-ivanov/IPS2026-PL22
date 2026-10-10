@@ -35,20 +35,18 @@ public class MisMatriculasController {
 
         // Obtenemos el modelo de la tabla visual
         DefaultTableModel tableModel = view.getTableModel();
-        
+
         // Limpiamos la tabla por si hubiera basura de antes
         tableModel.setRowCount(0);
 
         // Rellenamos fila a fila
         for (MatriculaDisplayDTO m : matriculas) {
             Object[] row = new Object[] {
-                m.getIdMatricula(),
-                m.getNombreGrado(),
-                m.getEstado(),
-                m.getFecha()
+                    m.getIdMatricula(),
+                    m.getGrado(),
+                    m.getEstado()
             };
             tableModel.addRow(row);
         }
     }
 }
-
