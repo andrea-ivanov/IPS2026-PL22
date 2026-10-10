@@ -1,8 +1,8 @@
 package controller.admin;
 
-import model.GradoDisplayDTO;
 import view.admin.AdminOfertaView;
 import giis.demo.util.SwingUtil;
+import model.grado.GradoDisplayDTO;
 
 import javax.swing.table.TableModel;
 import java.awt.event.MouseAdapter;
