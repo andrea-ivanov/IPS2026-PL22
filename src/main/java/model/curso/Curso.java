@@ -25,6 +25,9 @@ public class Curso {
 	private Integer creditos = 6;
 
 	@Builder.Default
+	private EstadoCurso estado = EstadoCurso.ACTIVO;
+
+	@Builder.Default
 	private boolean activo = true;
 }
 
