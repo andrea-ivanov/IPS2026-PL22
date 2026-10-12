@@ -10,6 +10,7 @@ import lombok.*;
 public class AsignacionDocenteDisplayDTO {
     private String cursoId;
     private String curso;
+    private String grado;
     private String grupoCodigo;
     private String tipo;
     private String rol;

@@ -31,7 +31,7 @@ public class ProfesorController {
 
         List<AsignacionDocenteDisplayDTO> asignaciones = repository.getAsignacionesDocentes(profesorId);
         TableModel tmodel = SwingUtil.getTableModelFromPojos(asignaciones,
-                new String[] { "cursoId", "curso", "grupoCodigo", "tipo", "rol" });
+                new String[] { "cursoId", "curso", "grado", "grupoCodigo", "tipo", "rol" });
         view.getTabAsignaciones().setModel(tmodel);
         SwingUtil.autoAdjustColumns(view.getTabAsignaciones());
     }
