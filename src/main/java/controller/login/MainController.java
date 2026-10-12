@@ -2,11 +2,13 @@ package controller.login;
 
 import view.login.MainView;
 import view.admin.AdminOfertaView;
+import view.estudiante.EstudianteView;
 import view.secretario.SecretarioView; // Tu vista de secretario
 import view.profesor.ProfesorView;
 import java.awt.EventQueue;
 
 import controller.admin.AdminOfertaController;
+import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
 
@@ -41,6 +43,13 @@ public class MainController {
                 abrirVistaEstudiante();
                 break;
         }
+    }
+
+    private void abrirVistaEstudiante() {
+        EstudianteView estudianteView = new EstudianteView();
+        EstudianteController estudianteController = new EstudianteController(estudianteView);
+        estudianteController.initController();
+        view.getFrame().setVisible(false);
     }
 
     private void abrirVistaAdministrador() {

@@ -40,6 +40,10 @@ public class EstudianteView {
     }
 
     public void setEstudianteInfo(String uo) {
-        lblTitle.setText("Bienvenido, Estudiante (" + uo + ")");
+        if (uo != null && !uo.trim().isEmpty()) {
+            lblTitle.setText("Bienvenido, Estudiante (" + uo + ")");
+        } else {
+            lblTitle.setText("Bienvenido, Estudiante");
+        }
     }
 }
