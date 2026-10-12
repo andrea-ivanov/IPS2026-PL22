@@ -42,6 +42,9 @@ public class MatriculacionRepository {
 		mockData.add(new MatriculacionDisplayDTO("M002", "Lucía Gómez", "53819200B", "Ing. Informática", "1º Curso", "B", "PAGADA"));
 		mockData.add(new MatriculacionDisplayDTO("M003", "Carlos Pérez", "12345678C", "Matemáticas", "2º Curso", "A", "ACTIVA"));
 		mockData.add(new MatriculacionDisplayDTO("M004", "Sofía Martín", "87654321D", "Física", "4º Curso", "C", "CANCELADA"));
+		for (MatriculacionDisplayDTO m : mockData) {
+			m.setIdAnoAcademico(1L);
+		}
 	}
 
 	public Matriculacion findById(String id) {

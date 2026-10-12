@@ -58,6 +58,8 @@ public class AdminOfertaView {
     // Callbacks de navegación para el controlador
     private BiConsumer<String, String> onVerGrado;
     private BiConsumer<String, String> onVerCurso;
+    private BiConsumer<String, String> onGuardarAnoAcademico;
+    private BiConsumer<String, String> onGuardarPeriodoMatriculacion;
 
     public AdminOfertaView() {
         initialize();
@@ -110,8 +112,16 @@ public class AdminOfertaView {
         frame.getContentPane().add(cardsPanel, BorderLayout.CENTER);
         
         // Dialog actions
-        btnSetAnoAcademico.addActionListener(e -> showFechasDialog(frame, "Establecer Año Académico", lblAnoAcademico, "Año Académico: "));
-        btnSetPeriodoMatriculacion.addActionListener(e -> showFechasDialog(frame, "Establecer Periodo de Matriculación", lblPeriodoMatriculacion, "Matriculación: "));
+        btnSetAnoAcademico.addActionListener(e -> showFechasDialog(frame, "Establecer Año Académico", lblAnoAcademico, "Año Académico: ", (d, h) -> {
+            if (onGuardarAnoAcademico != null) {
+                onGuardarAnoAcademico.accept(d, h);
+            }
+        }));
+        btnSetPeriodoMatriculacion.addActionListener(e -> showFechasDialog(frame, "Establecer Periodo de Matriculación", lblPeriodoMatriculacion, "Matriculación: ", (d, h) -> {
+            if (onGuardarPeriodoMatriculacion != null) {
+                onGuardarPeriodoMatriculacion.accept(d, h);
+            }
+        }));
         
         // Navigation actions
         btnVolver.addActionListener(e -> goBack());
@@ -266,7 +276,7 @@ public class AdminOfertaView {
         panel.add(label);
     }
     
-    private void showFechasDialog(Frame owner, String title, JLabel targetLabel, String prefix) {
+    private void showFechasDialog(Frame owner, String title, JLabel targetLabel, String prefix, BiConsumer<String, String> onGuardar) {
         JDialog dialog = new JDialog(owner, title, true);
         dialog.setLayout(new BorderLayout());
         
@@ -286,7 +296,12 @@ public class AdminOfertaView {
         JButton btnCancelar = new JButton("Cancelar");
         
         btnGuardar.addActionListener(e -> {
-            targetLabel.setText(prefix + txtDesde.getText() + " - " + txtHasta.getText());
+            String desdeStr = txtDesde.getText();
+            String hastaStr = txtHasta.getText();
+            targetLabel.setText(prefix + desdeStr + " - " + hastaStr);
+            if (onGuardar != null) {
+                onGuardar.accept(desdeStr, hastaStr);
+            }
             dialog.dispose();
         });
         btnCancelar.addActionListener(e -> dialog.dispose());
@@ -524,4 +539,23 @@ public class AdminOfertaView {
     public JButton getBtnVolver() { return btnVolver; }
     public JButton getBtnSetAnoAcademico() { return btnSetAnoAcademico; }
     public JButton getBtnSetPeriodoMatriculacion() { return btnSetPeriodoMatriculacion; }
+
+    public JLabel getLblAnoAcademico() { return lblAnoAcademico; }
+    public JLabel getLblPeriodoMatriculacion() { return lblPeriodoMatriculacion; }
+
+    public void actualizarAnoAcademico(String displayFechas) {
+        lblAnoAcademico.setText("Año Académico: " + displayFechas);
+    }
+
+    public void actualizarPeriodoMatriculacion(String displayFechas) {
+        lblPeriodoMatriculacion.setText("Matriculación: " + displayFechas);
+    }
+
+    public void setOnGuardarAnoAcademico(BiConsumer<String, String> onGuardarAnoAcademico) {
+        this.onGuardarAnoAcademico = onGuardarAnoAcademico;
+    }
+
+    public void setOnGuardarPeriodoMatriculacion(BiConsumer<String, String> onGuardarPeriodoMatriculacion) {
+        this.onGuardarPeriodoMatriculacion = onGuardarPeriodoMatriculacion;
+    }
 }

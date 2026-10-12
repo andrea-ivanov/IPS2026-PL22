@@ -92,10 +92,23 @@ public class TestDataFactory {
 				.id(1L)
 				.alumno(crearAlumnoValido())
 				.idGrado(idGrado)
+				.idAnoAcademico(1L)
 				.cursos(cursos)
 				.fecha(Util.isoStringToDate("2026-09-01"))
 				.estado(EstadoMatricula.ACTIVA)
 				.pagada(true)
+				.build();
+	}
+
+	public static model.anoacademico.AnoAcademico crearAnoAcademicoActual() {
+		return model.anoacademico.AnoAcademico.builder()
+				.id(1L)
+				.nombre("2026/2027")
+				.inicioAnoAcademico(Util.isoStringToDate("2026-09-01"))
+				.finAnoAcademico(Util.isoStringToDate("2027-06-30"))
+				.inicioPeriodoMatriculacion(Util.isoStringToDate("2026-07-01"))
+				.finPeriodoMatriculacion(Util.isoStringToDate("2026-08-31"))
+				.actual(true)
 				.build();
 	}
 

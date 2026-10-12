@@ -47,6 +47,7 @@ public class MatriculacionModelTest extends BaseModelTest {
 			assertNotNull(matriculacion, "La matrícula devuelta no debe ser nula");
 			assertAll("Verificación de campos principales de la matrícula",
 					() -> assertEquals(1L, matriculacion.getId(), "El ID de la matrícula debe ser 1"),
+					() -> assertEquals(1L, matriculacion.getIdAnoAcademico(), "El ID del año académico debe ser 1"),
 					() -> assertNotNull(matriculacion.getAlumno(), "El objeto alumno no debe ser nulo"),
 					() -> assertEquals(1L, matriculacion.getAlumno().getId(), "El ID del alumno debe ser 1"),
 					() -> assertEquals("Juan Perez", matriculacion.getAlumno().getNombre(), "El nombre del alumno debe coincidir"),

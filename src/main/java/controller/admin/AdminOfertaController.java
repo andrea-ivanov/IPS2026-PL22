@@ -2,6 +2,7 @@ package controller.admin;
 
 import view.admin.AdminOfertaView;
 import view.admin.TestDataFactory;
+import model.anoacademico.AnoAcademico;
 import model.curso.Curso;
 import model.curso.CursoDisplayDTO;
 import model.grado.Grado;
@@ -9,6 +10,7 @@ import model.grado.GradoDisplayDTO;
 import model.matriculacion.Matriculacion;
 import model.matriculacion.MatriculacionDisplayDTO;
 import repository.AlumnoRepository;
+import repository.AnoAcademicoRepository;
 import repository.CursoRepository;
 import repository.GradoRepository;
 import repository.MatriculacionRepository;
@@ -18,15 +20,18 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * Controlador de la vista de administración de oferta académica (AdminOfertaView).
- * Conecta la vista con los repositorios y modelos de Grado, Curso y Matriculación.
- * Soporta navegación entre paneles (Grados -> Cursos -> Matrícula), filtrado reactivo
- * y mockeo estructurado con las clases y DTOs de dominio existentes.
+ * Conecta la vista con los repositorios y modelos de Grado, Curso, Matriculación y Año Académico.
+ * Soporta navegación entre paneles (Grados -> Cursos -> Matrícula), filtrado reactivo,
+ * gestión del Año Académico actual y mockeo estructurado.
  */
 public class AdminOfertaController {
 	private AdminOfertaView view;
@@ -36,6 +41,10 @@ public class AdminOfertaController {
 	private CursoRepository cursoRepository;
 	private MatriculacionRepository matriculacionRepository;
 	private AlumnoRepository alumnoRepository;
+	private AnoAcademicoRepository anoAcademicoRepository;
+
+	// Estado del Año Académico actual
+	private AnoAcademico anoAcademicoActual;
 
 	// Datos en memoria para las listas activas y filtros
 	private List<GradoDisplayDTO> todosLosGrados = new ArrayList<>();
@@ -49,8 +58,10 @@ public class AdminOfertaController {
 			this.cursoRepository = new CursoRepository();
 			this.matriculacionRepository = new MatriculacionRepository();
 			this.alumnoRepository = new AlumnoRepository();
+			this.anoAcademicoRepository = new AnoAcademicoRepository();
 		} catch (Exception ex) {
 			System.err.println("Aviso: No se pudo conectar con los repositorios en base de datos. Modo mock activado: " + ex.getMessage());
+			this.anoAcademicoRepository = new AnoAcademicoRepository();
 		}
 		this.initView();
 	}
@@ -60,16 +71,33 @@ public class AdminOfertaController {
 								 CursoRepository cursoRepository,
 								 MatriculacionRepository matriculacionRepository,
 								 AlumnoRepository alumnoRepository) {
+		this(view, gradoRepository, cursoRepository, matriculacionRepository, alumnoRepository, new AnoAcademicoRepository());
+	}
+
+	public AdminOfertaController(AdminOfertaView view,
+								 GradoRepository gradoRepository,
+								 CursoRepository cursoRepository,
+								 MatriculacionRepository matriculacionRepository,
+								 AlumnoRepository alumnoRepository,
+								 AnoAcademicoRepository anoAcademicoRepository) {
 		this.view = view;
 		this.gradoRepository = gradoRepository;
 		this.cursoRepository = cursoRepository;
 		this.matriculacionRepository = matriculacionRepository;
 		this.alumnoRepository = alumnoRepository;
+		this.anoAcademicoRepository = anoAcademicoRepository;
 		this.initView();
 	}
 
 	public void initController() {
-		// 1. Carga inicial de datos de Grados
+		// 1. Carga inicial del Año Académico actual desde la base de datos y reflejo en la vista
+		cargarAnoAcademicoActual();
+
+		// Conectar eventos para cambiar el año académico y periodo de matriculación
+		view.setOnGuardarAnoAcademico(this::onGuardarFechasAnoAcademico);
+		view.setOnGuardarPeriodoMatriculacion(this::onGuardarFechasPeriodoMatriculacion);
+
+		// 2. Carga inicial de datos de Grados
 		cargarMocksGrados();
 
 		// 3. Conexión de callbacks del botón 'Ver' en JTable
@@ -108,23 +136,78 @@ public class AdminOfertaController {
 			}
 		});
 
-		// 5. Configurar listeners de filtrado reactivo
+		// 5. Conexión de filtros reactivos
 		configurarFiltrosGrados();
 		configurarFiltrosCursos();
 		configurarFiltrosMatriculacion();
 	}
 
-	// =========================================================================
-	// Carga de datos (con fallback a mocks estructurados)
-	// =========================================================================
+	public void cargarAnoAcademicoActual() {
+		if (anoAcademicoRepository != null) {
+			this.anoAcademicoActual = anoAcademicoRepository.getAnoAcademicoActual();
+			if (anoAcademicoActual != null) {
+				view.actualizarAnoAcademico(anoAcademicoActual.getAnoAcademicoDisplay());
+				view.actualizarPeriodoMatriculacion(anoAcademicoActual.getPeriodoMatriculacionDisplay());
+			}
+		}
+	}
+
+	public void onGuardarFechasAnoAcademico(String desdeStr, String hastaStr) {
+		Date d = parsearFechaInput(desdeStr);
+		Date h = parsearFechaInput(hastaStr);
+		if (d != null && h != null) {
+			if (anoAcademicoRepository != null) {
+				anoAcademicoRepository.actualizarFechasAnoAcademico(d, h);
+			}
+			if (anoAcademicoActual != null) {
+				anoAcademicoActual.setInicioAnoAcademico(d);
+				anoAcademicoActual.setFinAnoAcademico(h);
+				view.actualizarAnoAcademico(anoAcademicoActual.getAnoAcademicoDisplay());
+			}
+		}
+	}
+
+	public void onGuardarFechasPeriodoMatriculacion(String desdeStr, String hastaStr) {
+		Date d = parsearFechaInput(desdeStr);
+		Date h = parsearFechaInput(hastaStr);
+		if (d != null && h != null) {
+			if (anoAcademicoRepository != null) {
+				anoAcademicoRepository.actualizarFechasMatriculacion(d, h);
+			}
+			if (anoAcademicoActual != null) {
+				anoAcademicoActual.setInicioPeriodoMatriculacion(d);
+				anoAcademicoActual.setFinPeriodoMatriculacion(h);
+				view.actualizarPeriodoMatriculacion(anoAcademicoActual.getPeriodoMatriculacionDisplay());
+			}
+		}
+	}
+
+	private Date parsearFechaInput(String text) {
+		if (text == null) return null;
+		String clean = text.trim();
+		if (clean.isEmpty() || clean.contains("_")) return null;
+		String[] formatos = new String[] { "dd/MM/yy", "dd/MM/yyyy", "yyyy-MM-dd" };
+		for (String f : formatos) {
+			try {
+				SimpleDateFormat sdf = new SimpleDateFormat(f);
+				sdf.setLenient(false);
+				return sdf.parse(clean);
+			} catch (ParseException ignored) {
+			}
+		}
+		return null;
+	}
+
+	public AnoAcademico getAnoAcademicoActual() {
+		return this.anoAcademicoActual;
+	}
 
 	public void cargarMocksGrados() {
 		todosLosGrados.clear();
 		try {
-			// Intenta obtener grado desde repositorio si la base de datos está disponible
-			Grado g1 = gradoRepository.findById("1");
-			if (g1 != null) {
-				todosLosGrados.add(g1.toDisplayDTO());
+			Grado gradoDb = gradoRepository.findById("1");
+			if (gradoDb != null) {
+				todosLosGrados.add(gradoDb.toDisplayDTO());
 			}
 		} catch (Exception ex) {
 			// En caso de base de datos no inicializada, usa los mocks estructurados
@@ -170,7 +253,9 @@ public class AdminOfertaController {
 		try {
 			Matriculacion mat = matriculacionRepository.findById("1");
 			if (mat != null && mat.getAlumno() != null) {
-				todasLasMatriculaciones.add(mat.getAlumno().toDisplayDTO());
+				MatriculacionDisplayDTO dto = mat.getAlumno().toDisplayDTO();
+				dto.setIdAnoAcademico(mat.getIdAnoAcademico());
+				todasLasMatriculaciones.add(dto);
 			}
 		} catch (Exception ex) {
 			// Fallback a mocks del dominio
@@ -180,12 +265,15 @@ public class AdminOfertaController {
 			todasLasMatriculaciones = TestDataFactory.crearMockMatriculacionesDisplay(idCurso);
 		}
 
+		Long idAnoActual = anoAcademicoActual != null ? anoAcademicoActual.getId() : 1L;
+		for (MatriculacionDisplayDTO m : todasLasMatriculaciones) {
+			if (m.getIdAnoAcademico() == null) {
+				m.setIdAnoAcademico(idAnoActual);
+			}
+		}
+
 		aplicarFiltrosMatriculacion();
 	}
-
-	// =========================================================================
-	// Filtrado reactivo en tablas
-	// =========================================================================
 
 	private void configurarFiltrosGrados() {
 		addDocumentListener(view.getTxtFiltroFacultadGrado(), this::aplicarFiltrosGrados);
@@ -250,14 +338,17 @@ public class AdminOfertaController {
 		textField.getDocument().addDocumentListener(new DocumentListener() {
 			@Override
 			public void insertUpdate(DocumentEvent e) { action.run(); }
+
 			@Override
 			public void removeUpdate(DocumentEvent e) { action.run(); }
+
 			@Override
 			public void changedUpdate(DocumentEvent e) { action.run(); }
 		});
 	}
 
 	private void initView() {
+		view.showGradosView();
 		view.getFrame().setVisible(true);
 	}
 }

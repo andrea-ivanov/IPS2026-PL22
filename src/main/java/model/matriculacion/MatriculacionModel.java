@@ -54,7 +54,7 @@ public class MatriculacionModel {
 			throw new ValidationException("El ID de matrícula no puede ser nulo");
 		}
 
-		String sqlMatricula = "SELECT id_matricula, id_alumno, id_grado, estado, fecha FROM Matricula WHERE id_matricula = ?";
+		String sqlMatricula = "SELECT id_matricula, id_alumno, id_grado, estado, fecha, id_ano_academico FROM Matricula WHERE id_matricula = ?";
 		List<Object[]> rowsMatricula = db.executeQueryArray(sqlMatricula, id);
 		if (rowsMatricula == null || rowsMatricula.isEmpty()) {
 			throw new ResourceNotFoundException("Matriculacion", id);
@@ -66,6 +66,7 @@ public class MatriculacionModel {
 		Long idGrado = rowMatricula[2] != null ? ((Number) rowMatricula[2]).longValue() : null;
 		String estadoStr = (String) rowMatricula[3];
 		Object fechaObj = rowMatricula[4];
+		Long idAnoAcademico = rowMatricula.length > 5 && rowMatricula[5] != null ? ((Number) rowMatricula[5]).longValue() : null;
 
 		// 1. Mapeo de datos: Enum
 		EstadoMatricula estado = EstadoMatricula.fromString(estadoStr);
@@ -114,6 +115,7 @@ public class MatriculacionModel {
 				.id(idMatricula)
 				.alumno(alumno)
 				.idGrado(idGrado)
+				.idAnoAcademico(idAnoAcademico)
 				.cursos(cursos)
 				.fecha(fecha)
 				.estado(estado)

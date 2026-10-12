@@ -27,6 +27,7 @@ public class Matriculacion {
 	private Long id;
 	private Alumno alumno;
 	private Long idGrado;
+	private Long idAnoAcademico;
 
 	@Builder.Default
 	private List<Curso> cursos = new ArrayList<>();

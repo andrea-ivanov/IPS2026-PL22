@@ -2,6 +2,7 @@
 -- Borrado de tablas en orden inverso a sus dependencias (para evitar errores de foreign keys)
 DROP TABLE IF EXISTS Profesor_Curso;
 DROP TABLE IF EXISTS Matricula;
+DROP TABLE IF EXISTS AnoAcademico;
 DROP TABLE IF EXISTS Curso;
 DROP TABLE IF EXISTS Grado;
 DROP TABLE IF EXISTS Alumno;
@@ -48,15 +49,28 @@ CREATE TABLE Curso (
     FOREIGN KEY(id_coordinador) REFERENCES Profesor(id_profesor)
 );
 
--- Una matrícula está asociada a un alumno y contiene un grado
+-- Año académico con periodos y estado actual
+CREATE TABLE AnoAcademico (
+    id_ano_academico INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre VARCHAR(50),
+    inicio_ano_academico DATE NOT NULL,
+    fin_ano_academico DATE NOT NULL,
+    inicio_periodo_matriculacion DATE NOT NULL,
+    fin_periodo_matriculacion DATE NOT NULL,
+    actual BOOLEAN NOT NULL DEFAULT 0
+);
+
+-- Una matrícula está asociada a un alumno, a un grado y a un año académico
 CREATE TABLE Matricula (
     id_matricula INTEGER PRIMARY KEY AUTOINCREMENT,
     id_alumno INTEGER,
     id_grado INTEGER,
+    id_ano_academico INTEGER,
     estado VARCHAR(50),
     fecha DATE,
     FOREIGN KEY(id_alumno) REFERENCES Alumno(id_alumno),
-    FOREIGN KEY(id_grado) REFERENCES Grado(id_grado)
+    FOREIGN KEY(id_grado) REFERENCES Grado(id_grado),
+    FOREIGN KEY(id_ano_academico) REFERENCES AnoAcademico(id_ano_academico)
 );
 
 -- Tabla intermedia para la relación "imparte" (Muchos profesores pueden impartir muchos cursos)

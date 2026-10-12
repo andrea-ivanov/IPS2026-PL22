@@ -23,6 +23,7 @@ public abstract class BaseModelTest {
 		db.executeBatch(new String[] {
 				"DELETE FROM Profesor_Curso",
 				"DELETE FROM Matricula",
+				"DELETE FROM AnoAcademico",
 				"DELETE FROM Curso",
 				"DELETE FROM Grado",
 				"DELETE FROM Alumno",
@@ -46,9 +47,12 @@ public abstract class BaseModelTest {
 				"INSERT INTO Curso (id_curso, nombre, id_grado, id_coordinador) VALUES (1, 'Programación', 1, 1)",
 				"INSERT INTO Curso (id_curso, nombre, id_grado, id_coordinador) VALUES (2, 'Bases de Datos', 1, 2)",
 
+				// Datos de Año Académico
+				"INSERT INTO AnoAcademico (id_ano_academico, nombre, inicio_ano_academico, fin_ano_academico, inicio_periodo_matriculacion, fin_periodo_matriculacion, actual) VALUES (1, '2026/2027', '2026-09-01', '2027-06-30', '2026-07-01', '2026-08-31', 1)",
+
 				// Datos de Matrículas
-				"INSERT INTO Matricula (id_matricula, id_alumno, id_grado, estado, fecha) VALUES (1, 1, 1, 'Activa', '2026-09-01')",
-				"INSERT INTO Matricula (id_matricula, id_alumno, id_grado, estado, fecha) VALUES (2, 2, 2, 'Cancelada', '2026-09-02')",
+				"INSERT INTO Matricula (id_matricula, id_alumno, id_grado, id_ano_academico, estado, fecha) VALUES (1, 1, 1, 1, 'Activa', '2026-09-01')",
+				"INSERT INTO Matricula (id_matricula, id_alumno, id_grado, id_ano_academico, estado, fecha) VALUES (2, 2, 2, 1, 'Cancelada', '2026-09-02')",
 
 				// Profesores que imparten cursos
 				"INSERT INTO Profesor_Curso (id_profesor, id_curso) VALUES (1, 1)",
@@ -56,4 +60,3 @@ public abstract class BaseModelTest {
 		});
 	}
 }
-

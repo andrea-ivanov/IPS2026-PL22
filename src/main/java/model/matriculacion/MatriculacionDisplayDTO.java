@@ -35,6 +35,7 @@ public class MatriculacionDisplayDTO {
 	private String grado;        // Grado universitario
 	private String curso;        // Curso académico (p. ej. "3º Curso", "Bases de Datos")
 	private String grupo;        // Grupo asignado (p. ej. "A", "B")
+	private Long idAnoAcademico; // Id del año académico asociado
 
 	/**
 	 * Constructor de 5 parámetros utilizado en AdminOfertaView y TestDataFactory.

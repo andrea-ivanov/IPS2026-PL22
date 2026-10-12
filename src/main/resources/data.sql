@@ -17,8 +17,12 @@ INSERT INTO Profesor (nombre, email) VALUES ('Profesora Lopez', 'lopez@uni.es');
 INSERT INTO Curso (nombre, id_grado, id_coordinador) VALUES ('Programación', 1, 1);
 INSERT INTO Curso (nombre, id_grado, id_coordinador) VALUES ('Bases de Datos', 1, 2);
 
--- Matrícula de Juan Perez (1) en Informática (1)
-INSERT INTO Matricula (id_alumno, id_grado, estado, fecha) VALUES (1, 1, 'Activa', '2026-09-01');
+-- Año académico actual inicial
+INSERT INTO AnoAcademico (nombre, inicio_ano_academico, fin_ano_academico, inicio_periodo_matriculacion, fin_periodo_matriculacion, actual)
+VALUES ('2026/2027', '2026-09-01', '2027-06-30', '2026-07-01', '2026-08-31', 1);
+
+-- Matrícula de Juan Perez (1) en Informática (1) para el año académico 1
+INSERT INTO Matricula (id_alumno, id_grado, id_ano_academico, estado, fecha) VALUES (1, 1, 1, 'Activa', '2026-09-01');
 
 -- Relación de profesores que imparten cursos
 INSERT INTO Profesor_Curso (id_profesor, id_curso) VALUES (1, 1); -- Martinez imparte Programación
