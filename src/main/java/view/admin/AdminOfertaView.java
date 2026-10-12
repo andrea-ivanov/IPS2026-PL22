@@ -457,7 +457,7 @@ public class AdminOfertaView {
         setupTableVerButton(tabCursos, 6, "CURSOS");
     }
 
-    public void actualizarTablaMatriculacion(List<MatriculacionDisplayDTO> matriculas) {
+    public void actualizarTablaMatriculacion(List<? extends MatriculacionDisplayDTO> matriculas) {
         DefaultTableModel model = (DefaultTableModel) tabMatriculacion.getModel();
         model.setRowCount(0);
         if (matriculas != null) {

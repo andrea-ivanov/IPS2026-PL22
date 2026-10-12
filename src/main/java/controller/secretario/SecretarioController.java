@@ -1,7 +1,7 @@
 package controller.secretario;
 
-import model.MatriculaDisplayDTO;
-import repository.MatriculaRepository;
+import model.matriculacion.MatriculacionDisplayDTO;
+import repository.MatriculacionRepository;
 import view.secretario.SecretarioView;
 
 import javax.swing.*;
@@ -10,11 +10,17 @@ import java.util.List;
 
 public class SecretarioController {
     private SecretarioView view;
-    private MatriculaRepository repository;
+    private MatriculacionRepository repository;
 
     public SecretarioController(SecretarioView view) {
         this.view = view;
-        this.repository = new MatriculaRepository(); // Inicializamos el repositorio
+        this.repository = new MatriculacionRepository(); // Inicializamos el repositorio
+        this.initView();
+    }
+
+    public SecretarioController(SecretarioView view, MatriculacionRepository repository) {
+        this.view = view;
+        this.repository = repository;
         this.initView();
     }
 
@@ -35,12 +41,12 @@ public class SecretarioController {
         String grupoSelec = view.getTxtFiltroGrupo().getText().toLowerCase().trim();
         
         // PEDIMOS LOS DATOS AL REPOSITORIO
-        List<MatriculaDisplayDTO> listaCompleta = repository.getTodasLasMatriculas();
+        List<MatriculacionDisplayDTO> listaCompleta = repository.getTodasLasMatriculas();
         
         DefaultTableModel model = (DefaultTableModel) view.getTabMatriculas().getModel();
         model.setRowCount(0);
 
-        for (MatriculaDisplayDTO m : listaCompleta) {
+        for (MatriculacionDisplayDTO m : listaCompleta) {
             boolean coincideEstado = "TODOS".equals(estadoSelec) || m.getEstado().equalsIgnoreCase(estadoSelec);
             boolean coincideEstudiante = estudianteSelec.isEmpty() || 
                                          m.getEstudiante().toLowerCase().contains(estudianteSelec) || 
