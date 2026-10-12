@@ -3,10 +3,12 @@ package controller.login;
 import view.login.MainView;
 import view.admin.AdminOfertaView;
 import view.secretario.SecretarioView; // Tu vista de secretario
+import view.profesor.ProfesorView;
 import java.awt.EventQueue;
 
 import controller.admin.AdminOfertaController;
 import controller.secretario.SecretarioController;
+import controller.profesor.ProfesorController;
 
 public class MainController {
     private MainView view;
@@ -33,8 +35,7 @@ public class MainController {
                 abrirVistaSecretario();
                 break;
             case "Profesor":
-                javax.swing.JOptionPane.showMessageDialog(view.getFrame(),
-                        "Vista de Profesor pendiente de implementar.");
+                abrirVistaProfesor();
                 break;
             case "Estudiante":
                 abrirVistaEstudiante();
@@ -56,15 +57,11 @@ public class MainController {
         view.getFrame().setVisible(false);
     }
 
-    private void abrirVistaEstudiante() {
-        // Como el login no pide UO directamente, se lo preguntamos con un popup
-        String uo = javax.swing.JOptionPane.showInputDialog(view.getFrame(), "Introduce tu UO (ej: UO250000):");
-        if (uo != null && !uo.trim().isEmpty()) {
-            view.estudiante.EstudianteView estView = new view.estudiante.EstudianteView();
-            controller.estudiante.EstudianteController estController = new controller.estudiante.EstudianteController(estView, uo.trim());
-            estController.initController();
-            view.getFrame().setVisible(false);
-        }
+    private void abrirVistaProfesor() {
+        ProfesorView profView = new ProfesorView();
+        ProfesorController profController = new ProfesorController(profView);
+        profController.initController();
+        view.getFrame().setVisible(false);
     }
 
     private void initView() {
