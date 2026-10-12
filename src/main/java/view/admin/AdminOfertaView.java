@@ -4,6 +4,9 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -32,6 +35,7 @@ public class AdminOfertaView {
     // -- GRADOS VIEW --
     private JTextField txtFiltroFacultadGrado;
     private JTextField txtFiltroRamaGrado;
+    
     private JComboBox<String> cbEstadoGrado;
     private JTable tabGrados;
     
@@ -61,6 +65,7 @@ public class AdminOfertaView {
 
     private void initialize() {
         frame = new JFrame("Panel de Administrador - Oferta Académica");
+        frame.setBounds(100, 100, 1000, 650);
         frame.setBounds(100, 100, 1000, 650);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout());
