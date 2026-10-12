@@ -6,7 +6,14 @@ import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.BiConsumer;
 import javax.swing.text.MaskFormatter;
+
+import model.grado.GradoDisplayDTO;
+import model.curso.CursoDisplayDTO;
+import model.matriculacion.MatriculacionDisplayDTO;
 
 public class AdminOfertaView {
     private JFrame frame;
@@ -41,11 +48,12 @@ public class AdminOfertaView {
     private JTable tabMatriculacion;
     private JLabel lblTituloMatriculas;
 
-    // Button from the old view logic to keep the controller working
-    private JButton btnCargarMocks;
-
     // State for back navigation
     private String currentView = "GRADOS";
+
+    // Callbacks de navegación para el controlador
+    private BiConsumer<String, String> onVerGrado;
+    private BiConsumer<String, String> onVerCurso;
 
     public AdminOfertaView() {
         initialize();
@@ -76,10 +84,6 @@ public class AdminOfertaView {
         btnSetPeriodoMatriculacion = new JButton("Periodo de Matriculación");
         btnVolver = new JButton("Volver");
         btnVolver.setEnabled(false);
-        
-        // Keeping the old button for compatibility but putting it out of the way
-        btnCargarMocks = new JButton("Cargar Datos (Prueba)");
-        buttonsPanel.add(btnCargarMocks); 
         
         buttonsPanel.add(btnSetAnoAcademico);
         buttonsPanel.add(btnSetPeriodoMatriculacion);
@@ -146,16 +150,13 @@ public class AdminOfertaView {
         DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 5; // Only button column is editable (clickable)
+                return column == 5; // Solo la columna del botón 'Ver' es interactuable
             }
         };
         tabGrados = new JTable(model);
         
-        // Adding demo row so the 'Ver' button can be tested immediately if model is not replaced
-        model.addRow(new Object[]{"1", "Ingeniería Informática", "Ciencias", "Ingeniería y Arquitectura", "VIGENTE", "Ver"});
-        model.addRow(new Object[]{"2", "Matemáticas", "Ciencias", "Ciencias", "EN_EXTINCION", "Ver"});
-        
-        setupTableVerButton(tabGrados, 5, "GRADOS");
+        // Carga inicial mockeada usando los DTOs de dominio
+        actualizarTablaGrados(obtenerMocksGrados());
         
         panel.add(new JScrollPane(tabGrados), BorderLayout.CENTER);
         
@@ -210,9 +211,7 @@ public class AdminOfertaView {
             }
         };
         tabCursos = new JTable(model);
-        model.addRow(new Object[]{"101", "Programación Orientada a Objetos", "2026", "Desarrollo", "Dr. López", "ABIERTO", "Ver"});
-        
-        setupTableVerButton(tabCursos, 6, "CURSOS");
+        actualizarTablaCursos(obtenerMocksCursos());
         
         panel.add(new JScrollPane(tabCursos), BorderLayout.CENTER);
         
@@ -249,7 +248,7 @@ public class AdminOfertaView {
             }
         };
         tabMatriculacion = new JTable(model);
-        model.addRow(new Object[]{"U00123", "Juan Pérez"});
+        actualizarTablaMatriculacion(obtenerMocksMatriculaciones());
         
         panel.add(new JScrollPane(tabMatriculacion), BorderLayout.CENTER);
         
@@ -341,7 +340,7 @@ public class AdminOfertaView {
     
     // --- Button Column in JTable utility ---
     
-    private void setupTableVerButton(JTable table, int columnIdx, String viewType) {
+    public void setupTableVerButton(JTable table, int columnIdx, String viewType) {
         table.getColumnModel().getColumn(columnIdx).setCellRenderer(new ButtonRenderer());
         table.getColumnModel().getColumn(columnIdx).setCellEditor(new ButtonEditor(new JCheckBox(), viewType));
     }
@@ -387,11 +386,19 @@ public class AdminOfertaView {
                 int row = table.getSelectedRow();
                 if (row >= 0) {
                     if ("GRADOS".equals(viewType)) {
+                        String idGrado = table.getValueAt(row, 0) != null ? table.getValueAt(row, 0).toString() : "";
                         String nombreGrado = table.getValueAt(row, 1) != null ? table.getValueAt(row, 1).toString() : "";
                         showCursosView(nombreGrado);
+                        if (onVerGrado != null) {
+                            onVerGrado.accept(idGrado, nombreGrado);
+                        }
                     } else if ("CURSOS".equals(viewType)) {
+                        String idCurso = table.getValueAt(row, 0) != null ? table.getValueAt(row, 0).toString() : "";
                         String nombreCurso = table.getValueAt(row, 1) != null ? table.getValueAt(row, 1).toString() : "";
                         showMatriculacionView(nombreCurso);
+                        if (onVerCurso != null) {
+                            onVerCurso.accept(idCurso, nombreCurso);
+                        }
                     }
                 }
             }
@@ -406,10 +413,94 @@ public class AdminOfertaView {
         }
     }
 
-    // --- Getters for controller ---
-    
+    // --- Métodos de actualización de tablas con DTOs ---
+
+    public void actualizarTablaGrados(List<GradoDisplayDTO> grados) {
+        DefaultTableModel model = (DefaultTableModel) tabGrados.getModel();
+        model.setRowCount(0);
+        if (grados != null) {
+            for (GradoDisplayDTO g : grados) {
+                model.addRow(new Object[]{
+                    g.getId(),
+                    g.getNombre(),
+                    g.getFacultad(),
+                    g.getRama(),
+                    g.getEstado(),
+                    "Ver"
+                });
+            }
+        }
+        setupTableVerButton(tabGrados, 5, "GRADOS");
+    }
+
+    public void actualizarTablaCursos(List<CursoDisplayDTO> cursos) {
+        DefaultTableModel model = (DefaultTableModel) tabCursos.getModel();
+        model.setRowCount(0);
+        if (cursos != null) {
+            for (CursoDisplayDTO c : cursos) {
+                model.addRow(new Object[]{
+                    c.getId(),
+                    c.getNombre(),
+                    c.getAno(),
+                    c.getItinerario(),
+                    c.getProfesor(),
+                    c.getEstado(),
+                    "Ver"
+                });
+            }
+        }
+        setupTableVerButton(tabCursos, 6, "CURSOS");
+    }
+
+    public void actualizarTablaMatriculacion(List<MatriculacionDisplayDTO> matriculas) {
+        DefaultTableModel model = (DefaultTableModel) tabMatriculacion.getModel();
+        model.setRowCount(0);
+        if (matriculas != null) {
+            for (MatriculacionDisplayDTO m : matriculas) {
+                model.addRow(new Object[]{
+                    m.getId(),
+                    m.getNombreAlumno()
+                });
+            }
+        }
+    }
+
+    // --- Métodos generadores de mocks iniciales ---
+
+    public List<GradoDisplayDTO> obtenerMocksGrados() {
+        List<GradoDisplayDTO> mocks = new ArrayList<>();
+        mocks.add(new GradoDisplayDTO("1", "Ingeniería Informática", "Ciencias", "Ingeniería y Arquitectura", "VIGENTE"));
+        mocks.add(new GradoDisplayDTO("2", "Matemáticas", "Ciencias", "Ciencias", "EN_EXTINCION"));
+        return mocks;
+    }
+
+    public List<CursoDisplayDTO> obtenerMocksCursos() {
+        List<CursoDisplayDTO> mocks = new ArrayList<>();
+        mocks.add(new CursoDisplayDTO("101", "Programación Orientada a Objetos", "2026", "Desarrollo", "Dr. López", "ABIERTO", "1"));
+        return mocks;
+    }
+
+    public List<MatriculacionDisplayDTO> obtenerMocksMatriculaciones() {
+        List<MatriculacionDisplayDTO> mocks = new ArrayList<>();
+        mocks.add(new MatriculacionDisplayDTO("U00123", "Juan Pérez", "101", "juan@uni.es", "ACTIVA"));
+        return mocks;
+    }
+
+    // --- Callbacks y Getters para controlador ---
+
+    public void setOnVerGrado(BiConsumer<String, String> onVerGrado) {
+        this.onVerGrado = onVerGrado;
+    }
+
+    public void setOnVerCurso(BiConsumer<String, String> onVerCurso) {
+        this.onVerCurso = onVerCurso;
+    }
+
+    public JLabel getLblTituloCursos() { return lblTituloCursos; }
+    public JLabel getLblTituloMatriculas() { return lblTituloMatriculas; }
+    public String getCurrentView() { return currentView; }
+
     public JFrame getFrame() { return frame; }
-    public JButton getBtnCargarMocks() { return btnCargarMocks; }
     
     public JTable getTabGrados() { return tabGrados; }
     public JTextField getTxtFiltroFacultadGrado() { return txtFiltroFacultadGrado; }

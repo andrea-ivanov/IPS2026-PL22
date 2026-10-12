@@ -4,8 +4,7 @@ import lombok.*;
 
 /**
  * Entidad de dominio que representa a un Curso o Asignatura.
- * Diseñada para soportar cambios y adiciones de atributos en el futuro (p. ej. créditos,
- * cuatrimestre, carácter obligatorio/optativo) sin romper compatibilidad existente.
+ * Diseñada para soportar cambios y adiciones de atributos en el futuro sin romper compatibilidad existente.
  */
 @Getter
 @Setter
@@ -22,6 +21,15 @@ public class Curso {
 	private Long idCoordinador;
 
 	@Builder.Default
+	private String ano = "2026";
+
+	@Builder.Default
+	private String itinerario = "General";
+
+	@Builder.Default
+	private String profesor = "Dr. López";
+
+	@Builder.Default
 	private Integer creditos = 6;
 
 	@Builder.Default
@@ -29,5 +37,16 @@ public class Curso {
 
 	@Builder.Default
 	private boolean activo = true;
-}
 
+	public CursoDisplayDTO toDisplayDTO() {
+		return CursoDisplayDTO.builder()
+				.id(id != null ? id.toString() : "")
+				.nombre(nombre != null ? nombre : "")
+				.ano(ano != null ? ano : "2026")
+				.itinerario(itinerario != null ? itinerario : "General")
+				.profesor(profesor != null ? profesor : "Profesor Coordinador")
+				.estado(estado != null ? estado.name() : "ABIERTO")
+				.idGrado(idGrado != null ? idGrado.toString() : "")
+				.build();
+	}
+}

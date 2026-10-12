@@ -119,11 +119,37 @@ public abstract class DbUtil {
 	 * y se ignoran los fallos en caso de que no exista la tabla (solo para drop)
 	 */
 	public void executeScript(String fileName) {
-		List<String> lines;
-		try {
-			lines = Files.readAllLines(Paths.get(fileName));
-		} catch (IOException e) {
-			throw new ApplicationException(e);
+		List<String> lines = null;
+		java.io.File file = new java.io.File(fileName);
+		if (!file.exists()) {
+			java.io.File alt = new java.io.File("IPS2026-PL22/" + fileName);
+			if (alt.exists()) {
+				file = alt;
+			}
+		}
+
+		if (file.exists()) {
+			try {
+				lines = Files.readAllLines(file.toPath());
+			} catch (IOException e) {
+				throw new ApplicationException(e);
+			}
+		} else {
+			// Intentar leer desde classpath
+			String resName = fileName.contains("/") ? fileName.substring(fileName.lastIndexOf('/') + 1) : fileName;
+			java.io.InputStream is = getClass().getClassLoader().getResourceAsStream(resName);
+			if (is == null) {
+				is = DbUtil.class.getResourceAsStream("/" + resName);
+			}
+			if (is != null) {
+				try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8))) {
+					lines = reader.lines().collect(java.util.stream.Collectors.toList());
+				} catch (IOException e) {
+					throw new ApplicationException(e);
+				}
+			} else {
+				throw new ApplicationException("No se encontró el archivo de script SQL: " + fileName);
+			}
 		}
 		// separa las sentencias sql en dos listas, una para drop y otra 
 		// para el resto pues se ejecutaran de forma diferente

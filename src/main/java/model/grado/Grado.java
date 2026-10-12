@@ -9,9 +9,8 @@ import model.curso.Curso;
 
 /**
  * Entidad de dominio que representa a un Grado académico.
- * Contiene id, nombre y una lista de cursos asociados.
- * Preparada para soportar atributos adicionales en el futuro (facultad, número de créditos totales,
- * plan de estudios, etc.) mediante el patrón Builder y Lombok.
+ * Contiene id, nombre, facultad, rama y una lista de cursos asociados.
+ * Preparada para soportar atributos adicionales en el futuro mediante el patrón Builder y Lombok.
  */
 @Getter
 @Setter
@@ -24,6 +23,12 @@ public class Grado {
 	@EqualsAndHashCode.Include
 	private Long id;
 	private String nombre;
+
+	@Builder.Default
+	private String facultad = "Escuela de Ingeniería Informática";
+
+	@Builder.Default
+	private String rama = "Ingeniería y Arquitectura";
 
 	@Builder.Default
 	private List<Curso> cursos = new ArrayList<>();
@@ -42,5 +47,14 @@ public class Grado {
 		}
 		this.cursos.add(curso);
 	}
-}
 
+	public GradoDisplayDTO toDisplayDTO() {
+		return GradoDisplayDTO.builder()
+				.id(id != null ? id.toString() : "")
+				.nombre(nombre != null ? nombre : "")
+				.facultad(facultad != null ? facultad : "Ciencias")
+				.rama(rama != null ? rama : "Ingeniería y Arquitectura")
+				.estado(estado != null ? estado.name() : "VIGENTE")
+				.build();
+	}
+}
