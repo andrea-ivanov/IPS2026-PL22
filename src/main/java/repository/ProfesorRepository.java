@@ -20,12 +20,10 @@ public class ProfesorRepository {
     /**
      * Grupos que imparte el profesor. El rol no se guarda en la BD:
      * es COORDINADOR si es el coordinador de la asignatura y DOCENTE en otro caso.
-     * Una asignatura puede estar en varios grados: se muestran todos separados por comas.
-     * Los grupos TE se muestran como CEX (nombre que usa la HU 35239)
+     * Una asignatura puede estar en varios grados: se muestran todos separados por comas
      */
     public List<AsignacionDocenteDisplayDTO> getAsignacionesDocentes(String profesorId) {
-        String sql = "SELECT i.cursoId, c.nombre AS curso, GROUP_CONCAT(gr.nombre, ', ') AS grado, i.grupoCodigo,"
-                + " CASE g.tipo WHEN 'TE' THEN 'CEX' ELSE g.tipo END AS tipo,"
+        String sql = "SELECT i.cursoId, c.nombre AS curso, GROUP_CONCAT(gr.nombre, ', ') AS grado, i.grupoCodigo, g.tipo,"
                 + " CASE WHEN c.coordinadorId = i.profesorId THEN 'COORDINADOR' ELSE 'DOCENTE' END AS rol"
                 + " FROM Imparte i"
                 + " JOIN Curso c ON c.cursoId = i.cursoId"
