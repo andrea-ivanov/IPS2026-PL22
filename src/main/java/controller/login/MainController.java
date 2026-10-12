@@ -11,6 +11,8 @@ import controller.admin.AdminOfertaController;
 import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
+import repository.AlumnoRepository;
+import util.SwingUtil;
 
 public class MainController {
     private MainView view;
@@ -21,7 +23,24 @@ public class MainController {
     }
 
     public void initController() {
+        cargarAlumnos();
+
+        view.getCbRoles().addActionListener(e -> actualizarVisibilidadAlumno());
+        actualizarVisibilidadAlumno();
+
         view.getBtnAcceder().addActionListener(e -> gestionarAcceso());
+    }
+
+    private void cargarAlumnos() {
+        AlumnoRepository repo = new AlumnoRepository();
+        view.getCbAlumnos().setModel(SwingUtil.getComboModelFromList(repo.getListaAlumnos()));
+    }
+
+    private void actualizarVisibilidadAlumno() {
+        boolean esEstudiante = "Estudiante".equals(view.getCbRoles().getSelectedItem());
+        view.getPanelAlumno().setVisible(esEstudiante);
+        view.getFrame().revalidate();
+        view.getFrame().repaint();
     }
 
     private void gestionarAcceso() {
@@ -46,8 +65,13 @@ public class MainController {
     }
 
     private void abrirVistaEstudiante() {
+        Object itemSeleccionado = view.getCbAlumnos().getSelectedItem();
+        String uo = null;
+        if (itemSeleccionado != null) {
+            uo = itemSeleccionado.toString().split(" - ")[0].trim();
+        }
         EstudianteView estudianteView = new EstudianteView();
-        EstudianteController estudianteController = new EstudianteController(estudianteView);
+        EstudianteController estudianteController = new EstudianteController(estudianteView, uo);
         estudianteController.initController();
         view.getFrame().setVisible(false);
     }
