@@ -27,19 +27,20 @@ public class MisMatriculasView {
         frame.getContentPane().add(lblTitle, BorderLayout.NORTH);
 
         // Tabla central
-        // Aquí configuramos las columnas (iremos añadiendo más cuando tengáis convocatorias, notas, etc.)
-        String[] columnNames = {"ID Matrícula", "Grado", "Estado", "Fecha"};
+        // Aquí configuramos las columnas (iremos añadiendo más cuando tengáis
+        // convocatorias, notas, etc.)
+        String[] columnNames = { "ID Matrícula", "Grado", "Estado", "Fecha" };
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false; // Hacemos que las celdas no sean editables a mano
             }
         };
-        
+
         tableMatriculas = new JTable(tableModel);
         tableMatriculas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tableMatriculas.getTableHeader().setReorderingAllowed(false);
-        
+
         JScrollPane scrollPane = new JScrollPane(tableMatriculas);
         frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
 
@@ -50,9 +51,19 @@ public class MisMatriculasView {
         frame.getContentPane().add(panelBottom, BorderLayout.SOUTH);
     }
 
-    public JFrame getFrame() { return frame; }
-    public JTable getTableMatriculas() { return tableMatriculas; }
-    public DefaultTableModel getTableModel() { return tableModel; }
-    public JButton getBtnVolver() { return btnVolver; }
-}
+    public JFrame getFrame() {
+        return frame;
+    }
 
+    public JTable getTableMatriculas() {
+        return tableMatriculas;
+    }
+
+    public DefaultTableModel getTableModel() {
+        return tableModel;
+    }
+
+    public JButton getBtnVolver() {
+        return btnVolver;
+    }
+}

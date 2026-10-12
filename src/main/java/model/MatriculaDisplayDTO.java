@@ -8,6 +8,10 @@ public class MatriculaDisplayDTO {
     private String curso;
     private String grupo;
     private String estado;
+    private String fecha;
+
+    public MatriculaDisplayDTO() {
+    }
 
     public MatriculaDisplayDTO(String id, String estudiante, String dni, String grado, String curso, String grupo,
             String estado) {
@@ -78,5 +82,13 @@ public class MatriculaDisplayDTO {
 
     public Object getIdMatricula() {
         return id;
+    }
+
+    public String getFecha() {
+        return fecha;
+    }
+
+    public void setFecha(String fecha) {
+        this.fecha = fecha;
     }
 }

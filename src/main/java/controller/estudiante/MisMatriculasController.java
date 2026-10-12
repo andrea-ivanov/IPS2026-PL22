@@ -44,7 +44,8 @@ public class MisMatriculasController {
             Object[] row = new Object[] {
                     m.getIdMatricula(),
                     m.getGrado(),
-                    m.getEstado()
+                    m.getEstado(),
+                    m.getFecha()
             };
             tableModel.addRow(row);
         }
