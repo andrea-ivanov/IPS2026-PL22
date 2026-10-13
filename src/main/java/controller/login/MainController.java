@@ -2,11 +2,17 @@ package controller.login;
 
 import view.login.MainView;
 import view.admin.AdminOfertaView;
+import view.estudiante.EstudianteView;
 import view.secretario.SecretarioView; // Tu vista de secretario
+import view.profesor.ProfesorView;
 import java.awt.EventQueue;
 
 import controller.admin.AdminOfertaController;
+import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
+import controller.profesor.ProfesorController;
+import repository.AlumnoRepository;
+import util.SwingUtil;
 
 public class MainController {
     private MainView view;
@@ -17,7 +23,24 @@ public class MainController {
     }
 
     public void initController() {
+        cargarAlumnos();
+
+        view.getCbRoles().addActionListener(e -> actualizarVisibilidadAlumno());
+        actualizarVisibilidadAlumno();
+
         view.getBtnAcceder().addActionListener(e -> gestionarAcceso());
+    }
+
+    private void cargarAlumnos() {
+        AlumnoRepository repo = new AlumnoRepository();
+        view.getCbAlumnos().setModel(SwingUtil.getComboModelFromList(repo.getListaAlumnos()));
+    }
+
+    private void actualizarVisibilidadAlumno() {
+        boolean esEstudiante = "Estudiante".equals(view.getCbRoles().getSelectedItem());
+        view.getPanelAlumno().setVisible(esEstudiante);
+        view.getFrame().revalidate();
+        view.getFrame().repaint();
     }
 
     private void gestionarAcceso() {
@@ -33,14 +56,24 @@ public class MainController {
                 abrirVistaSecretario();
                 break;
             case "Profesor":
-                javax.swing.JOptionPane.showMessageDialog(view.getFrame(),
-                        "Vista de Profesor pendiente de implementar.");
+                abrirVistaProfesor();
                 break;
             case "Estudiante":
-                javax.swing.JOptionPane.showMessageDialog(view.getFrame(),
-                        "Vista de Estudiante pendiente de implementar.");
+                abrirVistaEstudiante();
                 break;
         }
+    }
+
+    private void abrirVistaEstudiante() {
+        Object itemSeleccionado = view.getCbAlumnos().getSelectedItem();
+        String uo = null;
+        if (itemSeleccionado != null) {
+            uo = itemSeleccionado.toString().split(" - ")[0].trim();
+        }
+        EstudianteView estudianteView = new EstudianteView();
+        EstudianteController estudianteController = new EstudianteController(estudianteView, uo);
+        estudianteController.initController();
+        view.getFrame().setVisible(false);
     }
 
     private void abrirVistaAdministrador() {
@@ -54,6 +87,13 @@ public class MainController {
         SecretarioView secView = new SecretarioView();
         SecretarioController secController = new SecretarioController(secView);
         secController.initController();
+        view.getFrame().setVisible(false);
+    }
+
+    private void abrirVistaProfesor() {
+        ProfesorView profView = new ProfesorView();
+        ProfesorController profController = new ProfesorController(profView);
+        profController.initController();
         view.getFrame().setVisible(false);
     }
 
