@@ -3,6 +3,7 @@ package controller.secretario;
 import model.MatriculaDisplayDTO;
 import repository.MatriculaRepository;
 import view.secretario.SecretarioView;
+//import giis.demo.util.Database; 
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -14,7 +15,8 @@ public class SecretarioController {
 
     public SecretarioController(SecretarioView view) {
         this.view = view;
-        this.repository = new MatriculaRepository(); // Inicializamos el repositorio
+        // Usamos el repositorio simulado sin pasarle la BD
+        this.repository = new MatriculaRepository(); 
         this.initView();
     }
 
@@ -34,7 +36,6 @@ public class SecretarioController {
         String cursoSelec = view.getTxtFiltroCurso().getText().toLowerCase().trim();
         String grupoSelec = view.getTxtFiltroGrupo().getText().toLowerCase().trim();
         
-        // PEDIMOS LOS DATOS AL REPOSITORIO
         List<MatriculaDisplayDTO> listaCompleta = repository.getTodasLasMatriculas();
         
         DefaultTableModel model = (DefaultTableModel) view.getTabMatriculas().getModel();
@@ -52,13 +53,14 @@ public class SecretarioController {
             if (coincideEstado && coincideEstudiante && coincideGrado && coincideCurso && coincideGrupo) {
                 model.addRow(new Object[]{
                     m.getId(), 
+                    m.getEmail(),
                     m.getDni(),
                     m.getEstudiante(), 
                     m.getGrado(), 
                     m.getCurso(),
                     m.getGrupo(),
                     m.getEstado(), 
-                    "Gestionar"
+                    "SGestionar"
                 });
             }
         }
@@ -75,12 +77,10 @@ public class SecretarioController {
                 "Aceptar Solicitud y Pago", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
                 
         if (confirm == JOptionPane.YES_OPTION) {
-            // ACTUALIZAMOS EN EL REPOSITORIO
             repository.actualizarEstadoMatricula(idMatricula, "PAGADA");
-            
             JOptionPane.showMessageDialog(view.getFrame(), "Solicitud ACEPTADA correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             view.showListadoView();
-            cargarMatriculasFiltradas(); // Refrescar la tabla
+            cargarMatriculasFiltradas(); 
         }
     }
 
@@ -102,12 +102,10 @@ public class SecretarioController {
                 JOptionPane.WARNING_MESSAGE, null, motivos, motivos[0]);
 
         if (motivoSeleccionado != null) {
-            // CANCELAMOS EN EL REPOSITORIO
             repository.cancelarMatricula(idMatricula, motivoSeleccionado);
-            
             JOptionPane.showMessageDialog(view.getFrame(), "Matrícula cancelada correctamente.\nMotivo: " + motivoSeleccionado, "Cancelada", JOptionPane.INFORMATION_MESSAGE);
             view.showListadoView();
-            cargarMatriculasFiltradas(); // Refrescar la tabla
+            cargarMatriculasFiltradas(); 
         }
     }
 
