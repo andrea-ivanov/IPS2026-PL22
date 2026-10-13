@@ -2,7 +2,7 @@ package repository;
 
 import java.util.List;
 
-import model.AsignacionDocenteDisplayDTO;
+import model.asignaciondocente.AsignacionDocenteDisplayDTO;
 import util.Database;
 
 /**

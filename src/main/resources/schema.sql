@@ -328,30 +328,3 @@ CREATE TABLE Calificacion (
     CONSTRAINT fk_calificacion_acta FOREIGN KEY (cursoId, anioAcademicoId, tipoConvocatoria) REFERENCES Acta (cursoId, anioAcademicoId, tipoConvocatoria),
     CONSTRAINT ck_calificacion_nota CHECK (nota BETWEEN 0 AND 10)
 );
-
--- Convocatorias y Notas para una asignatura concreta de una matrícula
-CREATE TABLE Convocatoria (
-    id_convocatoria INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_matricula INTEGER,
-    id_curso INTEGER,
-    tipo VARCHAR(50), -- Ej: Ordinaria, Extraordinaria
-    nota DECIMAL(4,2), -- Puede ser NULL si aún no se ha presentado
-    activa BOOLEAN, -- 1 si es la convocatoria actual en curso, 0 si ya pasó
-    FOREIGN KEY(id_matricula, id_curso) REFERENCES Matricula_Curso(id_matricula, id_curso)
-);
-
--- Hitos de permanencia (reglas de la universidad)
-CREATE TABLE Hito (
-    id_hito INTEGER PRIMARY KEY AUTOINCREMENT,
-    descripcion VARCHAR(200) NOT NULL
-);
-
--- Hitos que ha superado cada alumno
-CREATE TABLE Alumno_Hito (
-    id_alumno INTEGER,
-    id_hito INTEGER,
-    fecha_superacion DATE,
-    PRIMARY KEY(id_alumno, id_hito),
-    FOREIGN KEY(id_alumno) REFERENCES Alumno(id_alumno),
-    FOREIGN KEY(id_hito) REFERENCES Hito(id_hito)
-);

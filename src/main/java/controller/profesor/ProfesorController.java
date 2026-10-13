@@ -1,6 +1,6 @@
 package controller.profesor;
 
-import model.AsignacionDocenteDisplayDTO;
+import model.asignaciondocente.AsignacionDocenteDisplayDTO;
 import repository.ProfesorRepository;
 import util.SwingUtil;
 import view.profesor.ProfesorView;

@@ -1,8 +1,8 @@
 package controller.estudiante;
 
 import view.estudiante.MisMatriculasView;
-import model.MatriculaModel;
-import model.MatriculaDisplayDTO;
+import model.matriculacion.MatriculacionModel;
+import model.matriculacion.MatriculacionDisplayDTO;
 
 import javax.swing.table.DefaultTableModel;
 import java.util.List;
@@ -11,10 +11,10 @@ import util.SwingUtil;
 
 public class MisMatriculasController {
     private MisMatriculasView view;
-    private MatriculaModel model;
+    private MatriculacionModel model;
     private String uo;
 
-    public MisMatriculasController(MisMatriculasView view, MatriculaModel model, String uo) {
+    public MisMatriculasController(MisMatriculasView view, MatriculacionModel model, String uo) {
         this.view = view;
         this.model = model;
         this.uo = uo;

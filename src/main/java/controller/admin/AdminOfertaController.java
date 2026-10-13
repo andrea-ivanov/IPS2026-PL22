@@ -1,50 +1,347 @@
 package controller.admin;
 
-import model.GradoDisplayDTO;
 import view.admin.AdminOfertaView;
-import giis.demo.util.SwingUtil;
+import view.admin.TestDataFactory;
+import model.anoacademico.AnoAcademico;
+import model.curso.Curso;
+import model.curso.CursoDisplayDTO;
+import model.grado.Grado;
+import model.grado.GradoDisplayDTO;
+import model.matriculacion.Matriculacion;
+import model.matriculacion.MatriculacionDisplayDTO;
+import repository.AlumnoRepository;
+import repository.AnoAcademicoRepository;
+import repository.CursoRepository;
+import repository.GradoRepository;
+import repository.MatriculacionRepository;
 
-import javax.swing.table.TableModel;
+import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
+/**
+ * Controlador de la vista de administración de oferta académica (AdminOfertaView).
+ * Conecta la vista con los repositorios y modelos de Grado, Curso, Matriculación y Año Académico.
+ * Soporta navegación entre paneles (Grados -> Cursos -> Matrícula), filtrado reactivo,
+ * gestión del Año Académico actual y mockeo estructurado.
+ */
 public class AdminOfertaController {
-    private AdminOfertaView view;
+	private AdminOfertaView view;
 
-    public AdminOfertaController(AdminOfertaView view) {
-        this.view = view;
-        this.initView();
-    }
+	// Repositorios de acceso a datos
+	private GradoRepository gradoRepository;
+	private CursoRepository cursoRepository;
+	private MatriculacionRepository matriculacionRepository;
+	private AlumnoRepository alumnoRepository;
+	private AnoAcademicoRepository anoAcademicoRepository;
 
-    public void initController() {
-        view.getBtnCargarMocks().addActionListener(e -> cargarMocksGrados());
+	// Estado del Año Académico actual
+	private AnoAcademico anoAcademicoActual;
 
-        view.getTabGrados().addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                String idSeleccionado = SwingUtil.getSelectedKey(view.getTabGrados());
-                if (!"".equals(idSeleccionado)) {
-                    System.out.println("Grado seleccionado ID: " + idSeleccionado);
-                    System.out.println("--> TODO: Aquí el gestor de ventanas abrirá la vista de detalles/cursos.");
-                }
-            }
-        });
-    }
+	// Datos en memoria para las listas activas y filtros
+	private List<GradoDisplayDTO> todosLosGrados = new ArrayList<>();
+	private List<CursoDisplayDTO> todosLosCursos = new ArrayList<>();
+	private List<MatriculacionDisplayDTO> todasLasMatriculaciones = new ArrayList<>();
 
-    private void cargarMocksGrados() {
-        List<GradoDisplayDTO> mockData = new ArrayList<>();
-        mockData.add(new GradoDisplayDTO("1", "Ingeniería Informática", "Ciencias", "VIGENTE"));
-        mockData.add(new GradoDisplayDTO("2", "Matemáticas", "Ciencias Básicas", "EN_EXTINCION"));
+	public AdminOfertaController(AdminOfertaView view) {
+		this.view = view;
+		try {
+			this.gradoRepository = new GradoRepository();
+			this.cursoRepository = new CursoRepository();
+			this.matriculacionRepository = new MatriculacionRepository();
+			this.alumnoRepository = new AlumnoRepository();
+			this.anoAcademicoRepository = new AnoAcademicoRepository();
+		} catch (Exception ex) {
+			System.err.println("Aviso: No se pudo conectar con los repositorios en base de datos. Modo mock activado: " + ex.getMessage());
+			this.anoAcademicoRepository = new AnoAcademicoRepository();
+		}
+		this.initView();
+	}
 
-        TableModel tmodel = SwingUtil.getTableModelFromPojos(mockData,
-                new String[] { "id", "nombre", "facultad", "estado" });
-        view.getTabGrados().setModel(tmodel);
-        SwingUtil.autoAdjustColumns(view.getTabGrados());
-    }
+	public AdminOfertaController(AdminOfertaView view,
+								 GradoRepository gradoRepository,
+								 CursoRepository cursoRepository,
+								 MatriculacionRepository matriculacionRepository,
+								 AlumnoRepository alumnoRepository) {
+		this(view, gradoRepository, cursoRepository, matriculacionRepository, alumnoRepository, new AnoAcademicoRepository());
+	}
 
-    private void initView() {
-        view.getFrame().setVisible(true);
-    }
+	public AdminOfertaController(AdminOfertaView view,
+								 GradoRepository gradoRepository,
+								 CursoRepository cursoRepository,
+								 MatriculacionRepository matriculacionRepository,
+								 AlumnoRepository alumnoRepository,
+								 AnoAcademicoRepository anoAcademicoRepository) {
+		this.view = view;
+		this.gradoRepository = gradoRepository;
+		this.cursoRepository = cursoRepository;
+		this.matriculacionRepository = matriculacionRepository;
+		this.alumnoRepository = alumnoRepository;
+		this.anoAcademicoRepository = anoAcademicoRepository;
+		this.initView();
+	}
+
+	public void initController() {
+		// 1. Carga inicial del Año Académico actual desde la base de datos y reflejo en la vista
+		cargarAnoAcademicoActual();
+
+		// Conectar eventos para cambiar el año académico y periodo de matriculación
+		view.setOnGuardarAnoAcademico(this::onGuardarFechasAnoAcademico);
+		view.setOnGuardarPeriodoMatriculacion(this::onGuardarFechasPeriodoMatriculacion);
+
+		// 2. Carga inicial de datos de Grados
+		cargarGrados();
+
+		// 3. Conexión de callbacks del botón 'Ver' en JTable
+		view.setOnVerGrado((idGrado, nombreGrado) -> {
+			cargarCursosDeGrado(idGrado, nombreGrado);
+		});
+
+		view.setOnVerCurso((idCurso, nombreCurso) -> {
+			cargarMatriculasDeCurso(idCurso, nombreCurso);
+		});
+
+		// 4. Selección por fila / doble clic en tablas
+		view.getTabGrados().addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				int row = view.getTabGrados().getSelectedRow();
+				if (row >= 0 && e.getClickCount() == 2) {
+					String idGrado = String.valueOf(view.getTabGrados().getValueAt(row, 0));
+					String nombreGrado = String.valueOf(view.getTabGrados().getValueAt(row, 1));
+					view.showCursosView(nombreGrado);
+					cargarCursosDeGrado(idGrado, nombreGrado);
+				}
+			}
+		});
+
+		view.getTabCursos().addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				int row = view.getTabCursos().getSelectedRow();
+				if (row >= 0 && e.getClickCount() == 2) {
+					String idCurso = String.valueOf(view.getTabCursos().getValueAt(row, 0));
+					String nombreCurso = String.valueOf(view.getTabCursos().getValueAt(row, 1));
+					view.showMatriculacionView(nombreCurso);
+					cargarMatriculasDeCurso(idCurso, nombreCurso);
+				}
+			}
+		});
+
+		// 5. Conexión de filtros reactivos
+		configurarFiltrosGrados();
+		configurarFiltrosCursos();
+		configurarFiltrosMatriculacion();
+	}
+
+	public void cargarAnoAcademicoActual() {
+		if (anoAcademicoRepository != null) {
+			this.anoAcademicoActual = anoAcademicoRepository.getAnoAcademicoActual();
+			if (anoAcademicoActual != null) {
+				view.actualizarAnoAcademico(anoAcademicoActual.getAnoAcademicoDisplay());
+				view.actualizarPeriodoMatriculacion(anoAcademicoActual.getPeriodoMatriculacionDisplay());
+			}
+		}
+	}
+
+	public void onGuardarFechasAnoAcademico(String desdeStr, String hastaStr) {
+		Date d = parsearFechaInput(desdeStr);
+		Date h = parsearFechaInput(hastaStr);
+		if (d != null && h != null) {
+			if (anoAcademicoRepository != null) {
+				anoAcademicoRepository.actualizarFechasAnoAcademico(d, h);
+				this.anoAcademicoActual = anoAcademicoRepository.getAnoAcademicoActual();
+			} else if (anoAcademicoActual != null) {
+				anoAcademicoActual.setInicioAnoAcademico(d);
+				anoAcademicoActual.setFinAnoAcademico(h);
+			}
+			if (anoAcademicoActual != null) {
+				view.actualizarAnoAcademico(anoAcademicoActual.getAnoAcademicoDisplay());
+			}
+		}
+	}
+
+	public void onGuardarFechasPeriodoMatriculacion(String desdeStr, String hastaStr) {
+		Date d = parsearFechaInput(desdeStr);
+		Date h = parsearFechaInput(hastaStr);
+		if (d != null && h != null) {
+			if (anoAcademicoRepository != null) {
+				anoAcademicoRepository.actualizarFechasMatriculacion(d, h);
+				this.anoAcademicoActual = anoAcademicoRepository.getAnoAcademicoActual();
+			} else if (anoAcademicoActual != null) {
+				anoAcademicoActual.setInicioPeriodoMatriculacion(d);
+				anoAcademicoActual.setFinPeriodoMatriculacion(h);
+			}
+			if (anoAcademicoActual != null) {
+				view.actualizarPeriodoMatriculacion(anoAcademicoActual.getPeriodoMatriculacionDisplay());
+			}
+		}
+	}
+
+	private Date parsearFechaInput(String text) {
+		if (text == null) return null;
+		String clean = text.trim();
+		if (clean.isEmpty() || clean.contains("_")) return null;
+		String[] formatos = new String[] { "dd/MM/yy", "dd/MM/yyyy", "yyyy-MM-dd" };
+		for (String f : formatos) {
+			try {
+				SimpleDateFormat sdf = new SimpleDateFormat(f);
+				sdf.setLenient(false);
+				return sdf.parse(clean);
+			} catch (ParseException ignored) {
+			}
+		}
+		return null;
+	}
+
+	public AnoAcademico getAnoAcademicoActual() {
+		return this.anoAcademicoActual;
+	}
+
+	public void cargarGrados() {
+		todosLosGrados.clear();
+		try {
+			if (gradoRepository != null) {
+				todosLosGrados = gradoRepository.getTodosLosGrados();
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al cargar grados desde repositorio: " + ex.getMessage());
+		}
+
+		if (todosLosGrados == null || todosLosGrados.isEmpty()) {
+			todosLosGrados = TestDataFactory.crearMockGradosDisplay();
+		}
+
+		aplicarFiltrosGrados();
+	}
+
+	public void cargarMocksGrados() {
+		cargarGrados();
+	}
+
+	public void cargarCursosDeGrado(String idGrado, String nombreGrado) {
+		todosLosCursos.clear();
+		try {
+			if (cursoRepository != null) {
+				todosLosCursos = cursoRepository.getCursosPorGrado(idGrado);
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al cargar cursos desde repositorio: " + ex.getMessage());
+		}
+
+		if (todosLosCursos == null || todosLosCursos.isEmpty()) {
+			todosLosCursos = TestDataFactory.crearMockCursosDisplay(idGrado);
+		}
+
+		aplicarFiltrosCursos();
+	}
+
+	public void cargarMatriculasDeCurso(String idCurso, String nombreCurso) {
+		todasLasMatriculaciones.clear();
+		try {
+			if (matriculacionRepository != null) {
+				todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCurso(idCurso);
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al cargar matrículas desde repositorio: " + ex.getMessage());
+		}
+
+		if (todasLasMatriculaciones == null || todasLasMatriculaciones.isEmpty()) {
+			todasLasMatriculaciones = TestDataFactory.crearMockMatriculacionesDisplay(idCurso);
+		}
+
+		Long idAnoActual = anoAcademicoActual != null ? anoAcademicoActual.getId() : 1L;
+		for (MatriculacionDisplayDTO m : todasLasMatriculaciones) {
+			if (m.getIdAnoAcademico() == null) {
+				m.setIdAnoAcademico(idAnoActual);
+			}
+		}
+
+		aplicarFiltrosMatriculacion();
+	}
+
+	private void configurarFiltrosGrados() {
+		addDocumentListener(view.getTxtFiltroFacultadGrado(), this::aplicarFiltrosGrados);
+		addDocumentListener(view.getTxtFiltroRamaGrado(), this::aplicarFiltrosGrados);
+		view.getCbEstadoGrado().addActionListener(e -> aplicarFiltrosGrados());
+	}
+
+	private void aplicarFiltrosGrados() {
+		String filtroFacultad = view.getTxtFiltroFacultadGrado().getText().trim().toLowerCase();
+		String filtroRama = view.getTxtFiltroRamaGrado().getText().trim().toLowerCase();
+		String filtroEstado = (String) view.getCbEstadoGrado().getSelectedItem();
+
+		List<GradoDisplayDTO> filtrados = todosLosGrados.stream()
+				.filter(g -> filtroFacultad.isEmpty() || (g.getFacultad() != null && g.getFacultad().toLowerCase().contains(filtroFacultad)))
+				.filter(g -> filtroRama.isEmpty() || (g.getRama() != null && g.getRama().toLowerCase().contains(filtroRama)))
+				.filter(g -> filtroEstado == null || "TODOS".equalsIgnoreCase(filtroEstado) || (g.getEstado() != null && g.getEstado().equalsIgnoreCase(filtroEstado)))
+				.collect(Collectors.toList());
+
+		view.actualizarTablaGrados(filtrados);
+	}
+
+	private void configurarFiltrosCursos() {
+		addDocumentListener(view.getTxtFiltroAnoCurso(), this::aplicarFiltrosCursos);
+		addDocumentListener(view.getTxtFiltroItinerarioCurso(), this::aplicarFiltrosCursos);
+		addDocumentListener(view.getTxtFiltroProfesorCurso(), this::aplicarFiltrosCursos);
+		view.getCbFiltroEstadoCurso().addActionListener(e -> aplicarFiltrosCursos());
+	}
+
+	private void aplicarFiltrosCursos() {
+		String filtroAno = view.getTxtFiltroAnoCurso().getText().trim().toLowerCase();
+		String filtroItinerario = view.getTxtFiltroItinerarioCurso().getText().trim().toLowerCase();
+		String filtroProfesor = view.getTxtFiltroProfesorCurso().getText().trim().toLowerCase();
+		String filtroEstado = (String) view.getCbFiltroEstadoCurso().getSelectedItem();
+
+		List<CursoDisplayDTO> filtrados = todosLosCursos.stream()
+				.filter(c -> filtroAno.isEmpty() || (c.getAno() != null && c.getAno().toLowerCase().contains(filtroAno)))
+				.filter(c -> filtroItinerario.isEmpty() || (c.getItinerario() != null && c.getItinerario().toLowerCase().contains(filtroItinerario)))
+				.filter(c -> filtroProfesor.isEmpty() || (c.getProfesor() != null && c.getProfesor().toLowerCase().contains(filtroProfesor)))
+				.filter(c -> filtroEstado == null || "TODOS".equalsIgnoreCase(filtroEstado) || (c.getEstado() != null && c.getEstado().equalsIgnoreCase(filtroEstado)))
+				.collect(Collectors.toList());
+
+		view.actualizarTablaCursos(filtrados);
+	}
+
+	private void configurarFiltrosMatriculacion() {
+		addDocumentListener(view.getTxtFiltroAlumno(), this::aplicarFiltrosMatriculacion);
+	}
+
+	private void aplicarFiltrosMatriculacion() {
+		String filtroAlumno = view.getTxtFiltroAlumno().getText().trim().toLowerCase();
+
+		List<MatriculacionDisplayDTO> filtrados = todasLasMatriculaciones.stream()
+				.filter(m -> filtroAlumno.isEmpty()
+						|| (m.getId() != null && m.getId().toLowerCase().contains(filtroAlumno))
+						|| (m.getNombreAlumno() != null && m.getNombreAlumno().toLowerCase().contains(filtroAlumno)))
+				.collect(Collectors.toList());
+
+		view.actualizarTablaMatriculacion(filtrados);
+	}
+
+	private void addDocumentListener(JTextField textField, Runnable action) {
+		textField.getDocument().addDocumentListener(new DocumentListener() {
+			@Override
+			public void insertUpdate(DocumentEvent e) { action.run(); }
+
+			@Override
+			public void removeUpdate(DocumentEvent e) { action.run(); }
+
+			@Override
+			public void changedUpdate(DocumentEvent e) { action.run(); }
+		});
+	}
+
+	private void initView() {
+		view.showGradosView();
+		view.getFrame().setVisible(true);
+	}
 }
