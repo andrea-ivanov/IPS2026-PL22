@@ -4,20 +4,21 @@ public class MatriculaDisplayDTO {
     private String id;
     private String estudiante;
     private String dni;
+    private String email; 
     private String grado;
     private String curso;
     private String grupo;
     private String estado;
     private String fecha;
 
-    public MatriculaDisplayDTO() {
-    }
+    // AÑADIDO: Constructor vacío IMPRESCINDIBLE para que giis.demo.util.Database funcione
+    public MatriculaDisplayDTO() {}
 
-    public MatriculaDisplayDTO(String id, String estudiante, String dni, String grado, String curso, String grupo,
-            String estado) {
+    public MatriculaDisplayDTO(String id, String estudiante, String dni, String email, String grado, String curso, String grupo, String estado) {
         this.id = id;
         this.estudiante = estudiante;
         this.dni = dni;
+        this.email = email;
         this.grado = grado;
         this.curso = curso;
         this.grupo = grupo;
@@ -75,6 +76,9 @@ public class MatriculaDisplayDTO {
     public String getEstado() {
         return estado;
     }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
     public void setEstado(String estado) {
         this.estado = estado;
