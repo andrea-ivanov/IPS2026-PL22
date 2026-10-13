@@ -1,4 +1,4 @@
-package model;
+package model.asignaciondocente;
 
 import lombok.*;
 

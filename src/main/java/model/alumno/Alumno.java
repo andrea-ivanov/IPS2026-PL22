@@ -17,10 +17,14 @@ import model.matriculacion.MatriculacionDisplayDTO;
 public class Alumno {
 	@EqualsAndHashCode.Include
 	private Long id;
+	private String alumnoId;
 	private String nombre;
 	private String email;
 
 	public String getCodigo() {
+		if (alumnoId != null && !alumnoId.isEmpty()) {
+			return alumnoId;
+		}
 		return id != null ? "UO" + id : "";
 	}
 

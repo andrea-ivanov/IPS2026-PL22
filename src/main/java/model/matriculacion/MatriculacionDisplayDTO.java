@@ -8,16 +8,18 @@ import lombok.Setter;
 import lombok.ToString;
 
 /**
- * DTO para la visualización de Matrículas / Alumnos tanto en la vista de administración
- * como en la vista de secretaría.
+ * DTO para la visualización de Matrículas / Alumnos tanto en la vista de administración,
+ * secretaría y estudiante (Mis Matrículas).
  * 
- * Unifica los atributos de ambas vistas:
- * - AdminOfertaView: {"Código", "NombreAlumno"} (además de idCurso, email, estado)
+ * Unifica los atributos de todas las vistas:
+ * - AdminOfertaView: {"Código", "NombreAlumno"} (además de idCurso, email, estado, idAnoAcademico)
  * - SecretarioView: {"Nº Ref.", "DNI", "Estudiante", "Grado", "Curso", "Grupo", "Estado"}
+ * - MisMatriculasView: {"ID Matrícula", "Grado", "Estado", "Fecha"}
  * 
- * Proporciona métodos getter/setter con alias para mantener compatibilidad total:
+ * Proporciona métodos getter/setter con alias y compatibilidad con Apache Commons DbUtils (POJO):
  * - getNombreAlumno() / getEstudiante()
  * - getIdCurso() / getCurso()
+ * - getId() / getIdMatricula()
  */
 @Getter
 @Setter
@@ -34,7 +36,8 @@ public class MatriculacionDisplayDTO {
 	private String dni;          // DNI / NIE del estudiante
 	private String grado;        // Grado universitario
 	private String curso;        // Curso académico (p. ej. "3º Curso", "Bases de Datos")
-	private String grupo;        // Grupo asignado (p. ej. "A", "B")
+	private String grupo;        // Grupo asignado (p. ej. "A", "B", "Sin asignar")
+	private String fecha;        // Fecha de la solicitud o matrícula
 	private Long idAnoAcademico; // Id del año académico asociado
 
 	/**
@@ -50,7 +53,7 @@ public class MatriculacionDisplayDTO {
 	}
 
 	/**
-	 * Constructor de 7 parámetros utilizado en la vista de Secretaría (SecretarioView / MatriculaRepository).
+	 * Constructor de 7 parámetros utilizado en la vista de Secretaría (SecretarioView / MatriculacionRepository).
 	 */
 	public MatriculacionDisplayDTO(String id, String estudiante, String dni, String grado, String curso, String grupo, String estado) {
 		this.id = id;
@@ -61,6 +64,41 @@ public class MatriculacionDisplayDTO {
 		this.idCurso = curso;
 		this.grupo = grupo;
 		this.estado = estado;
+	}
+
+	/**
+	 * Constructor de 8 parámetros utilizado para el cruce completo con email.
+	 */
+	public MatriculacionDisplayDTO(String id, String estudiante, String dni, String email, String grado, String curso, String grupo, String estado) {
+		this.id = id;
+		this.nombreAlumno = estudiante;
+		this.dni = dni;
+		this.email = email;
+		this.grado = grado;
+		this.curso = curso;
+		this.idCurso = curso;
+		this.grupo = grupo;
+		this.estado = estado;
+	}
+
+	// =========================================================================
+	// Métodos de compatibilidad y alias (ID / ID Matrícula)
+	// =========================================================================
+
+	public String getId() {
+		return this.id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Object getIdMatricula() {
+		return this.id;
+	}
+
+	public void setIdMatricula(Object idMatricula) {
+		this.id = idMatricula != null ? idMatricula.toString() : null;
 	}
 
 	// =========================================================================
@@ -107,5 +145,65 @@ public class MatriculacionDisplayDTO {
 		if (this.curso == null) {
 			this.curso = idCurso;
 		}
+	}
+
+	// =========================================================================
+	// Métodos de acceso explícito para DbUtils y reflection
+	// =========================================================================
+
+	public String getDni() {
+		return this.dni;
+	}
+
+	public void setDni(String dni) {
+		this.dni = dni;
+	}
+
+	public String getEmail() {
+		return this.email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public String getGrado() {
+		return this.grado;
+	}
+
+	public void setGrado(String grado) {
+		this.grado = grado;
+	}
+
+	public String getGrupo() {
+		return this.grupo;
+	}
+
+	public void setGrupo(String grupo) {
+		this.grupo = grupo;
+	}
+
+	public String getEstado() {
+		return this.estado;
+	}
+
+	public void setEstado(String estado) {
+		this.estado = estado;
+	}
+
+	public String getFecha() {
+		return this.fecha;
+	}
+
+	public void setFecha(String fecha) {
+		this.fecha = fecha;
+	}
+
+	public Long getIdAnoAcademico() {
+		return this.idAnoAcademico;
+	}
+
+	public void setIdAnoAcademico(Long idAnoAcademico) {
+		this.idAnoAcademico = idAnoAcademico;
 	}
 }

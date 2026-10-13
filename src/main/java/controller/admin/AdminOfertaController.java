@@ -98,7 +98,7 @@ public class AdminOfertaController {
 		view.setOnGuardarPeriodoMatriculacion(this::onGuardarFechasPeriodoMatriculacion);
 
 		// 2. Carga inicial de datos de Grados
-		cargarMocksGrados();
+		cargarGrados();
 
 		// 3. Conexión de callbacks del botón 'Ver' en JTable
 		view.setOnVerGrado((idGrado, nombreGrado) -> {
@@ -158,10 +158,12 @@ public class AdminOfertaController {
 		if (d != null && h != null) {
 			if (anoAcademicoRepository != null) {
 				anoAcademicoRepository.actualizarFechasAnoAcademico(d, h);
-			}
-			if (anoAcademicoActual != null) {
+				this.anoAcademicoActual = anoAcademicoRepository.getAnoAcademicoActual();
+			} else if (anoAcademicoActual != null) {
 				anoAcademicoActual.setInicioAnoAcademico(d);
 				anoAcademicoActual.setFinAnoAcademico(h);
+			}
+			if (anoAcademicoActual != null) {
 				view.actualizarAnoAcademico(anoAcademicoActual.getAnoAcademicoDisplay());
 			}
 		}
@@ -173,10 +175,12 @@ public class AdminOfertaController {
 		if (d != null && h != null) {
 			if (anoAcademicoRepository != null) {
 				anoAcademicoRepository.actualizarFechasMatriculacion(d, h);
-			}
-			if (anoAcademicoActual != null) {
+				this.anoAcademicoActual = anoAcademicoRepository.getAnoAcademicoActual();
+			} else if (anoAcademicoActual != null) {
 				anoAcademicoActual.setInicioPeriodoMatriculacion(d);
 				anoAcademicoActual.setFinPeriodoMatriculacion(h);
+			}
+			if (anoAcademicoActual != null) {
 				view.actualizarPeriodoMatriculacion(anoAcademicoActual.getPeriodoMatriculacionDisplay());
 			}
 		}
@@ -202,46 +206,38 @@ public class AdminOfertaController {
 		return this.anoAcademicoActual;
 	}
 
-	public void cargarMocksGrados() {
+	public void cargarGrados() {
 		todosLosGrados.clear();
 		try {
-			Grado gradoDb = gradoRepository.findById("1");
-			if (gradoDb != null) {
-				todosLosGrados.add(gradoDb.toDisplayDTO());
+			if (gradoRepository != null) {
+				todosLosGrados = gradoRepository.getTodosLosGrados();
 			}
 		} catch (Exception ex) {
-			// En caso de base de datos no inicializada, usa los mocks estructurados
+			System.err.println("Aviso al cargar grados desde repositorio: " + ex.getMessage());
 		}
 
-		if (todosLosGrados.isEmpty()) {
+		if (todosLosGrados == null || todosLosGrados.isEmpty()) {
 			todosLosGrados = TestDataFactory.crearMockGradosDisplay();
-		} else {
-			// Añade los demás grados mockeados para una experiencia visual completa
-			List<GradoDisplayDTO> mocks = TestDataFactory.crearMockGradosDisplay();
-			for (GradoDisplayDTO m : mocks) {
-				if (!todosLosGrados.get(0).getId().equals(m.getId())) {
-					todosLosGrados.add(m);
-				}
-			}
 		}
 
 		aplicarFiltrosGrados();
 	}
 
+	public void cargarMocksGrados() {
+		cargarGrados();
+	}
+
 	public void cargarCursosDeGrado(String idGrado, String nombreGrado) {
 		todosLosCursos.clear();
 		try {
-			Grado grado = gradoRepository.findById(idGrado);
-			if (grado != null && grado.getCursos() != null && !grado.getCursos().isEmpty()) {
-				for (Curso c : grado.getCursos()) {
-					todosLosCursos.add(c.toDisplayDTO());
-				}
+			if (cursoRepository != null) {
+				todosLosCursos = cursoRepository.getCursosPorGrado(idGrado);
 			}
 		} catch (Exception ex) {
-			// Fallback a mocks del dominio
+			System.err.println("Aviso al cargar cursos desde repositorio: " + ex.getMessage());
 		}
 
-		if (todosLosCursos.isEmpty()) {
+		if (todosLosCursos == null || todosLosCursos.isEmpty()) {
 			todosLosCursos = TestDataFactory.crearMockCursosDisplay(idGrado);
 		}
 
@@ -251,17 +247,14 @@ public class AdminOfertaController {
 	public void cargarMatriculasDeCurso(String idCurso, String nombreCurso) {
 		todasLasMatriculaciones.clear();
 		try {
-			Matriculacion mat = matriculacionRepository.findById("1");
-			if (mat != null && mat.getAlumno() != null) {
-				MatriculacionDisplayDTO dto = mat.getAlumno().toDisplayDTO();
-				dto.setIdAnoAcademico(mat.getIdAnoAcademico());
-				todasLasMatriculaciones.add(dto);
+			if (matriculacionRepository != null) {
+				todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCurso(idCurso);
 			}
 		} catch (Exception ex) {
-			// Fallback a mocks del dominio
+			System.err.println("Aviso al cargar matrículas desde repositorio: " + ex.getMessage());
 		}
 
-		if (todasLasMatriculaciones.isEmpty()) {
+		if (todasLasMatriculaciones == null || todasLasMatriculaciones.isEmpty()) {
 			todasLasMatriculaciones = TestDataFactory.crearMockMatriculacionesDisplay(idCurso);
 		}
 

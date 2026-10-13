@@ -3,7 +3,7 @@ package controller.secretario;
 import model.matriculacion.MatriculacionDisplayDTO;
 import repository.MatriculacionRepository;
 import view.secretario.SecretarioView;
-import giis.demo.util.Database; 
+import util.Database; 
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -18,8 +18,14 @@ public class SecretarioController {
         
         // Conectamos con la base de datos existente sin borrarla al iniciar
         Database db = new Database();
-        this.repository = new MatriculaRepository(db); 
+        this.repository = new MatriculacionRepository(db); 
         
+        this.initView();
+    }
+
+    public SecretarioController(SecretarioView view, MatriculacionRepository repository) {
+        this.view = view;
+        this.repository = repository;
         this.initView();
     }
 
@@ -39,12 +45,12 @@ public class SecretarioController {
         String cursoSelec = view.getTxtFiltroCurso().getText().toLowerCase().trim();
         String grupoSelec = view.getTxtFiltroGrupo().getText().toLowerCase().trim();
         
-        List<MatriculaDisplayDTO> listaCompleta = repository.getTodasLasMatriculas();
+        List<MatriculacionDisplayDTO> listaCompleta = repository.getTodasLasMatriculas();
         
         DefaultTableModel model = (DefaultTableModel) view.getTabMatriculas().getModel();
         model.setRowCount(0);
 
-        for (MatriculaDisplayDTO m : listaCompleta) {
+        for (MatriculacionDisplayDTO m : listaCompleta) {
             boolean coincideEstado = "TODOS".equals(estadoSelec) || (m.getEstado() != null && m.getEstado().equalsIgnoreCase(estadoSelec));
             
             boolean coincideEstudiante = estudianteSelec.isEmpty() || 
@@ -91,7 +97,7 @@ public class SecretarioController {
 
     private void modificarMatricula() {
         String idMatricula = view.getIdMatriculaSeleccionada();
-        MatriculaDisplayDTO matricula = repository.getMatriculaById(idMatricula);
+        MatriculacionDisplayDTO matricula = repository.getMatriculaById(idMatricula);
         
         if (matricula != null) {
             String nuevoEmail = (String) JOptionPane.showInputDialog(

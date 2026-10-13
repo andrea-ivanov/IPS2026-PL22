@@ -22,6 +22,7 @@ import model.curso.Curso;
 public class Grado {
 	@EqualsAndHashCode.Include
 	private Long id;
+	private String gradoId;
 	private String nombre;
 
 	@Builder.Default
@@ -48,9 +49,17 @@ public class Grado {
 		this.cursos.add(curso);
 	}
 
+	public String getGradoId() {
+		if (gradoId != null && !gradoId.isEmpty()) {
+			return gradoId;
+		}
+		return id != null ? id.toString() : "";
+	}
+
 	public GradoDisplayDTO toDisplayDTO() {
+		String displayId = (gradoId != null && !gradoId.isEmpty()) ? gradoId : (id != null ? id.toString() : "");
 		return GradoDisplayDTO.builder()
-				.id(id != null ? id.toString() : "")
+				.id(displayId)
 				.nombre(nombre != null ? nombre : "")
 				.facultad(facultad != null ? facultad : "Ciencias")
 				.rama(rama != null ? rama : "Ingeniería y Arquitectura")

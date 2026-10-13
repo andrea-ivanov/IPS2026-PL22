@@ -30,8 +30,7 @@ public class CursoModel {
 	 */
 	public Curso buscarPorId(String id) {
 		validarFormatoId(id);
-		long idNumerico = Long.parseLong(id.trim());
-		return buscarPorId(idNumerico);
+		return buscarPorIdInterno(id.trim());
 	}
 
 	/**
@@ -46,25 +45,44 @@ public class CursoModel {
 		if (id == null) {
 			throw new ValidationException("El ID de curso no puede ser nulo");
 		}
+		return buscarPorIdInterno(id.toString());
+	}
 
-		String sql = "SELECT id_curso, nombre, id_grado, id_coordinador FROM Curso WHERE id_curso = ?";
-		List<Object[]> rows = db.executeQueryArray(sql, id);
+	private Curso buscarPorIdInterno(String idStr) {
+		List<Object[]> rows = null;
+		try {
+			String sql = "SELECT c.cursoId, c.nombre, gc.gradoId, c.coordinadorId, c.creditos FROM Curso c LEFT JOIN GradoCurso gc ON c.cursoId = gc.cursoId WHERE c.cursoId = ? LIMIT 1";
+			rows = db.executeQueryArray(sql, idStr);
+		} catch (Exception ignored) {
+		}
+
 		if (rows == null || rows.isEmpty()) {
-			throw new ResourceNotFoundException("Curso", id);
+			try {
+				String sqlAlt = "SELECT id_curso, nombre, id_grado, id_coordinador FROM Curso WHERE id_curso = ?";
+				rows = db.executeQueryArray(sqlAlt, idStr);
+			} catch (Exception ignored) {
+			}
+		}
+
+		if (rows == null || rows.isEmpty()) {
+			throw new ResourceNotFoundException("Curso", idStr);
 		}
 
 		Object[] row = rows.get(0);
-		Long idCurso = ((Number) row[0]).longValue();
+		Long idCurso = parseNumber(row[0], 1L);
+		String cursoCode = row[0] != null ? row[0].toString() : idStr;
 		String nombre = (String) row[1];
-		Long idGrado = row[2] != null ? ((Number) row[2]).longValue() : null;
-		Long idCoordinador = row[3] != null ? ((Number) row[3]).longValue() : null;
+		Long idGrado = row[2] != null ? parseNumber(row[2], null) : null;
+		Long idCoordinador = row[3] != null ? parseNumber(row[3], null) : null;
+		int creditos = row.length > 4 && row[4] != null ? ((Number) row[4]).intValue() : 6;
 
 		return Curso.builder()
 				.id(idCurso)
+				.cursoId(cursoCode)
 				.nombre(nombre)
 				.idGrado(idGrado)
 				.idCoordinador(idCoordinador)
-				.creditos(6)
+				.creditos(creditos)
 				.activo(true)
 				.build();
 	}
@@ -77,8 +95,20 @@ public class CursoModel {
 		if (trimmed.isEmpty()) {
 			throw new ValidationException("El ID de curso no puede estar vacío");
 		}
-		if (!trimmed.matches("^\\d+$")) {
-			throw new ValidationException("El formato del ID de curso es inválido: '" + id + "'. Debe ser un número entero positivo.");
+		if (!trimmed.matches("^\\d+$") && !trimmed.matches("^[Cc]\\d{3,4}$")) {
+			throw new ValidationException("El formato del ID de curso es inválido: '" + id + "'. Debe ser un número entero positivo o código C001.");
+		}
+	}
+
+	private Long parseNumber(Object val, Long defaultVal) {
+		if (val == null) return defaultVal;
+		if (val instanceof Number) return ((Number) val).longValue();
+		String s = val.toString().trim();
+		try {
+			return Long.parseLong(s);
+		} catch (NumberFormatException e) {
+			String digits = s.replaceAll("\\D+", "");
+			return digits.isEmpty() ? defaultVal : Long.parseLong(digits.substring(0, Math.min(digits.length(), 6)));
 		}
 	}
 }

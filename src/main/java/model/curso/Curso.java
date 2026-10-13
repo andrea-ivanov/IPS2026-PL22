@@ -16,6 +16,7 @@ import lombok.*;
 public class Curso {
 	@EqualsAndHashCode.Include
 	private Long id;
+	private String cursoId;
 	private String nombre;
 	private Long idGrado;
 	private Long idCoordinador;
@@ -38,9 +39,17 @@ public class Curso {
 	@Builder.Default
 	private boolean activo = true;
 
+	public String getCursoId() {
+		if (cursoId != null && !cursoId.isEmpty()) {
+			return cursoId;
+		}
+		return id != null ? id.toString() : "";
+	}
+
 	public CursoDisplayDTO toDisplayDTO() {
+		String displayId = (cursoId != null && !cursoId.isEmpty()) ? cursoId : (id != null ? id.toString() : "");
 		return CursoDisplayDTO.builder()
-				.id(id != null ? id.toString() : "")
+				.id(displayId)
 				.nombre(nombre != null ? nombre : "")
 				.ano(ano != null ? ano : "2026")
 				.itinerario(itinerario != null ? itinerario : "General")

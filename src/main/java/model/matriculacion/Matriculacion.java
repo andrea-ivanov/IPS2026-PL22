@@ -25,6 +25,7 @@ import model.curso.Curso;
 public class Matriculacion {
 	@EqualsAndHashCode.Include
 	private Long id;
+	private String matriculaId;
 	private Alumno alumno;
 	private Long idGrado;
 	private Long idAnoAcademico;

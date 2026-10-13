@@ -85,7 +85,10 @@ public class AnoAcademicoRepository {
 			this.anoAcademicoActualCache.setInicioAnoAcademico(inicio);
 			this.anoAcademicoActualCache.setFinAnoAcademico(fin);
 			try {
-				if (this.anoAcademicoActualCache.getId() != null) {
+				String anioId = this.anoAcademicoActualCache.getAnioAcademicoId();
+				if (anioId != null && !anioId.isEmpty()) {
+					anoAcademicoModel.actualizarFechasAnoAcademico(anioId, inicio, fin);
+				} else if (this.anoAcademicoActualCache.getId() != null) {
 					anoAcademicoModel.actualizarFechasAnoAcademico(this.anoAcademicoActualCache.getId(), inicio, fin);
 				}
 			} catch (Exception ignored) {
@@ -101,7 +104,10 @@ public class AnoAcademicoRepository {
 			this.anoAcademicoActualCache.setInicioPeriodoMatriculacion(inicio);
 			this.anoAcademicoActualCache.setFinPeriodoMatriculacion(fin);
 			try {
-				if (this.anoAcademicoActualCache.getId() != null) {
+				String anioId = this.anoAcademicoActualCache.getAnioAcademicoId();
+				if (anioId != null && !anioId.isEmpty()) {
+					anoAcademicoModel.actualizarFechasMatriculacion(anioId, inicio, fin);
+				} else if (this.anoAcademicoActualCache.getId() != null) {
 					anoAcademicoModel.actualizarFechasMatriculacion(this.anoAcademicoActualCache.getId(), inicio, fin);
 				}
 			} catch (Exception ignored) {

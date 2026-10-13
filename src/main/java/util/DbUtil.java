@@ -192,9 +192,16 @@ public abstract class DbUtil {
 	 */
 	public void executeBatch(List<String> sqls) {
 		try (Connection cn = DriverManager.getConnection(getUrl()); Statement stmt = cn.createStatement()) {
-			for (String sql : sqls)
-				stmt.addBatch(sql);
-			stmt.executeBatch();
+			for (String sql : sqls) {
+				try {
+					stmt.executeUpdate(sql);
+				} catch (SQLException e) {
+					if (e.getMessage() != null && e.getMessage().contains("already exists")) {
+						continue;
+					}
+					throw e;
+				}
+			}
 		} catch (SQLException e) {
 			// Importante:  no dejar pasar las excepciones 
 			// (no limitarse a dejar el codigo autogenerado por Eclipse con printStackTrace)
@@ -209,11 +216,19 @@ public abstract class DbUtil {
 	 */
 	public void executeBatchNoFail(List<String> sqls) {
 		try (Connection cn = DriverManager.getConnection(getUrl()); Statement stmt = cn.createStatement()) {
+			try {
+				stmt.execute("PRAGMA foreign_keys = OFF;");
+			} catch (Exception ignored) {
+			}
 			for (String sql : sqls)
 				executeWithoutException(stmt, sql);
 		} catch (SQLException e) {
 			throw new UnexpectedException(e);
 		}
+	}
+
+	public void executeBatchNoFail(String[] sqls) {
+		executeBatchNoFail(java.util.Arrays.asList(sqls));
 	}
 
 	private void executeWithoutException(Statement stmt, String sql) {

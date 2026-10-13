@@ -30,8 +30,7 @@ public class AlumnoModel {
 	 */
 	public Alumno buscarPorId(String id) {
 		validarFormatoId(id);
-		long idNumerico = Long.parseLong(id.trim());
-		return buscarPorId(idNumerico);
+		return buscarPorIdInterno(id.trim());
 	}
 
 	/**
@@ -46,20 +45,38 @@ public class AlumnoModel {
 		if (id == null) {
 			throw new ValidationException("El ID de alumno no puede ser nulo");
 		}
+		return buscarPorIdInterno(id.toString());
+	}
 
-		String sql = "SELECT id_alumno, nombre, email FROM Alumno WHERE id_alumno = ?";
-		List<Object[]> rows = db.executeQueryArray(sql, id);
+	private Alumno buscarPorIdInterno(String idStr) {
+		List<Object[]> rows = null;
+		try {
+			String sql = "SELECT alumnoId, nombre, email FROM Alumno WHERE alumnoId = ?";
+			rows = db.executeQueryArray(sql, idStr);
+		} catch (Exception ignored) {
+		}
+
 		if (rows == null || rows.isEmpty()) {
-			throw new ResourceNotFoundException("Alumno", id);
+			try {
+				String sqlAlt = "SELECT id_alumno, nombre, email FROM Alumno WHERE id_alumno = ?";
+				rows = db.executeQueryArray(sqlAlt, idStr);
+			} catch (Exception ignored) {
+			}
+		}
+
+		if (rows == null || rows.isEmpty()) {
+			throw new ResourceNotFoundException("Alumno", idStr);
 		}
 
 		Object[] row = rows.get(0);
-		Long idAlumno = ((Number) row[0]).longValue();
+		Long idAlumno = parseNumber(row[0], 1L);
+		String alumnoCode = row[0] != null ? row[0].toString() : idStr;
 		String nombre = (String) row[1];
 		String email = (String) row[2];
 
 		return Alumno.builder()
 				.id(idAlumno)
+				.alumnoId(alumnoCode)
 				.nombre(nombre)
 				.email(email)
 				.build();
@@ -73,8 +90,20 @@ public class AlumnoModel {
 		if (trimmed.isEmpty()) {
 			throw new ValidationException("El ID de alumno no puede estar vacío");
 		}
-		if (!trimmed.matches("^\\d+$")) {
-			throw new ValidationException("El formato del ID de alumno es inválido: '" + id + "'. Debe ser un número entero positivo.");
+		if (!trimmed.matches("^\\d+$") && !trimmed.matches("^(AL|al|UO|uo)\\d+$")) {
+			throw new ValidationException("El formato del ID de alumno es inválido: '" + id + "'. Debe ser un número entero positivo o código AL001.");
+		}
+	}
+
+	private Long parseNumber(Object val, Long defaultVal) {
+		if (val == null) return defaultVal;
+		if (val instanceof Number) return ((Number) val).longValue();
+		String s = val.toString().trim();
+		try {
+			return Long.parseLong(s);
+		} catch (NumberFormatException e) {
+			String digits = s.replaceAll("\\D+", "");
+			return digits.isEmpty() ? defaultVal : Long.parseLong(digits.substring(0, Math.min(digits.length(), 6)));
 		}
 	}
 }

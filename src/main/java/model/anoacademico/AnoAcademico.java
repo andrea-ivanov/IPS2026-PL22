@@ -13,8 +13,8 @@ import lombok.ToString;
 
 /**
  * Entidad de dominio que representa un Año Académico.
- * Contiene el periodo de inicio y fin del año académico, el periodo de inicio y fin
- * de matriculación, y el indicador de si es el año académico actual.
+ * Fiel a la tabla AnioAcademico de la base de datos (anioAcademicoId, fechaInicio, fechaFin, inicioMatriculacion, finMatriculacion).
+ * Mantiene compatibilidad con identificadores numéricos y alias para la vista y las pruebas.
  */
 @Getter
 @Setter
@@ -27,7 +27,8 @@ public class AnoAcademico {
 	@EqualsAndHashCode.Include
 	private Long id;
 
-	private String nombre; // Ej. "2026/2027"
+	private String nombre; // Ej. "2026-2027" o "2026/2027"
+	private String anioAcademicoId; // PK en base de datos: "2026-2027"
 
 	private Date inicioAnoAcademico;
 	private Date finAnoAcademico;
@@ -37,6 +38,73 @@ public class AnoAcademico {
 
 	@Builder.Default
 	private boolean actual = false;
+
+	public String getAnioAcademicoId() {
+		if (anioAcademicoId != null && !anioAcademicoId.isEmpty()) {
+			return anioAcademicoId;
+		}
+		if (nombre != null && !nombre.isEmpty()) {
+			return nombre;
+		}
+		return id != null ? String.valueOf(id) : "2026-2027";
+	}
+
+	public void setAnioAcademicoId(String anioAcademicoId) {
+		this.anioAcademicoId = anioAcademicoId;
+		if (this.nombre == null) {
+			this.nombre = anioAcademicoId;
+		}
+	}
+
+	public String getNombre() {
+		if (nombre != null && !nombre.isEmpty()) {
+			return nombre;
+		}
+		if (anioAcademicoId != null && !anioAcademicoId.isEmpty()) {
+			return anioAcademicoId;
+		}
+		return id != null ? String.valueOf(id) : "2026-2027";
+	}
+
+	public void setNombre(String nombre) {
+		this.nombre = nombre;
+		if (this.anioAcademicoId == null) {
+			this.anioAcademicoId = nombre;
+		}
+	}
+
+	// Alias para mapeo directo de la tabla AnioAcademico
+	public Date getFechaInicio() {
+		return inicioAnoAcademico;
+	}
+
+	public void setFechaInicio(Date fechaInicio) {
+		this.inicioAnoAcademico = fechaInicio;
+	}
+
+	public Date getFechaFin() {
+		return finAnoAcademico;
+	}
+
+	public void setFechaFin(Date fechaFin) {
+		this.finAnoAcademico = fechaFin;
+	}
+
+	public Date getInicioMatriculacion() {
+		return inicioPeriodoMatriculacion;
+	}
+
+	public void setInicioMatriculacion(Date inicioMatriculacion) {
+		this.inicioPeriodoMatriculacion = inicioMatriculacion;
+	}
+
+	public Date getFinMatriculacion() {
+		return finPeriodoMatriculacion;
+	}
+
+	public void setFinMatriculacion(Date finMatriculacion) {
+		this.finPeriodoMatriculacion = finMatriculacion;
+	}
 
 	/**
 	 * Formatea un rango de fechas al formato dd/MM/yy - dd/MM/yy para la vista.
@@ -59,4 +127,3 @@ public class AnoAcademico {
 		return formatearRangoFechas(inicioPeriodoMatriculacion, finPeriodoMatriculacion);
 	}
 }
-

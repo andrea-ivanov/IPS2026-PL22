@@ -4,6 +4,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.Properties;
 
 import org.apache.commons.dbutils.DbUtils;
@@ -28,6 +31,7 @@ public class Database extends DbUtil {
 	 * Crea una instancia, leyendo los parametros de driver y url de application.properties.
 	 * Tolera ejecuciones desde el directorio raíz del repositorio (IPS) o del subproyecto (IPS2026-PL22),
 	 * así como desde empaquetado JAR mediante el ClassLoader.
+	 * Si la base de datos SQLite no tiene tablas (archivo vacío/nuevo), la inicializa automáticamente.
 	 */
 	public Database() {
 		Properties prop = new Properties();
@@ -69,12 +73,24 @@ public class Database extends DbUtil {
 		url = prop.getProperty("datasource.url", "jdbc:sqlite:DemoDB.db");
 
 		// 3. Si la URL apunta a una base de datos local SQLite relativa, resolver si reside en subcarpeta
-		if (url != null && url.startsWith("jdbc:sqlite:") && !url.contains("/")) {
-			String dbFileName = url.substring("jdbc:sqlite:".length());
-			File dbDirecto = new File(dbFileName);
-			File dbSubdir = new File("IPS2026-PL22/" + dbFileName);
-			if (!dbDirecto.exists() && dbSubdir.exists()) {
-				url = "jdbc:sqlite:IPS2026-PL22/" + dbFileName;
+		if (url != null && url.startsWith("jdbc:sqlite:")) {
+			// Separar la ruta del archivo de los query params (?foreign_keys=true, etc.)
+			String afterPrefix = url.substring("jdbc:sqlite:".length());
+			String queryParams = "";
+			int qIdx = afterPrefix.indexOf('?');
+			if (qIdx != -1) {
+				queryParams = afterPrefix.substring(qIdx);
+				afterPrefix = afterPrefix.substring(0, qIdx);
+			}
+
+			// Solo resolver rutas relativas simples (sin / ni \)
+			if (!afterPrefix.contains("/") && !afterPrefix.contains("\\")) {
+				File dbDirecto = new File(afterPrefix);
+				File dbSubdir = new File("IPS2026-PL22", afterPrefix);
+				if (dbSubdir.exists() && dbSubdir.length() > 0
+						&& (!dbDirecto.exists() || dbDirecto.length() == 0)) {
+					url = "jdbc:sqlite:IPS2026-PL22/" + afterPrefix + queryParams;
+				}
 			}
 		}
 
@@ -82,6 +98,49 @@ public class Database extends DbUtil {
 			throw new ApplicationException("Configuracion de driver y/o url no encontrada en application.properties");
 		}
 		DbUtils.loadDriver(driver);
+
+		// 4. Si la BD no tiene las tablas del esquema, inicializarla automáticamente.
+		//    IMPORTANTE: la comprobación de lectura debe cerrarse ANTES de llamar a
+		//    createDatabase/loadDatabase, que abren conexiones de escritura propias.
+		//    SQLite solo admite un writer a la vez → SQLITE_BUSY si se anidan conexiones.
+		checkAndInitDatabase();
+	}
+
+	/**
+	 * Comprueba si la BD tiene las tablas creadas y datos cargados.
+	 * Si la tabla Grado no existe → ejecuta schema.sql + data.sql.
+	 * Si existe pero está vacía → ejecuta solo data.sql.
+	 *
+	 * Se usan dos bloques try-with-resources SEPARADOS para que la conexión de
+	 * lectura esté cerrada antes de que executeBatch abra conexiones de escritura.
+	 */
+	private void checkAndInitDatabase() {
+		boolean tableExists = false;
+		boolean dataExists = false;
+
+		// Fase 1: leer estado (conexión se cierra al salir del try)
+		try (Connection conn = getConnection();
+			 Statement stmt = conn.createStatement()) {
+			ResultSet rs = stmt.executeQuery(
+					"SELECT count(*) FROM sqlite_master WHERE type='table' AND name='Grado'");
+			tableExists = rs.next() && rs.getInt(1) > 0;
+			if (tableExists) {
+				ResultSet rsData = stmt.executeQuery("SELECT count(*) FROM Grado");
+				dataExists = rsData.next() && rsData.getInt(1) > 0;
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al comprobar estado de BD: " + ex.getMessage());
+		}
+
+		// Fase 2: actuar (la conexión de lectura ya está cerrada)
+		if (!tableExists) {
+			System.out.println("BD sin tablas detectada, ejecutando schema.sql y data.sql...");
+			createDatabase(false);
+			loadDatabase();
+		} else if (!dataExists) {
+			System.out.println("BD sin datos detectada, ejecutando data.sql...");
+			loadDatabase();
+		}
 	}
 
 	public String getUrl() {

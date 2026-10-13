@@ -34,8 +34,7 @@ public class GradoModel {
 	 */
 	public Grado buscarPorId(String id) {
 		validarFormatoId(id);
-		long idNumerico = Long.parseLong(id.trim());
-		return buscarPorId(idNumerico);
+		return buscarPorIdInterno(id.trim());
 	}
 
 	/**
@@ -50,30 +49,66 @@ public class GradoModel {
 		if (id == null) {
 			throw new ValidationException("El ID de grado no puede ser nulo");
 		}
+		return buscarPorIdInterno(id.toString());
+	}
 
-		String sqlGrado = "SELECT id_grado, nombre FROM Grado WHERE id_grado = ?";
-		List<Object[]> rowsGrado = db.executeQueryArray(sqlGrado, id);
+	private Grado buscarPorIdInterno(String idStr) {
+		List<Object[]> rowsGrado = null;
+		// 1. Intento con el esquema oficial Grado (gradoId)
+		try {
+			String sqlGrado = "SELECT gradoId, nombre, facultad, ramaConocimiento, estado FROM Grado WHERE gradoId = ?";
+			rowsGrado = db.executeQueryArray(sqlGrado, idStr);
+		} catch (Exception ignored) {
+		}
+
+		// 2. Fallback a esquema alternativo id_grado
 		if (rowsGrado == null || rowsGrado.isEmpty()) {
-			throw new ResourceNotFoundException("Grado", id);
+			try {
+				String sqlGradoAlt = "SELECT id_grado, nombre FROM Grado WHERE id_grado = ?";
+				rowsGrado = db.executeQueryArray(sqlGradoAlt, idStr);
+			} catch (Exception ignored) {
+			}
+		}
+
+		if (rowsGrado == null || rowsGrado.isEmpty()) {
+			throw new ResourceNotFoundException("Grado", idStr);
 		}
 
 		Object[] row = rowsGrado.get(0);
-		Long idGrado = ((Number) row[0]).longValue();
+		Long idGrado = parseNumber(row[0], 1L);
+		String gradoCode = row[0] != null ? row[0].toString() : idStr;
 		String nombreGrado = (String) row[1];
+		String facultad = row.length > 2 && row[2] != null ? (String) row[2] : "Escuela de Ingeniería Informática";
+		String rama = row.length > 3 && row[3] != null ? (String) row[3] : "Ingeniería y Arquitectura";
 
 		// Buscar cursos asociados a este grado
-		String sqlCursos = "SELECT id_curso, nombre, id_grado, id_coordinador FROM Curso WHERE id_grado = ? ORDER BY id_curso";
-		List<Object[]> rowsCursos = db.executeQueryArray(sqlCursos, id);
+		List<Object[]> rowsCursos = null;
+		try {
+			String sqlCursos = "SELECT c.cursoId, c.nombre, gc.gradoId, c.coordinadorId, c.creditos FROM GradoCurso gc JOIN Curso c ON gc.cursoId = c.cursoId WHERE gc.gradoId = ? ORDER BY c.cursoId";
+			rowsCursos = db.executeQueryArray(sqlCursos, idStr);
+		} catch (Exception ignored) {
+		}
+
+		if (rowsCursos == null || rowsCursos.isEmpty()) {
+			try {
+				String sqlCursosAlt = "SELECT id_curso, nombre, id_grado, id_coordinador FROM Curso WHERE id_grado = ? ORDER BY id_curso";
+				rowsCursos = db.executeQueryArray(sqlCursosAlt, idStr);
+			} catch (Exception ignored) {
+			}
+		}
+
 		List<Curso> cursos = new ArrayList<>();
 		if (rowsCursos != null) {
 			for (Object[] r : rowsCursos) {
-				Long idCurso = ((Number) r[0]).longValue();
+				Long idCurso = parseNumber(r[0], 1L);
+				String cursoCode = r[0] != null ? r[0].toString() : "";
 				String nombreCurso = (String) r[1];
-				Long idGradoCurso = r[2] != null ? ((Number) r[2]).longValue() : null;
-				Long idCoordinador = r[3] != null ? ((Number) r[3]).longValue() : null;
+				Long idGradoCurso = r[2] != null ? parseNumber(r[2], idGrado) : idGrado;
+				Long idCoordinador = r[3] != null ? parseNumber(r[3], null) : null;
 
 				cursos.add(Curso.builder()
 						.id(idCurso)
+						.cursoId(cursoCode)
 						.nombre(nombreCurso)
 						.idGrado(idGradoCurso)
 						.idCoordinador(idCoordinador)
@@ -85,7 +120,10 @@ public class GradoModel {
 
 		return Grado.builder()
 				.id(idGrado)
+				.gradoId(gradoCode)
 				.nombre(nombreGrado)
+				.facultad(facultad)
+				.rama(rama)
 				.cursos(cursos)
 				.estado(EstadoGrado.ACTIVO)
 				.activo(true)
@@ -100,8 +138,20 @@ public class GradoModel {
 		if (trimmed.isEmpty()) {
 			throw new ValidationException("El ID de grado no puede estar vacío");
 		}
-		if (!trimmed.matches("^\\d+$")) {
-			throw new ValidationException("El formato del ID de grado es inválido: '" + id + "'. Debe ser un número entero positivo.");
+		if (!trimmed.matches("^\\d+$") && !trimmed.matches("^[Gg]\\d{3,4}$")) {
+			throw new ValidationException("El formato del ID de grado es inválido: '" + id + "'. Debe ser un número entero positivo o código G001.");
+		}
+	}
+
+	private Long parseNumber(Object val, Long defaultVal) {
+		if (val == null) return defaultVal;
+		if (val instanceof Number) return ((Number) val).longValue();
+		String s = val.toString().trim();
+		try {
+			return Long.parseLong(s);
+		} catch (NumberFormatException e) {
+			String digits = s.replaceAll("\\D+", "");
+			return digits.isEmpty() ? defaultVal : Long.parseLong(digits.substring(0, Math.min(digits.length(), 6)));
 		}
 	}
 }
