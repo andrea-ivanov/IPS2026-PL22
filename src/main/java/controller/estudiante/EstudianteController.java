@@ -1,6 +1,8 @@
 package controller.estudiante;
 
+import model.matriculacion.MatriculacionModel;
 import view.estudiante.EstudianteView;
+import view.estudiante.MisMatriculasView;
 
 public class EstudianteController {
     private EstudianteView view;
@@ -25,9 +27,9 @@ public class EstudianteController {
     }
 
     private void abrirMisMatriculas() {
-        view.estudiante.MisMatriculasView matriculasView = new view.estudiante.MisMatriculasView();
-        model.MatriculaModel matriculaModel = new model.MatriculaModel();
-        MisMatriculasController matriculasController = new MisMatriculasController(matriculasView, matriculaModel, uo);
+        MisMatriculasView matriculasView = new MisMatriculasView();
+        MatriculacionModel matriculacionModel = new MatriculacionModel();
+        MisMatriculasController matriculasController = new MisMatriculasController(matriculasView, matriculacionModel, uo);
         matriculasController.initController();
     }
 }

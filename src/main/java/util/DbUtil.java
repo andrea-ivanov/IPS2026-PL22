@@ -119,11 +119,37 @@ public abstract class DbUtil {
 	 * y se ignoran los fallos en caso de que no exista la tabla (solo para drop)
 	 */
 	public void executeScript(String fileName) {
-		List<String> lines;
-		try {
-			lines = Files.readAllLines(Paths.get(fileName));
-		} catch (IOException e) {
-			throw new ApplicationException(e);
+		List<String> lines = null;
+		java.io.File file = new java.io.File(fileName);
+		if (!file.exists()) {
+			java.io.File alt = new java.io.File("IPS2026-PL22/" + fileName);
+			if (alt.exists()) {
+				file = alt;
+			}
+		}
+
+		if (file.exists()) {
+			try {
+				lines = Files.readAllLines(file.toPath());
+			} catch (IOException e) {
+				throw new ApplicationException(e);
+			}
+		} else {
+			// Intentar leer desde classpath
+			String resName = fileName.contains("/") ? fileName.substring(fileName.lastIndexOf('/') + 1) : fileName;
+			java.io.InputStream is = getClass().getClassLoader().getResourceAsStream(resName);
+			if (is == null) {
+				is = DbUtil.class.getResourceAsStream("/" + resName);
+			}
+			if (is != null) {
+				try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8))) {
+					lines = reader.lines().collect(java.util.stream.Collectors.toList());
+				} catch (IOException e) {
+					throw new ApplicationException(e);
+				}
+			} else {
+				throw new ApplicationException("No se encontró el archivo de script SQL: " + fileName);
+			}
 		}
 		// separa las sentencias sql en dos listas, una para drop y otra 
 		// para el resto pues se ejecutaran de forma diferente
@@ -166,9 +192,16 @@ public abstract class DbUtil {
 	 */
 	public void executeBatch(List<String> sqls) {
 		try (Connection cn = DriverManager.getConnection(getUrl()); Statement stmt = cn.createStatement()) {
-			for (String sql : sqls)
-				stmt.addBatch(sql);
-			stmt.executeBatch();
+			for (String sql : sqls) {
+				try {
+					stmt.executeUpdate(sql);
+				} catch (SQLException e) {
+					if (e.getMessage() != null && e.getMessage().contains("already exists")) {
+						continue;
+					}
+					throw e;
+				}
+			}
 		} catch (SQLException e) {
 			// Importante:  no dejar pasar las excepciones 
 			// (no limitarse a dejar el codigo autogenerado por Eclipse con printStackTrace)
@@ -183,11 +216,19 @@ public abstract class DbUtil {
 	 */
 	public void executeBatchNoFail(List<String> sqls) {
 		try (Connection cn = DriverManager.getConnection(getUrl()); Statement stmt = cn.createStatement()) {
+			try {
+				stmt.execute("PRAGMA foreign_keys = OFF;");
+			} catch (Exception ignored) {
+			}
 			for (String sql : sqls)
 				executeWithoutException(stmt, sql);
 		} catch (SQLException e) {
 			throw new UnexpectedException(e);
 		}
+	}
+
+	public void executeBatchNoFail(String[] sqls) {
+		executeBatchNoFail(java.util.Arrays.asList(sqls));
 	}
 
 	private void executeWithoutException(Statement stmt, String sql) {

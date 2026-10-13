@@ -1,18 +1,18 @@
 package controller.estudiante;
 
 import view.estudiante.MisMatriculasView;
-import model.MatriculaModel;
-import model.MatriculaDisplayDTO;
+import model.matriculacion.MatriculacionModel;
+import model.matriculacion.MatriculacionDisplayDTO;
 
 import javax.swing.table.DefaultTableModel;
 import java.util.List;
 
 public class MisMatriculasController {
     private MisMatriculasView view;
-    private MatriculaModel model;
+    private MatriculacionModel model;
     private String uo;
 
-    public MisMatriculasController(MisMatriculasView view, MatriculaModel model, String uo) {
+    public MisMatriculasController(MisMatriculasView view, MatriculacionModel model, String uo) {
         this.view = view;
         this.model = model;
         this.uo = uo;
@@ -31,7 +31,7 @@ public class MisMatriculasController {
 
     private void cargarMatriculas() {
         // Pedimos al modelo (base de datos) la lista de matrículas de este UO
-        List<MatriculaDisplayDTO> matriculas = model.getMatriculasPorEstudiante(uo);
+        List<MatriculacionDisplayDTO> matriculas = model.getMatriculasPorEstudiante(uo);
 
         // Obtenemos el modelo de la tabla visual
         DefaultTableModel tableModel = view.getTableModel();
@@ -40,7 +40,7 @@ public class MisMatriculasController {
         tableModel.setRowCount(0);
 
         // Rellenamos fila a fila
-        for (MatriculaDisplayDTO m : matriculas) {
+        for (MatriculacionDisplayDTO m : matriculas) {
             Object[] row = new Object[] {
                     m.getIdMatricula(),
                     m.getGrado(),

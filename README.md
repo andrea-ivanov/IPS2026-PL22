@@ -1,7 +1,7 @@
-[![Build Status](https://github.com/javiertuya/samples-test-dev/actions/workflows/test.yml/badge.svg)](https://github.com/javiertuya/samples-test-dev/actions/workflows/test.yml)
-[![Javadoc](https://img.shields.io/badge/%20-javadoc-blue)](https://javiertuya.github.io/samples-test-dev/)
+[![Build Status](https://github.com/andrea-ivanov/IPS2026-PL22/actions/workflows/test.yml/badge.svg)](https://github.com/andrea-ivanov/IPS2026-PL22/actions/workflows/test.yml)
+[![Javadoc](https://img.shields.io/badge/%20-javadoc-blue)](https://andrea-ivanov.github.io/IPS2026-PL22/)
 
-# samples-test-dev
+# IPS2026-PL22
 
 Este proyecto es utilizado como proyecto base o plantilla para el desarrollo y a modo de ejemplo para ilustrar algunos aspectos del desarrollo y automatización de pruebas para las asignaturas relacionadas con ingenieria del software, sistemas de información y pruebas de software.
 
