@@ -8,8 +8,13 @@ public class MatriculaDisplayDTO {
     private String curso;
     private String grupo;
     private String estado;
+    private String fecha;
 
-    public MatriculaDisplayDTO(String id, String estudiante, String dni, String grado, String curso, String grupo, String estado) {
+    public MatriculaDisplayDTO() {
+    }
+
+    public MatriculaDisplayDTO(String id, String estudiante, String dni, String grado, String curso, String grupo,
+            String estado) {
         this.id = id;
         this.estudiante = estudiante;
         this.dni = dni;
@@ -19,24 +24,71 @@ public class MatriculaDisplayDTO {
         this.estado = estado;
     }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public String getId() {
+        return id;
+    }
 
-    public String getEstudiante() { return estudiante; }
-    public void setEstudiante(String estudiante) { this.estudiante = estudiante; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getDni() { return dni; }
-    public void setDni(String dni) { this.dni = dni; }
+    public String getEstudiante() {
+        return estudiante;
+    }
 
-    public String getGrado() { return grado; }
-    public void setGrado(String grado) { this.grado = grado; }
+    public void setEstudiante(String estudiante) {
+        this.estudiante = estudiante;
+    }
 
-    public String getCurso() { return curso; }
-    public void setCurso(String curso) { this.curso = curso; }
+    public String getDni() {
+        return dni;
+    }
 
-    public String getGrupo() { return grupo; }
-    public void setGrupo(String grupo) { this.grupo = grupo; }
+    public void setDni(String dni) {
+        this.dni = dni;
+    }
 
-    public String getEstado() { return estado; }
-    public void setEstado(String estado) { this.estado = estado; }
+    public String getGrado() {
+        return grado;
+    }
+
+    public void setGrado(String grado) {
+        this.grado = grado;
+    }
+
+    public String getCurso() {
+        return curso;
+    }
+
+    public void setCurso(String curso) {
+        this.curso = curso;
+    }
+
+    public String getGrupo() {
+        return grupo;
+    }
+
+    public void setGrupo(String grupo) {
+        this.grupo = grupo;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
+    }
+
+    public Object getIdMatricula() {
+        return id;
+    }
+
+    public String getFecha() {
+        return fecha;
+    }
+
+    public void setFecha(String fecha) {
+        this.fecha = fecha;
+    }
 }
