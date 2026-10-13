@@ -8,7 +8,9 @@ public class MatriculaDisplayDTO {
     private String curso;
     private String grupo;
     private String estado;
-    private String fecha;
+    private String anioAcademicoId;
+    private int anio;
+    private int numMatricula;
 
     public MatriculaDisplayDTO() {
     }
@@ -84,11 +86,27 @@ public class MatriculaDisplayDTO {
         return id;
     }
 
-    public String getFecha() {
-        return fecha;
+    public String getAnioAcademicoId() {
+        return anioAcademicoId;
     }
 
-    public void setFecha(String fecha) {
-        this.fecha = fecha;
+    public void setAnioAcademicoId(String anioAcademicoId) {
+        this.anioAcademicoId = anioAcademicoId;
+    }
+
+    public int getAnio() {
+        return anio;
+    }
+
+    public void setAnio(int anio) {
+        this.anio = anio;
+    }
+
+    public int getNumMatricula() {
+        return numMatricula;
+    }
+
+    public void setNumMatricula(int numMatricula) {
+        this.numMatricula = numMatricula;
     }
 }

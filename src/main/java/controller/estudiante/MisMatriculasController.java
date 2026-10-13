@@ -58,15 +58,17 @@ public class MisMatriculasController {
         // Limpiamos la tabla por si hubiera basura de antes
         tableModel.setRowCount(0);
 
-        // Rellenamos fila a fila
+        // Rellenamos fila a fila con el detalle de las asignaturas matriculadas (HU 35232)
         for (MatriculaDisplayDTO m : matriculas) {
             Object[] row = new Object[] {
-                    m.getIdMatricula(),
-                    m.getGrado(),
-                    m.getEstado(),
-                    m.getFecha()
+                    m.getAnioAcademicoId(),
+                    m.getAnio() > 0 ? m.getAnio() + "º" : "-",
+                    m.getCurso(),
+                    m.getNumMatricula(),
+                    m.getEstado()
             };
             tableModel.addRow(row);
         }
+        SwingUtil.autoAdjustColumns(view.getTableMatriculas());
     }
 }

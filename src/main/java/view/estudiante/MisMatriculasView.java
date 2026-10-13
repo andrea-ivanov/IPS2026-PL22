@@ -37,10 +37,8 @@ public class MisMatriculasView {
 
         frame.getContentPane().add(panelNorte, BorderLayout.NORTH);
 
-        // Tabla central
-        // Aquí configuramos las columnas (iremos añadiendo más cuando tengáis
-        // convocatorias, notas, etc.)
-        String[] columnNames = { "ID Matrícula", "Grado", "Estado", "Fecha" };
+        // Tabla central con el listado de asignaturas matriculadas (HU 35232)
+        String[] columnNames = { "Año Académico", "Curso", "Asignatura", "Nº Matrícula", "Estado" };
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
