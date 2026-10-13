@@ -8,15 +8,19 @@ import lombok.Setter;
 import lombok.ToString;
 
 /**
- * DTO para la visualización de Matrículas / Alumnos tanto en la vista de administración,
+ * DTO para la visualización de Matrículas / Alumnos tanto en la vista de
+ * administración,
  * secretaría y estudiante (Mis Matrículas).
  * 
  * Unifica los atributos de todas las vistas:
- * - AdminOfertaView: {"Código", "NombreAlumno"} (además de idCurso, email, estado, idAnoAcademico)
- * - SecretarioView: {"Nº Ref.", "DNI", "Estudiante", "Grado", "Curso", "Grupo", "Estado"}
+ * - AdminOfertaView: {"Código", "NombreAlumno"} (además de idCurso, email,
+ * estado, idAnoAcademico)
+ * - SecretarioView: {"Nº Ref.", "DNI", "Estudiante", "Grado", "Curso", "Grupo",
+ * "Estado"}
  * - MisMatriculasView: {"ID Matrícula", "Grado", "Estado", "Fecha"}
  * 
- * Proporciona métodos getter/setter con alias y compatibilidad con Apache Commons DbUtils (POJO):
+ * Proporciona métodos getter/setter con alias y compatibilidad con Apache
+ * Commons DbUtils (POJO):
  * - getNombreAlumno() / getEstudiante()
  * - getIdCurso() / getCurso()
  * - getId() / getIdMatricula()
@@ -28,17 +32,20 @@ import lombok.ToString;
 @Builder
 @ToString
 public class MatriculacionDisplayDTO {
-	private String id;           // Código o Nº de referencia (p. ej. "U00123", "M001")
+	private String id; // Código o Nº de referencia (p. ej. "U00123", "M001")
 	private String nombreAlumno; // Nombre completo del alumno / estudiante
-	private String idCurso;      // Id o denominación del curso
-	private String email;        // Email de contacto
-	private String estado;       // Estado de la matrícula (ACTIVA, PAGADA, SOLICITADA, CANCELADA, etc.)
-	private String dni;          // DNI / NIE del estudiante
-	private String grado;        // Grado universitario
-	private String curso;        // Curso académico (p. ej. "3º Curso", "Bases de Datos")
-	private String grupo;        // Grupo asignado (p. ej. "A", "B", "Sin asignar")
-	private String fecha;        // Fecha de la solicitud o matrícula
-	private Long idAnoAcademico; // Id del año académico asociado
+	private String idCurso; // Id o denominación del curso
+	private String email; // Email de contacto
+	private String estado; // Estado de la matrícula (ACTIVA, PAGADA, SOLICITADA, CANCELADA, etc.)
+	private String dni; // DNI / NIE del estudiante
+	private String grado; // Grado universitario
+	private String curso; // Asignatura (p. ej. "3º Curso", "Bases de Datos")
+	private String grupo; // Grupo asignado (p. ej. "A", "B", "Sin asignar")
+	private String fecha; // Fecha de la solicitud o matrícula
+	private Long idAnoAcademico; // Id del año académico asociado (numérico)
+	private String anioAcademicoId; // Código del año académico (p. ej. "2026-2027")
+	private int anio; // Anio del grado dentro del plan de estudios (1º, 2º, 3º, 4º)
+	private int numMatricula; // Número de matrícula (1ª, 2ª, etc.)
 
 	/**
 	 * Constructor de 5 parámetros utilizado en AdminOfertaView y TestDataFactory.
@@ -53,9 +60,11 @@ public class MatriculacionDisplayDTO {
 	}
 
 	/**
-	 * Constructor de 7 parámetros utilizado en la vista de Secretaría (SecretarioView / MatriculacionRepository).
+	 * Constructor de 7 parámetros utilizado en la vista de Secretaría
+	 * (SecretarioView / MatriculacionRepository).
 	 */
-	public MatriculacionDisplayDTO(String id, String estudiante, String dni, String grado, String curso, String grupo, String estado) {
+	public MatriculacionDisplayDTO(String id, String estudiante, String dni, String grado, String curso, String grupo,
+			String estado) {
 		this.id = id;
 		this.nombreAlumno = estudiante;
 		this.dni = dni;
@@ -69,7 +78,8 @@ public class MatriculacionDisplayDTO {
 	/**
 	 * Constructor de 8 parámetros utilizado para el cruce completo con email.
 	 */
-	public MatriculacionDisplayDTO(String id, String estudiante, String dni, String email, String grado, String curso, String grupo, String estado) {
+	public MatriculacionDisplayDTO(String id, String estudiante, String dni, String email, String grado, String curso,
+			String grupo, String estado) {
 		this.id = id;
 		this.nombreAlumno = estudiante;
 		this.dni = dni;
@@ -79,6 +89,25 @@ public class MatriculacionDisplayDTO {
 		this.idCurso = curso;
 		this.grupo = grupo;
 		this.estado = estado;
+	}
+
+	/**
+	 * Constructor de 11 parámetros para compatibilidad con el modelo de
+	 * matriculación.
+	 */
+	public MatriculacionDisplayDTO(String id, String nombreAlumno, String idCurso, String email, String estado,
+			String dni, String grado, String curso, String grupo, String fecha, Long idAnoAcademico) {
+		this.id = id;
+		this.nombreAlumno = nombreAlumno;
+		this.idCurso = idCurso;
+		this.email = email;
+		this.estado = estado;
+		this.dni = dni;
+		this.grado = grado;
+		this.curso = curso;
+		this.grupo = grupo;
+		this.fecha = fecha;
+		this.idAnoAcademico = idAnoAcademico;
 	}
 
 	// =========================================================================
@@ -205,5 +234,29 @@ public class MatriculacionDisplayDTO {
 
 	public void setIdAnoAcademico(Long idAnoAcademico) {
 		this.idAnoAcademico = idAnoAcademico;
+	}
+
+	public String getAnioAcademicoId() {
+		return this.anioAcademicoId;
+	}
+
+	public void setAnioAcademicoId(String anioAcademicoId) {
+		this.anioAcademicoId = anioAcademicoId;
+	}
+
+	public int getAnio() {
+		return this.anio;
+	}
+
+	public void setAnio(int anio) {
+		this.anio = anio;
+	}
+
+	public int getNumMatricula() {
+		return this.numMatricula;
+	}
+
+	public void setNumMatricula(int numMatricula) {
+		this.numMatricula = numMatricula;
 	}
 }

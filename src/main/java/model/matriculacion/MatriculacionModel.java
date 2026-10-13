@@ -12,8 +12,10 @@ import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
 
 /**
- * Modelo de negocio y caso de uso para la gestión y búsqueda de Matriculaciones.
- * Integra la resolución de Alumno, asignaturas/cursos matriculados y el mapeo tipado
+ * Modelo de negocio y caso de uso para la gestión y búsqueda de
+ * Matriculaciones.
+ * Integra la resolución de Alumno, asignaturas/cursos matriculados y el mapeo
+ * tipado
  * de fechas, enums (EstadoMatricula) y booleanos.
  */
 public class MatriculacionModel {
@@ -28,11 +30,13 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Busca una Matriculación por su ID en formato String tras validar formato y nulidad.
+	 * Busca una Matriculación por su ID en formato String tras validar formato y
+	 * nulidad.
 	 *
 	 * @param id Identificador en formato String
 	 * @return Objeto Matriculacion completamente poblado
-	 * @throws ValidationException Si el id es nulo, vacío o con formato inválido
+	 * @throws ValidationException       Si el id es nulo, vacío o con formato
+	 *                                   inválido
 	 * @throws ResourceNotFoundException Si no existe en la base de datos
 	 */
 	public Matriculacion buscarPorId(String id) {
@@ -45,7 +49,7 @@ public class MatriculacionModel {
 	 *
 	 * @param id Identificador numérico Long
 	 * @return Objeto Matriculacion completamente poblado
-	 * @throws ValidationException Si el id es nulo
+	 * @throws ValidationException       Si el id es nulo
 	 * @throws ResourceNotFoundException Si no existe en la base de datos
 	 */
 	public Matriculacion buscarPorId(Long id) {
@@ -57,7 +61,8 @@ public class MatriculacionModel {
 
 	private Matriculacion buscarPorIdInterno(String idStr) {
 		List<Object[]> rowsMatricula = null;
-		// 1. Intento con el esquema oficial Matricula (matriculaId, alumnoId, gradoId, anioAcademicoId, estado, fechaSolicitud)
+		// 1. Intento con el esquema oficial Matricula (matriculaId, alumnoId, gradoId,
+		// anioAcademicoId, estado, fechaSolicitud)
 		try {
 			String sqlMatricula = "SELECT matriculaId, alumnoId, gradoId, anioAcademicoId, estado, fechaSolicitud FROM Matricula WHERE matriculaId = ?";
 			rowsMatricula = db.executeQueryArray(sqlMatricula, idStr);
@@ -178,13 +183,15 @@ public class MatriculacionModel {
 		if (fechaObj instanceof String) {
 			return Util.isoStringToDate((String) fechaObj);
 		}
-		throw new ValidationException("Tipo de fecha incompatible recibido desde base de datos: " + fechaObj.getClass());
+		throw new ValidationException(
+				"Tipo de fecha incompatible recibido desde base de datos: " + fechaObj.getClass());
 	}
 
 	/**
 	 * Obtiene la lista de matrículas de un estudiante dado su UO o alumnoId.
 	 * Cruza la tabla Matricula con Grado para poblar MatriculacionDisplayDTO,
-	 * con soporte de fallback para entornos con diferentes esquemas de base de datos.
+	 * con soporte de fallback para entornos con diferentes esquemas de base de
+	 * datos.
 	 *
 	 * @param uo Identificador del alumno (p. ej. "AL001", "1")
 	 * @return Lista de MatriculacionDisplayDTO correspondientes al alumno
@@ -207,7 +214,8 @@ public class MatriculacionModel {
 				return list;
 			}
 		} catch (Exception ex) {
-			// Fallback si la base de datos de pruebas o alternativa usa id_matricula, id_grado, id_alumno
+			// Fallback si la base de datos de pruebas o alternativa usa id_matricula,
+			// id_grado, id_alumno
 			try {
 				String sqlAlt = "SELECT m.id_matricula AS id, "
 						+ "       g.nombre AS grado, "
@@ -216,7 +224,8 @@ public class MatriculacionModel {
 						+ "FROM Matricula m "
 						+ "JOIN Grado g ON m.id_grado = g.id_grado "
 						+ "WHERE m.id_alumno = ?";
-				List<MatriculacionDisplayDTO> list = db.executeQueryPojo(MatriculacionDisplayDTO.class, sqlAlt, cleanUo);
+				List<MatriculacionDisplayDTO> list = db.executeQueryPojo(MatriculacionDisplayDTO.class, sqlAlt,
+						cleanUo);
 				if (list != null && !list.isEmpty()) {
 					return list;
 				}
@@ -224,8 +233,98 @@ public class MatriculacionModel {
 			}
 		}
 		List<MatriculacionDisplayDTO> mock = new ArrayList<>();
-		mock.add(new MatriculacionDisplayDTO("M001", "Lucía Rodríguez García", "C005", "lrodriguez@alumno.es", "ACTIVA", "20000001A", "Ing. Informática del Software", "1º Curso", "PL1", "2026-07-05", 1L));
-		mock.add(new MatriculacionDisplayDTO("M002", "Lucía Rodríguez García", "C006", "lrodriguez@alumno.es", "ACTIVA", "20000001A", "Ing. Informática del Software", "1º Curso", "PL2", "2026-07-05", 1L));
+		mock.add(new MatriculacionDisplayDTO("M001", "Lucía Rodríguez García", "C005", "lrodriguez@alumno.es", "ACTIVA",
+				"20000001A", "Ing. Informática del Software", "1º Curso", "PL1", "2026-07-05", 1L));
+		mock.add(new MatriculacionDisplayDTO("M002", "Lucía Rodríguez García", "C006", "lrodriguez@alumno.es", "ACTIVA",
+				"20000001A", "Ing. Informática del Software", "1º Curso", "PL2", "2026-07-05", 1L));
+		return mock;
+	}
+
+	/**
+	 * Obtiene los grados en los que está o ha estado matriculado el estudiante.
+	 * Formato para el combo: "G001 - Ingenieria Informatica del Software".
+	 *
+	 * @param uo Identificador del alumno (p. ej. "AL001")
+	 * @return Lista de Object[] para poblar el combo de selección de grado
+	 */
+	public List<Object[]> getGradosPorEstudiante(String uo) {
+		if (uo == null || uo.trim().isEmpty()) {
+			return new ArrayList<>();
+		}
+		String cleanUo = uo.trim();
+		try {
+			String sql = "SELECT DISTINCT g.gradoId || ' - ' || g.nombre "
+					+ "FROM Matricula m "
+					+ "JOIN Grado g ON m.gradoId = g.gradoId "
+					+ "WHERE m.alumnoId = ? "
+					+ "ORDER BY g.gradoId";
+			List<Object[]> rows = db.executeQueryArray(sql, cleanUo);
+			if (rows != null && !rows.isEmpty()) {
+				return rows;
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al consultar grados del estudiante en BD: " + ex.getMessage());
+		}
+		List<Object[]> mock = new ArrayList<>();
+		mock.add(new Object[] { "G001 - Ingenieria Informatica del Software" });
+		return mock;
+	}
+
+	/**
+	 * Obtiene las asignaturas matriculadas de un estudiante filtradas por el grado
+	 * consultado.
+	 * Implementa la consulta de referencia de la HU 35232 de base-de-datos.md.
+	 *
+	 * @param uo      Identificador del alumno (p. ej. "AL001")
+	 * @param gradoId Identificador del grado (p. ej. "G001") o null para todos
+	 * @return Lista de MatriculacionDisplayDTO con anioAcademicoId, anio, curso,
+	 *         numMatricula y estado
+	 */
+	public List<MatriculacionDisplayDTO> getMatriculasPorEstudianteYGrado(String uo, String gradoId) {
+		if (uo == null || uo.trim().isEmpty()) {
+			return new ArrayList<>();
+		}
+		String cleanUo = uo.trim();
+		try {
+			String sql = "SELECT m.matriculaId AS id, "
+					+ "       m.anioAcademicoId, "
+					+ "       c.nombre AS curso, "
+					+ "       gc.anio, "
+					+ "       mc.estado, "
+					+ "       (SELECT COUNT(*) FROM MatriculaCurso mc2 "
+					+ "        JOIN Matricula m2 ON m2.matriculaId = mc2.matriculaId "
+					+ "        WHERE m2.alumnoId = m.alumnoId AND mc2.cursoId = mc.cursoId "
+					+ "          AND m2.anioAcademicoId <= m.anioAcademicoId) AS numMatricula "
+					+ "FROM MatriculaCurso mc "
+					+ "JOIN Matricula m ON m.matriculaId = mc.matriculaId "
+					+ "JOIN Curso c ON c.cursoId = mc.cursoId "
+					+ "JOIN GradoCurso gc ON gc.gradoId = mc.gradoId AND gc.cursoId = mc.cursoId "
+					+ "WHERE m.alumnoId = ? ";
+
+			List<MatriculacionDisplayDTO> list;
+			if (gradoId != null && !gradoId.trim().isEmpty()) {
+				sql += "AND m.gradoId = ? ";
+				sql += "ORDER BY gc.anio, numMatricula DESC";
+				list = db.executeQueryPojo(MatriculacionDisplayDTO.class, sql, cleanUo, gradoId.trim());
+			} else {
+				sql += "ORDER BY gc.anio, numMatricula DESC";
+				list = db.executeQueryPojo(MatriculacionDisplayDTO.class, sql, cleanUo);
+			}
+			if (list != null && !list.isEmpty()) {
+				return list;
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al consultar asignaturas matriculadas por grado en BD: " + ex.getMessage());
+		}
+		List<MatriculacionDisplayDTO> mock = new ArrayList<>();
+		MatriculacionDisplayDTO m1 = new MatriculacionDisplayDTO();
+		m1.setId("M001");
+		m1.setAnioAcademicoId("2026-2027");
+		m1.setAnio(1);
+		m1.setCurso("Fundamentos de Informatica");
+		m1.setNumMatricula(1);
+		m1.setEstado("ACTIVA");
+		mock.add(m1);
 		return mock;
 	}
 
@@ -238,13 +337,16 @@ public class MatriculacionModel {
 			throw new ValidationException("El ID de matrícula no puede estar vacío");
 		}
 		if (!trimmed.matches("^\\d+$") && !trimmed.matches("^[Mm]\\d{3,4}$")) {
-			throw new ValidationException("El formato del ID de matrícula es inválido: '" + id + "'. Debe ser un número entero positivo o código M001.");
+			throw new ValidationException("El formato del ID de matrícula es inválido: '" + id
+					+ "'. Debe ser un número entero positivo o código M001.");
 		}
 	}
 
 	private Long parseNumber(Object val, Long defaultVal) {
-		if (val == null) return defaultVal;
-		if (val instanceof Number) return ((Number) val).longValue();
+		if (val == null)
+			return defaultVal;
+		if (val instanceof Number)
+			return ((Number) val).longValue();
 		String s = val.toString().trim();
 		try {
 			return Long.parseLong(s);
@@ -254,4 +356,3 @@ public class MatriculacionModel {
 		}
 	}
 }
-

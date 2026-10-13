@@ -235,4 +235,18 @@ public class MatriculacionRepository {
 		}
 		return view.admin.TestDataFactory.crearMockMatriculacionesDisplay(idCurso);
 	}
+
+	/**
+	 * Obtiene los grados en los que está o ha estado matriculado el estudiante.
+	 */
+	public List<Object[]> getGradosPorEstudiante(String uo) {
+		return matriculacionModel.getGradosPorEstudiante(uo);
+	}
+
+	/**
+	 * Obtiene las asignaturas matriculadas de un estudiante filtradas por el grado consultado (HU 35232).
+	 */
+	public List<MatriculacionDisplayDTO> getMatriculasPorEstudianteYGrado(String uo, String gradoId) {
+		return matriculacionModel.getMatriculasPorEstudianteYGrado(uo, gradoId);
+	}
 }
