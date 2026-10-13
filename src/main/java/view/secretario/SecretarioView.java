@@ -23,7 +23,6 @@ public class SecretarioView {
     private JComboBox<String> cbFiltroEstado;
     private JTable tabMatriculas;
     
-    // AÑADIDO: lblDetalleEmail
     private JLabel lblDetalleId, lblDetalleEstudiante, lblDetalleEmail, lblDetalleGrado, lblDetalleCurso, lblDetalleEstado;
     private JButton btnAceptarSolicitud;
     private JButton btnModificarMatricula;
@@ -109,7 +108,6 @@ public class SecretarioView {
         filterPanel.add(btnCargarMatriculas);
         panel.add(filterPanel, BorderLayout.WEST);
         
-        // AÑADIDO: Columna "Email" en la posición 1, desplazando el botón a la 8
         String[] columnNames = {"ID", "Email", "DNI", "Estudiante", "Grado", "Curso", "Grupo", "Estado", "Acción"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
             @Override
@@ -120,12 +118,10 @@ public class SecretarioView {
         tabMatriculas = new JTable(model);
         tabMatriculas.setRowHeight(25);
         
-        // Ocultar ID visualmente
         tabMatriculas.getColumnModel().getColumn(0).setMinWidth(0);
         tabMatriculas.getColumnModel().getColumn(0).setMaxWidth(0);
         tabMatriculas.getColumnModel().getColumn(0).setWidth(0);
         
-        // AÑADIDO: Ocultar Email visualmente en la tabla
         tabMatriculas.getColumnModel().getColumn(1).setMinWidth(0);
         tabMatriculas.getColumnModel().getColumn(1).setMaxWidth(0);
         tabMatriculas.getColumnModel().getColumn(1).setWidth(0);
@@ -140,13 +136,12 @@ public class SecretarioView {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(new EmptyBorder(30, 40, 30, 40));
         
-        // AÑADIDO: Cambiado a 6 filas para hacer sitio al Email
         JPanel infoPanel = new JPanel(new GridLayout(6, 2, 10, 15));
         infoPanel.setBorder(new TitledBorder("Información de Consulta de la Matrícula"));
         
         lblDetalleId = new JLabel("-");
         lblDetalleEstudiante = new JLabel("-");
-        lblDetalleEmail = new JLabel("-"); // AÑADIDO
+        lblDetalleEmail = new JLabel("-"); 
         lblDetalleGrado = new JLabel("-");
         lblDetalleCurso = new JLabel("-");
         lblDetalleEstado = new JLabel("-");
@@ -154,7 +149,7 @@ public class SecretarioView {
 
         infoPanel.add(new JLabel("ID Matrícula Interno:")); infoPanel.add(lblDetalleId);
         infoPanel.add(new JLabel("Estudiante:")); infoPanel.add(lblDetalleEstudiante);
-        infoPanel.add(new JLabel("Correo Electrónico:")); infoPanel.add(lblDetalleEmail); // AÑADIDO
+        infoPanel.add(new JLabel("Correo Electrónico:")); infoPanel.add(lblDetalleEmail); 
         infoPanel.add(new JLabel("Grado:")); infoPanel.add(lblDetalleGrado);
         infoPanel.add(new JLabel("Curso / Grupo:")); infoPanel.add(lblDetalleCurso);
         infoPanel.add(new JLabel("Estado Actual:")); infoPanel.add(lblDetalleEstado);
@@ -190,14 +185,13 @@ public class SecretarioView {
         lblTituloCabecera.setText("Secretaría: Consulta de Matrículas");
     }
     
-    // AÑADIDO: Parámetro String email
     public void showDetalleView(String id, String email, String dni, String estudiante, String grado, String curso, String grupo, String estado) {
         this.idMatriculaSeleccionada = id;
         this.estadoMatriculaSeleccionada = estado.toUpperCase();
         
         lblDetalleId.setText(id);
         lblDetalleEstudiante.setText(dni + " - " + estudiante); 
-        lblDetalleEmail.setText(email); // AÑADIDO
+        lblDetalleEmail.setText(email); 
         lblDetalleGrado.setText(grado);
         lblDetalleCurso.setText(curso + " - Grupo " + grupo);
         lblDetalleEstado.setText(estado);
@@ -219,7 +213,7 @@ public class SecretarioView {
         public ButtonRenderer() { setOpaque(true); }
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-            setText("Gestionar"); return this;
+            setText("Ver / Gestionar"); return this; // CORREGIDO AQUÍ
         }
     }
 
@@ -248,7 +242,6 @@ public class SecretarioView {
             if (isPushed) {
                 int row = table.getSelectedRow();
                 if (row >= 0) {
-                    // AÑADIDO: Lectura del email en índice 1 y desplazamiento del resto
                     String id = table.getValueAt(row, 0).toString();
                     String email = table.getValueAt(row, 1).toString();
                     String dni = table.getValueAt(row, 2).toString();

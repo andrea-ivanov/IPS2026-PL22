@@ -1,40 +1,70 @@
 package repository;
 
 import model.MatriculaDisplayDTO;
-import java.util.ArrayList;
+import giis.demo.util.Database; // El util de los profesores
 import java.util.List;
 
 public class MatriculaRepository {
     
-    private List<MatriculaDisplayDTO> mockData;
+    private Database db;
 
-    public MatriculaRepository() {
-        mockData = new ArrayList<>();
-        mockData.add(new MatriculaDisplayDTO("M001", "Alejandro El Harchi Argüelles", "71649234A", "UO200001@uniovi.es", "Ing. Informática", "3º Curso", "A", "SOLICITADA"));
-        mockData.add(new MatriculaDisplayDTO("M002", "Lucía Gómez", "53819200B", "UO200002@uniovi.es", "Ing. Informática", "1º Curso", "B", "PAGADA"));
-        mockData.add(new MatriculaDisplayDTO("M003", "Carlos Pérez", "12345678C", "UO200003@uniovi.es", "Matemáticas", "2º Curso", "A", "ACTIVA"));
-        mockData.add(new MatriculaDisplayDTO("M004", "Sofía Martín", "87654321D", "UO200004@uniovi.es", "Física", "4º Curso", "C", "CANCELADA"));
+    public MatriculaRepository(Database db) {
+        this.db = db;
     }
 
     public List<MatriculaDisplayDTO> getTodasLasMatriculas() {
-        return mockData; 
+        // Consulta SQL real cruzando las tablas para sacar los datos de consulta
+        String sql = "SELECT mc.matriculaId AS id, a.email AS email, a.dni AS dni, " +
+                     "a.nombre || ' ' || a.apellidos AS estudiante, g.nombre AS grado, " +
+                     "c.nombre AS curso, COALESCE(GROUP_CONCAT(mg.grupoCodigo, ', '), 'Sin asignar') AS grupo, " +
+                     "mc.estado AS estado " +
+                     "FROM MatriculaCurso mc " +
+                     "JOIN Matricula m ON mc.matriculaId = m.matriculaId " +
+                     "JOIN Alumno a ON m.alumnoId = a.alumnoId " +
+                     "JOIN Grado g ON mc.gradoId = g.gradoId " +
+                     "JOIN Curso c ON mc.cursoId = c.cursoId " +
+                     "LEFT JOIN MatriculaGrupo mg ON mc.matriculaId = mg.matriculaId AND mc.cursoId = mg.cursoId " +
+                     "GROUP BY mc.matriculaId, mc.cursoId";
+
+        return db.executeQueryPojo(MatriculaDisplayDTO.class, sql);
+    }
+
+    public MatriculaDisplayDTO getMatriculaById(String idMatricula) {
+        String sql = "SELECT mc.matriculaId AS id, a.email AS email, a.dni AS dni, " +
+                     "a.nombre || ' ' || a.apellidos AS estudiante, g.nombre AS grado, " +
+                     "c.nombre AS curso, COALESCE(GROUP_CONCAT(mg.grupoCodigo, ', '), 'Sin asignar') AS grupo, " +
+                     "mc.estado AS estado " +
+                     "FROM MatriculaCurso mc " +
+                     "JOIN Matricula m ON mc.matriculaId = m.matriculaId " +
+                     "JOIN Alumno a ON m.alumnoId = a.alumnoId " +
+                     "JOIN Grado g ON mc.gradoId = g.gradoId " +
+                     "JOIN Curso c ON mc.cursoId = c.cursoId " +
+                     "LEFT JOIN MatriculaGrupo mg ON mc.matriculaId = mg.matriculaId AND mc.cursoId = mg.cursoId " +
+                     "WHERE mc.matriculaId = ? " +
+                     "GROUP BY mc.matriculaId, mc.cursoId LIMIT 1";
+                     
+        List<MatriculaDisplayDTO> result = db.executeQueryPojo(MatriculaDisplayDTO.class, sql, idMatricula);
+        return result.isEmpty() ? null : result.get(0);
+    }
+
+    public void modificarEmailMatricula(String idMatricula, String nuevoEmail) {
+        // Actualizamos el email del alumno basándonos en el ID de su matrícula
+        String sql = "UPDATE Alumno SET email = ? WHERE alumnoId = (SELECT alumnoId FROM Matricula WHERE matriculaId = ?)";
+        db.executeUpdate(sql, nuevoEmail, idMatricula);
     }
 
     public void actualizarEstadoMatricula(String idMatricula, String nuevoEstado) {
-        for (MatriculaDisplayDTO m : mockData) {
-            if (m.getId().equals(idMatricula)) {
-                m.setEstado(nuevoEstado);
-                break;
-            }
-        }
+        String sql = "UPDATE MatriculaCurso SET estado = ?, pagoValidado = 1 WHERE matriculaId = ?";
+        db.executeUpdate(sql, nuevoEstado, idMatricula);
     }
 
     public void cancelarMatricula(String idMatricula, String motivo) {
-        for (MatriculaDisplayDTO m : mockData) {
-            if (m.getId().equals(idMatricula)) {
-                m.setEstado("CANCELADA");
-                break;
-            }
-        }
+        // 1. Cancelar la matrícula general
+        String sqlMatricula = "UPDATE Matricula SET estado = 'CANCELADA', motivoCancelacion = ?, fechaCancelacion = date('now') WHERE matriculaId = ?";
+        db.executeUpdate(sqlMatricula, motivo, idMatricula);
+
+        // 2. Cancelar en cascada las asignaturas (cursos) asociados
+        String sqlCursos = "UPDATE MatriculaCurso SET estado = 'CANCELADA', motivoCancelacion = ?, fechaCancelacion = date('now') WHERE matriculaId = ? AND estado != 'FINALIZADA'";
+        db.executeUpdate(sqlCursos, motivo, idMatricula);
     }
 }

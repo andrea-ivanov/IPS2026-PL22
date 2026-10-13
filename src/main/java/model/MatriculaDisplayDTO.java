@@ -10,6 +10,9 @@ public class MatriculaDisplayDTO {
     private String grupo;
     private String estado;
 
+    // AÑADIDO: Constructor vacío IMPRESCINDIBLE para que giis.demo.util.Database funcione
+    public MatriculaDisplayDTO() {}
+
     public MatriculaDisplayDTO(String id, String estudiante, String dni, String email, String grado, String curso, String grupo, String estado) {
         this.id = id;
         this.estudiante = estudiante;
