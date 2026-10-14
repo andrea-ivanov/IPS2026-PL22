@@ -304,10 +304,10 @@ public class MatriculacionModel {
 			List<MatriculacionDisplayDTO> list;
 			if (gradoId != null && !gradoId.trim().isEmpty()) {
 				sql += "AND m.gradoId = ? ";
-				sql += "ORDER BY gc.anio, numMatricula DESC";
+				sql += "ORDER BY gc.anio ASC, numMatricula DESC, c.nombre ASC";
 				list = db.executeQueryPojo(MatriculacionDisplayDTO.class, sql, cleanUo, gradoId.trim());
 			} else {
-				sql += "ORDER BY gc.anio, numMatricula DESC";
+				sql += "ORDER BY gc.anio ASC, numMatricula DESC, c.nombre ASC";
 				list = db.executeQueryPojo(MatriculacionDisplayDTO.class, sql, cleanUo);
 			}
 			if (list != null && !list.isEmpty()) {
@@ -325,6 +325,133 @@ public class MatriculacionModel {
 		m1.setNumMatricula(1);
 		m1.setEstado("ACTIVA");
 		mock.add(m1);
+		return mock;
+	}
+
+	/**
+	 * Obtiene el resumen de hitos del régimen de permanencia del estudiante (HU 35232 - Paso 3).
+	 * Compara:
+	 * 1. Créditos superados en el último año evaluado frente a 12 créditos.
+	 * 2. Créditos superados acumulados en el grado frente a 90 créditos (al tercer año).
+	 *
+	 * @param uo Identificador del alumno (p. ej. "AL001")
+	 * @param gradoId Identificador del grado (p. ej. "G001")
+	 * @return Objeto HitosPermanenciaDTO con el cálculo realizado
+	 */
+	public HitosPermanenciaDTO getHitosPermanencia(String uo, String gradoId) {
+		if (uo == null || uo.trim().isEmpty()) {
+			return new HitosPermanenciaDTO("", "", null, 0, 0, 0);
+		}
+		String cleanUo = uo.trim();
+		String cleanGrado = gradoId != null ? gradoId.trim() : "";
+
+		String ultimoAnoEvaluadoId = null;
+		int creditosAnuales = 0;
+		int creditosTotales = 0;
+		int aniosEnGrado = 0;
+
+		try {
+			// 1. Créditos superados en cada año matriculado
+			String sqlAnual = "SELECT m.matriculaId, m.anioAcademicoId, m.estado, "
+					+ "       COALESCE(SUM(c.creditos), 0) AS creditosSuperados "
+					+ "FROM Matricula m "
+					+ "LEFT JOIN (SELECT DISTINCT matriculaId, cursoId FROM Calificacion WHERE nota >= 5) a "
+					+ "       ON a.matriculaId = m.matriculaId "
+					+ "LEFT JOIN Curso c ON c.cursoId = a.cursoId "
+					+ "WHERE m.alumnoId = ? "
+					+ (cleanGrado.isEmpty() ? "" : "AND m.gradoId = ? ")
+					+ "GROUP BY m.matriculaId, m.anioAcademicoId, m.estado "
+					+ "ORDER BY m.anioAcademicoId DESC";
+
+			List<Object[]> rowsAnual = cleanGrado.isEmpty()
+					? db.executeQueryArray(sqlAnual, cleanUo)
+					: db.executeQueryArray(sqlAnual, cleanUo, cleanGrado);
+
+			if (rowsAnual != null && !rowsAnual.isEmpty()) {
+				Object[] selectedRow = rowsAnual.get(0);
+				if (rowsAnual.size() > 1) {
+					int creds0 = selectedRow[3] != null ? ((Number) selectedRow[3]).intValue() : 0;
+					String estado0 = selectedRow[2] != null ? selectedRow[2].toString() : "";
+					if (creds0 == 0 && ("ACTIVA".equalsIgnoreCase(estado0) || "SOLICITADA".equalsIgnoreCase(estado0))) {
+						selectedRow = rowsAnual.get(1); // Usamos el último año cerrado / con evaluaciones
+					}
+				}
+				ultimoAnoEvaluadoId = selectedRow[1] != null ? selectedRow[1].toString() : null;
+				creditosAnuales = selectedRow[3] != null ? ((Number) selectedRow[3]).intValue() : 0;
+			}
+
+			// 2. Años en el grado y créditos totales acumulados (frente a 90)
+			String sqlTotal = "SELECT COUNT(*) AS aniosEnGrado, "
+					+ "       COALESCE((SELECT SUM(c.creditos) "
+					+ "                 FROM (SELECT DISTINCT ca.cursoId "
+					+ "                       FROM Calificacion ca "
+					+ "                       JOIN Matricula m2 ON m2.matriculaId = ca.matriculaId "
+					+ "                       WHERE m2.alumnoId = ? "
+					+ (cleanGrado.isEmpty() ? "" : "AND m2.gradoId = ? ")
+					+ "                         AND ca.nota >= 5) s "
+					+ "                 JOIN Curso c ON c.cursoId = s.cursoId), 0) AS creditosTotales "
+					+ "FROM Matricula "
+					+ "WHERE alumnoId = ? "
+					+ (cleanGrado.isEmpty() ? "" : "AND gradoId = ?");
+
+			List<Object[]> rowsTotal = cleanGrado.isEmpty()
+					? db.executeQueryArray(sqlTotal, cleanUo, cleanUo)
+					: db.executeQueryArray(sqlTotal, cleanUo, cleanGrado, cleanUo, cleanGrado);
+
+			if (rowsTotal != null && !rowsTotal.isEmpty()) {
+				Object[] r = rowsTotal.get(0);
+				aniosEnGrado = r[0] != null ? ((Number) r[0]).intValue() : 0;
+				creditosTotales = r[1] != null ? ((Number) r[1]).intValue() : 0;
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al calcular hitos de permanencia en BD: " + ex.getMessage());
+		}
+
+		return new HitosPermanenciaDTO(cleanUo, cleanGrado, ultimoAnoEvaluadoId, creditosAnuales, creditosTotales, aniosEnGrado);
+	}
+
+	/**
+	 * Obtiene el historial de calificaciones obtenidas por un estudiante en las convocatorias presentadas (HU 35232 - Paso 4).
+	 *
+	 * @param uo Identificador del alumno
+	 * @param gradoId Identificador del grado (opcional)
+	 * @return Lista de CalificacionDisplayDTO
+	 */
+	public List<CalificacionDisplayDTO> getCalificacionesPorEstudianteYGrado(String uo, String gradoId) {
+		if (uo == null || uo.trim().isEmpty()) {
+			return new ArrayList<>();
+		}
+		String cleanUo = uo.trim();
+		try {
+			String sql = "SELECT ca.anioAcademicoId, "
+					+ "       ca.cursoId, "
+					+ "       c.nombre AS curso, "
+					+ "       ca.tipoConvocatoria, "
+					+ "       ca.nota "
+					+ "FROM Calificacion ca "
+					+ "JOIN Matricula m ON m.matriculaId = ca.matriculaId "
+					+ "JOIN Curso c ON c.cursoId = ca.cursoId "
+					+ "WHERE m.alumnoId = ? ";
+
+			List<CalificacionDisplayDTO> list;
+			if (gradoId != null && !gradoId.trim().isEmpty()) {
+				sql += "AND m.gradoId = ? ";
+				sql += "ORDER BY ca.anioAcademicoId DESC, c.nombre ASC, ca.tipoConvocatoria ASC";
+				list = db.executeQueryPojo(CalificacionDisplayDTO.class, sql, cleanUo, gradoId.trim());
+			} else {
+				sql += "ORDER BY ca.anioAcademicoId DESC, c.nombre ASC, ca.tipoConvocatoria ASC";
+				list = db.executeQueryPojo(CalificacionDisplayDTO.class, sql, cleanUo);
+			}
+			if (list != null && !list.isEmpty()) {
+				return list;
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al consultar calificaciones del estudiante en BD: " + ex.getMessage());
+		}
+
+		List<CalificacionDisplayDTO> mock = new ArrayList<>();
+		mock.add(new CalificacionDisplayDTO("2025-2026", "C005", "Fundamentos de Informatica", "ORDINARIA_ENERO", 7.5));
+		mock.add(new CalificacionDisplayDTO("2025-2026", "C006", "Calculo", "EXTRAORDINARIA_JULIO", 6.0));
 		return mock;
 	}
 

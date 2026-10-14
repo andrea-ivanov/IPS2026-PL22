@@ -249,4 +249,18 @@ public class MatriculacionRepository {
 	public List<MatriculacionDisplayDTO> getMatriculasPorEstudianteYGrado(String uo, String gradoId) {
 		return matriculacionModel.getMatriculasPorEstudianteYGrado(uo, gradoId);
 	}
+
+	/**
+	 * Obtiene el resumen de hitos de permanencia del estudiante (HU 35232).
+	 */
+	public model.matriculacion.HitosPermanenciaDTO getHitosPermanencia(String uo, String gradoId) {
+		return matriculacionModel.getHitosPermanencia(uo, gradoId);
+	}
+
+	/**
+	 * Obtiene el historial de calificaciones en convocatorias presentadas (HU 35232).
+	 */
+	public List<model.matriculacion.CalificacionDisplayDTO> getCalificacionesPorEstudianteYGrado(String uo, String gradoId) {
+		return matriculacionModel.getCalificacionesPorEstudianteYGrado(uo, gradoId);
+	}
 }
