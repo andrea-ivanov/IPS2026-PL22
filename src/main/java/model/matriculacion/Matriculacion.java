@@ -17,8 +17,6 @@ import model.curso.Curso;
  */
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -40,6 +38,27 @@ public class Matriculacion {
 
 	@Builder.Default
 	private boolean pagada = true;
+
+	public Matriculacion() {
+		super();
+		this.cursos = new ArrayList<>();
+		this.estado = EstadoMatricula.ACTIVA;
+		this.pagada = true;
+	}
+
+	public Matriculacion(Long id, String matriculaId, Alumno alumno, Long idGrado, Long idAnoAcademico,
+			List<Curso> cursos, Date fecha, EstadoMatricula estado, boolean pagada) {
+		super();
+		this.id = id;
+		this.matriculaId = matriculaId;
+		this.alumno = alumno;
+		this.idGrado = idGrado;
+		this.idAnoAcademico = idAnoAcademico;
+		this.cursos = cursos != null ? cursos : new ArrayList<>();
+		this.fecha = fecha;
+		this.estado = estado != null ? estado : EstadoMatricula.ACTIVA;
+		this.pagada = pagada;
+	}
 
 	public void addCurso(Curso curso) {
 		if (this.cursos == null) {

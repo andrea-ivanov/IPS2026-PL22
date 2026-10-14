@@ -14,8 +14,6 @@ import model.curso.Curso;
  */
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -41,6 +39,29 @@ public class Grado {
 
 	@Builder.Default
 	private boolean activo = true;
+
+	public Grado() {
+		super();
+		this.facultad = "Escuela de Ingeniería Informática";
+		this.rama = "Ingeniería y Arquitectura";
+		this.cursos = new ArrayList<>();
+		this.estado = EstadoGrado.ACTIVO;
+		this.activo = true;
+	}
+
+	public Grado(Long id, String gradoId, String nombre, String facultad, String rama, List<Curso> cursos,
+			EstadoGrado estado, Date fechaCreacion, boolean activo) {
+		super();
+		this.id = id;
+		this.gradoId = gradoId;
+		this.nombre = nombre;
+		this.facultad = facultad != null ? facultad : "Escuela de Ingeniería Informática";
+		this.rama = rama != null ? rama : "Ingeniería y Arquitectura";
+		this.cursos = cursos != null ? cursos : new ArrayList<>();
+		this.estado = estado != null ? estado : EstadoGrado.ACTIVO;
+		this.fechaCreacion = fechaCreacion;
+		this.activo = activo;
+	}
 
 	public void addCurso(Curso curso) {
 		if (this.cursos == null) {

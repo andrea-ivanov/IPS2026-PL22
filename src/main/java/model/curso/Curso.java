@@ -8,8 +8,6 @@ import lombok.*;
  */
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -38,6 +36,32 @@ public class Curso {
 
 	@Builder.Default
 	private boolean activo = true;
+
+	public Curso() {
+		super();
+		this.ano = "2026";
+		this.itinerario = "General";
+		this.profesor = "Dr. López";
+		this.creditos = 6;
+		this.estado = EstadoCurso.ACTIVO;
+		this.activo = true;
+	}
+
+	public Curso(Long id, String cursoId, String nombre, Long idGrado, Long idCoordinador, String ano,
+			String itinerario, String profesor, Integer creditos, EstadoCurso estado, boolean activo) {
+		super();
+		this.id = id;
+		this.cursoId = cursoId;
+		this.nombre = nombre;
+		this.idGrado = idGrado;
+		this.idCoordinador = idCoordinador;
+		this.ano = ano != null ? ano : "2026";
+		this.itinerario = itinerario != null ? itinerario : "General";
+		this.profesor = profesor != null ? profesor : "Dr. López";
+		this.creditos = creditos != null ? creditos : 6;
+		this.estado = estado != null ? estado : EstadoCurso.ACTIVO;
+		this.activo = activo;
+	}
 
 	public String getCursoId() {
 		if (cursoId != null && !cursoId.isEmpty()) {

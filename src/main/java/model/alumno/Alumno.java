@@ -9,8 +9,6 @@ import model.matriculacion.MatriculacionDisplayDTO;
  */
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -20,6 +18,18 @@ public class Alumno {
 	private String alumnoId;
 	private String nombre;
 	private String email;
+
+	public Alumno() {
+		super();
+	}
+
+	public Alumno(Long id, String alumnoId, String nombre, String email) {
+		super();
+		this.id = id;
+		this.alumnoId = alumnoId;
+		this.nombre = nombre;
+		this.email = email;
+	}
 
 	public String getCodigo() {
 		if (alumnoId != null && !alumnoId.isEmpty()) {
