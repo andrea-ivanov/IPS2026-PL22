@@ -7,6 +7,8 @@ import model.matriculacion.MatriculacionDisplayDTO;
 import javax.swing.table.DefaultTableModel;
 import java.util.List;
 
+import util.SwingUtil;
+
 public class MisMatriculasController {
     private MisMatriculasView view;
     private MatriculacionModel model;
@@ -22,16 +24,34 @@ public class MisMatriculasController {
         // Asignar los listeners a los botones
         view.getBtnVolver().addActionListener(e -> view.getFrame().dispose());
 
-        // Cargar los datos nada más abrir la ventana
+        // Cargar los grados del estudiante en el desplegable
+        cargarGrados();
+
+        // Al cambiar de grado consultado, refrescar la tabla
+        view.getCbGrados().addActionListener(e -> cargarMatriculas());
+
+        // Cargar las matrículas del grado seleccionado inicialmente
         cargarMatriculas();
 
         // Mostrar la ventana
         view.getFrame().setVisible(true);
     }
 
+    private void cargarGrados() {
+        List<Object[]> grados = model.getGradosPorEstudiante(uo);
+        view.getCbGrados().setModel(SwingUtil.getComboModelFromList(grados));
+    }
+
     private void cargarMatriculas() {
-        // Pedimos al modelo (base de datos) la lista de matrículas de este UO
-        List<MatriculacionDisplayDTO> matriculas = model.getMatriculasPorEstudiante(uo);
+        Object seleccionado = view.getCbGrados().getSelectedItem();
+        String gradoId = null;
+        if (seleccionado != null) {
+            gradoId = seleccionado.toString().split(" - ")[0].trim();
+        }
+
+        // Pedimos al modelo las matrículas del estudiante filtradas por el grado
+        // consultado
+        List<MatriculacionDisplayDTO> matriculas = model.getMatriculasPorEstudianteYGrado(uo, gradoId);
 
         // Obtenemos el modelo de la tabla visual
         DefaultTableModel tableModel = view.getTableModel();
@@ -39,15 +59,18 @@ public class MisMatriculasController {
         // Limpiamos la tabla por si hubiera basura de antes
         tableModel.setRowCount(0);
 
-        // Rellenamos fila a fila
+        // Rellenamos fila a fila con el detalle de las asignaturas matriculadas (HU
+        // 35232)
         for (MatriculacionDisplayDTO m : matriculas) {
             Object[] row = new Object[] {
-                    m.getIdMatricula(),
-                    m.getGrado(),
-                    m.getEstado(),
-                    m.getFecha()
+                    m.getAnioAcademicoId(),
+                    m.getAnio() > 0 ? m.getAnio() + "º" : "-",
+                    m.getCurso(),
+                    m.getNumMatricula(),
+                    m.getEstado()
             };
             tableModel.addRow(row);
         }
+        SwingUtil.autoAdjustColumns(view.getTableMatriculas());
     }
 }

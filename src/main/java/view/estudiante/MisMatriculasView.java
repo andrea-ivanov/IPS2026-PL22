@@ -6,6 +6,7 @@ import java.awt.*;
 
 public class MisMatriculasView {
     private JFrame frame;
+    private JComboBox<Object> cbGrados;
     private JTable tableMatriculas;
     private DefaultTableModel tableModel;
     private JButton btnVolver;
@@ -20,16 +21,24 @@ public class MisMatriculasView {
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // DISPOSE para no cerrar toda la app al volver
         frame.getContentPane().setLayout(new BorderLayout(10, 10));
 
-        // Título superior
+        // Panel superior: Título y selector de grado consultado
+        JPanel panelNorte = new JPanel(new BorderLayout(5, 5));
         JLabel lblTitle = new JLabel("Listado de mis matrículas", SwingConstants.CENTER);
         lblTitle.setFont(new Font("Tahoma", Font.BOLD, 16));
-        lblTitle.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        frame.getContentPane().add(lblTitle, BorderLayout.NORTH);
+        lblTitle.setBorder(BorderFactory.createEmptyBorder(10, 0, 5, 0));
+        panelNorte.add(lblTitle, BorderLayout.NORTH);
 
-        // Tabla central
-        // Aquí configuramos las columnas (iremos añadiendo más cuando tengáis
-        // convocatorias, notas, etc.)
-        String[] columnNames = { "ID Matrícula", "Grado", "Estado", "Fecha" };
+        JPanel panelFiltro = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        panelFiltro.add(new JLabel("Grado consultado:"));
+        cbGrados = new JComboBox<>();
+        cbGrados.setPreferredSize(new Dimension(380, 26));
+        panelFiltro.add(cbGrados);
+        panelNorte.add(panelFiltro, BorderLayout.CENTER);
+
+        frame.getContentPane().add(panelNorte, BorderLayout.NORTH);
+
+        // Tabla central con el listado de asignaturas matriculadas (HU 35232)
+        String[] columnNames = { "Año Académico", "Curso", "Asignatura", "Nº Matrícula", "Estado" };
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -61,6 +70,10 @@ public class MisMatriculasView {
 
     public DefaultTableModel getTableModel() {
         return tableModel;
+    }
+
+    public JComboBox<Object> getCbGrados() {
+        return cbGrados;
     }
 
     public JButton getBtnVolver() {
