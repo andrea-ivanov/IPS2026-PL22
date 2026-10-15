@@ -18,8 +18,6 @@ import lombok.ToString;
  */
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -38,6 +36,24 @@ public class AnoAcademico {
 
 	@Builder.Default
 	private boolean actual = false;
+
+	public AnoAcademico() {
+		super();
+		this.actual = false;
+	}
+
+	public AnoAcademico(Long id, String nombre, String anioAcademicoId, Date inicioAnoAcademico, Date finAnoAcademico,
+			Date inicioPeriodoMatriculacion, Date finPeriodoMatriculacion, boolean actual) {
+		super();
+		this.id = id;
+		this.nombre = nombre;
+		this.anioAcademicoId = anioAcademicoId;
+		this.inicioAnoAcademico = inicioAnoAcademico;
+		this.finAnoAcademico = finAnoAcademico;
+		this.inicioPeriodoMatriculacion = inicioPeriodoMatriculacion;
+		this.finPeriodoMatriculacion = finPeriodoMatriculacion;
+		this.actual = actual;
+	}
 
 	public String getAnioAcademicoId() {
 		if (anioAcademicoId != null && !anioAcademicoId.isEmpty()) {

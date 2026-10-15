@@ -27,8 +27,6 @@ import lombok.ToString;
  */
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 @ToString
 public class MatriculacionDisplayDTO {
@@ -46,6 +44,36 @@ public class MatriculacionDisplayDTO {
 	private String anioAcademicoId; // Código del año académico (p. ej. "2026-2027")
 	private int anio; // Anio del grado dentro del plan de estudios (1º, 2º, 3º, 4º)
 	private int numMatricula; // Número de matrícula (1ª, 2ª, etc.)
+
+	/**
+	 * Constructor por defecto sin argumentos para Apache Commons DbUtils.
+	 */
+	public MatriculacionDisplayDTO() {
+		super();
+	}
+
+	/**
+	 * Constructor con todos los campos para el patrón Builder y mapeos completos.
+	 */
+	public MatriculacionDisplayDTO(String id, String nombreAlumno, String idCurso, String email, String estado,
+			String dni, String grado, String curso, String grupo, String fecha, Long idAnoAcademico,
+			String anioAcademicoId, int anio, int numMatricula) {
+		super();
+		this.id = id;
+		this.nombreAlumno = nombreAlumno;
+		this.idCurso = idCurso;
+		this.email = email;
+		this.estado = estado;
+		this.dni = dni;
+		this.grado = grado;
+		this.curso = curso;
+		this.grupo = grupo;
+		this.fecha = fecha;
+		this.idAnoAcademico = idAnoAcademico;
+		this.anioAcademicoId = anioAcademicoId;
+		this.anio = anio;
+		this.numMatricula = numMatricula;
+	}
 
 	/**
 	 * Constructor de 5 parámetros utilizado en AdminOfertaView y TestDataFactory.

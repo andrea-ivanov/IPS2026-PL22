@@ -9,8 +9,6 @@ import lombok.*;
  */
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 @ToString
 public class CursoDisplayDTO {
@@ -21,5 +19,20 @@ public class CursoDisplayDTO {
 	private String profesor;   // Profesor coordinador / responsable
 	private String estado;     // Estado (ABIERTO, CERRADO, etc.)
 	private String idGrado;    // Referencia al grado contenedor
+
+	public CursoDisplayDTO() {
+		super();
+	}
+
+	public CursoDisplayDTO(String id, String nombre, String ano, String itinerario, String profesor, String estado, String idGrado) {
+		super();
+		this.id = id;
+		this.nombre = nombre;
+		this.ano = ano;
+		this.itinerario = itinerario;
+		this.profesor = profesor;
+		this.estado = estado;
+		this.idGrado = idGrado;
+	}
 }
 

@@ -9,8 +9,6 @@ import lombok.*;
  */
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
 @ToString
 public class GradoDisplayDTO {
@@ -19,6 +17,19 @@ public class GradoDisplayDTO {
 	private String facultad; // Facultad
 	private String rama;     // Rama de conocimiento
 	private String estado;   // Estado (VIGENTE, EN_EXTINCION, etc.)
+
+	public GradoDisplayDTO() {
+		super();
+	}
+
+	public GradoDisplayDTO(String id, String nombre, String facultad, String rama, String estado) {
+		super();
+		this.id = id;
+		this.nombre = nombre;
+		this.facultad = facultad;
+		this.rama = rama;
+		this.estado = estado;
+	}
 
 	/**
 	 * Constructor de 4 argumentos para compatibilidad hacia atrás.
