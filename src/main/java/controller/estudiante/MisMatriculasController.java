@@ -8,7 +8,6 @@ import model.matriculacion.HitosPermanenciaDTO;
 
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
-import java.awt.Color;
 import java.util.List;
 
 import util.SwingUtil;
@@ -18,8 +17,10 @@ import util.SwingUtil;
  * Gestiona:
  * - Selección de grado (soporte dobles grados).
  * - Ordenación de asignaturas por curso y número de matrícula (Paso 2).
- * - Cálculo y visualización de Hitos de Permanencia anuales y acumulados (Paso 3).
- * - Historial y consulta interactiva de calificaciones en convocatorias presentadas (Paso 4).
+ * - Cálculo y visualización de Hitos de Permanencia anuales y acumulados (Paso
+ * 3).
+ * - Historial y consulta interactiva de calificaciones en convocatorias
+ * presentadas (Paso 4).
  */
 public class MisMatriculasController {
     private MisMatriculasView view;
@@ -48,7 +49,8 @@ public class MisMatriculasController {
         // Cargar los grados del estudiante en el desplegable
         cargarGrados();
 
-        // Al cambiar de grado consultado, refrescar la tabla, los hitos y las calificaciones
+        // Al cambiar de grado consultado, refrescar la tabla, los hitos y las
+        // calificaciones
         view.getCbGrados().addActionListener(e -> refrescarTodo());
 
         // Carga inicial
@@ -83,7 +85,8 @@ public class MisMatriculasController {
     }
 
     private void cargarMatriculas(String gradoId) {
-        // Pedimos al modelo las matrículas del estudiante ordenadas por curso (gc.anio) y numMatricula DESC
+        // Pedimos al modelo las matrículas del estudiante ordenadas por curso (gc.anio)
+        // y numMatricula DESC
         List<MatriculacionDisplayDTO> matriculas = model.getMatriculasPorEstudianteYGrado(uo, gradoId);
 
         DefaultTableModel tableModel = view.getTableModel();
@@ -112,9 +115,10 @@ public class MisMatriculasController {
         if ("1º AÑO EN CURSO".equals(estadoAnual)) {
             colorAnual = "#2980B9";
         }
-        view.getLblHitoAnual().setText("<html><b>Mínimo anual" + anoInfo + ":</b> " + hitos.getCreditosAnualesSuperados() + " / " 
-                + hitos.getCreditosAnualesExigidos() + " créditos superados &nbsp; "
-                + "<font color='" + colorAnual + "'>[" + estadoAnual + "]</font></html>");
+        view.getLblHitoAnual()
+                .setText("<html><b>Mínimo anual" + anoInfo + ":</b> " + hitos.getCreditosAnualesSuperados() + " / "
+                        + hitos.getCreditosAnualesExigidos() + " créditos superados &nbsp; "
+                        + "<font color='" + colorAnual + "'>[" + estadoAnual + "]</font></html>");
 
         // 2. Hito acumulado: créditos totales en el grado vs 90 al tercer año
         String estadoTotal = hitos.getEstadoHitoTercerAnioTexto();
@@ -123,7 +127,8 @@ public class MisMatriculasController {
             colorTotal = "#2980B9"; // Azul para en progreso
         }
         view.getLblHitoTotal().setText("<html><b>Mínimo 3er año:</b> " + hitos.getCreditosTotalesSuperados() + " / "
-                + hitos.getCreditosTotalesExigidos() + " créditos superados (" + hitos.getAniosEnGrado() + " años) &nbsp; "
+                + hitos.getCreditosTotalesExigidos() + " créditos superados (" + hitos.getAniosEnGrado()
+                + " años) &nbsp; "
                 + "<font color='" + colorTotal + "'>[" + estadoTotal + "]</font></html>");
     }
 
@@ -150,14 +155,14 @@ public class MisMatriculasController {
     private void verNotasDeAsignaturaSeleccionada() {
         int selectedRow = view.getTableMatriculas().getSelectedRow();
         if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(view.getFrame(), 
+            JOptionPane.showMessageDialog(view.getFrame(),
                     "Por favor, selecciona una asignatura de la tabla para ver sus calificaciones.",
                     "Asignatura no seleccionada", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
         String asignatura = (String) view.getTableModel().getValueAt(selectedRow, 2);
-        
+
         // Cambiar a la pestaña de calificaciones
         view.getTabbedPane().setSelectedIndex(1);
 
@@ -168,7 +173,8 @@ public class MisMatriculasController {
             String cursoFila = (String) modelCalificaciones.getValueAt(i, 2);
             if (cursoFila != null && cursoFila.trim().equalsIgnoreCase(asignatura.trim())) {
                 view.getTableCalificaciones().setRowSelectionInterval(i, i);
-                view.getTableCalificaciones().scrollRectToVisible(view.getTableCalificaciones().getCellRect(i, 0, true));
+                view.getTableCalificaciones()
+                        .scrollRectToVisible(view.getTableCalificaciones().getCellRect(i, 0, true));
                 encontrada = true;
                 break;
             }

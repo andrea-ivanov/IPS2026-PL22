@@ -2,7 +2,6 @@ package util;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -19,33 +18,40 @@ import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.MapListHandler;
 
 /**
- * Metodos de utilidad para simplificar las queries realizadas en las clases 
+ * Metodos de utilidad para simplificar las queries realizadas en las clases
  * que implementan la logica de negocio:
- * Se implementa como una clase abstracta para que la clase derivada implemente los detalles
- * relativos a la conexion y a la estructura de la base de datos a crear, y a la vez
+ * Se implementa como una clase abstracta para que la clase derivada implemente
+ * los detalles
+ * relativos a la conexion y a la estructura de la base de datos a crear, y a la
+ * vez
  * pueda usar los metodos que se definen aqui.
  * 
- * <br>La mayoria de los metodos de utilidad utilizan apache commons-dbutils que gestiona todo el manejo
- * de resultsets, su mapeo a objetos y las excepciones permitiendo un codigo mucho mas limpio 
+ * <br>
+ * La mayoria de los metodos de utilidad utilizan apache commons-dbutils que
+ * gestiona todo el manejo
+ * de resultsets, su mapeo a objetos y las excepciones permitiendo un codigo
+ * mucho mas limpio
  * en las clases de la capa de negocio y DAOs.
  */
 public abstract class DbUtil {
 	/** Obtencion de la url de conexion que debe implementarse en la subclase */
 	public abstract String getUrl();
-	
+
 	/** Obtiene un objeto conexion para esta base de datos */
 	public Connection getConnection() throws SQLException {
 		return DriverManager.getConnection(getUrl());
 	}
 
-	//Documentacion de apache dbutils:
-	//https://commons.apache.org/proper/commons-dbutils/apidocs/index.html
-	//https://commons.apache.org/proper/commons-dbutils/examples.html
-	
+	// Documentacion de apache dbutils:
+	// https://commons.apache.org/proper/commons-dbutils/apidocs/index.html
+	// https://commons.apache.org/proper/commons-dbutils/examples.html
+
 	/**
-	 * Ejecuta una query sql con los parametros especificados mapeando el resultet en una lista de objetos 
+	 * Ejecuta una query sql con los parametros especificados mapeando el resultet
+	 * en una lista de objetos
 	 * de la clase indicada en pojoClass;
-	 * Utiliza apache commons-dbutils para realizar el mapeo y el manejo del resto de aspectos de jdbc
+	 * Utiliza apache commons-dbutils para realizar el mapeo y el manejo del resto
+	 * de aspectos de jdbc
 	 */
 	public <T> List<T> executeQueryPojo(Class<T> pojoClass, String sql, Object... params) {
 		Connection conn = null;
@@ -62,14 +68,17 @@ public abstract class DbUtil {
 	}
 
 	/**
-	 * Ejecuta una query sql con los parametros especificados mapeando el resultet en una lista de arrays de objetos;
-	 * Utiliza apache commons-dbutils para relizar el mapeo y el manejo del resto de aspectos de jdbc
+	 * Ejecuta una query sql con los parametros especificados mapeando el resultet
+	 * en una lista de arrays de objetos;
+	 * Utiliza apache commons-dbutils para relizar el mapeo y el manejo del resto de
+	 * aspectos de jdbc
 	 */
 	public List<Object[]> executeQueryArray(String sql, Object... params) {
 		Connection conn = null;
 		try {
 			conn = this.getConnection();
-			// Como no hay una clase especificada para realizar el mapeo, utiliza el ArrayListHandler
+			// Como no hay una clase especificada para realizar el mapeo, utiliza el
+			// ArrayListHandler
 			ArrayListHandler beanListHandler = new ArrayListHandler();
 			QueryRunner runner = new QueryRunner();
 			return runner.query(conn, sql, beanListHandler, params);
@@ -110,12 +119,16 @@ public abstract class DbUtil {
 			DbUtils.closeQuietly(conn);
 		}
 	}
-	
+
 	/**
-	 * Metodo simple para ejecutar todas las sentencias sql que se encuentran en un archivo, teniendo en cuenta:
-	 * <br/>- Cada sentencia DEBE finalizar en ; pudiendo ocupar varias lineas
-	 * <br/>- Se permiten comentarios de linea (--)
-	 * <br/>- Todas las sentencias drop se ejecutan al principio, 
+	 * Metodo simple para ejecutar todas las sentencias sql que se encuentran en un
+	 * archivo, teniendo en cuenta:
+	 * <br/>
+	 * - Cada sentencia DEBE finalizar en ; pudiendo ocupar varias lineas
+	 * <br/>
+	 * - Se permiten comentarios de linea (--)
+	 * <br/>
+	 * - Todas las sentencias drop se ejecutan al principio,
 	 * y se ignoran los fallos en caso de que no exista la tabla (solo para drop)
 	 */
 	public void executeScript(String fileName) {
@@ -142,7 +155,8 @@ public abstract class DbUtil {
 				is = DbUtil.class.getResourceAsStream("/" + resName);
 			}
 			if (is != null) {
-				try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8))) {
+				try (java.io.BufferedReader reader = new java.io.BufferedReader(
+						new java.io.InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8))) {
 					lines = reader.lines().collect(java.util.stream.Collectors.toList());
 				} catch (IOException e) {
 					throw new ApplicationException(e);
@@ -151,7 +165,7 @@ public abstract class DbUtil {
 				throw new ApplicationException("No se encontró el archivo de script SQL: " + fileName);
 			}
 		}
-		// separa las sentencias sql en dos listas, una para drop y otra 
+		// separa las sentencias sql en dos listas, una para drop y otra
 		// para el resto pues se ejecutaran de forma diferente
 		List<String> batchUpdate = new ArrayList<>();
 		List<String> batchDrop = new ArrayList<>();
@@ -186,7 +200,7 @@ public abstract class DbUtil {
 	public void executeBatch(String[] sqls) {
 		executeBatch(Arrays.asList(sqls));
 	}
-	
+
 	/**
 	 * Ejecuta un conjunto de sentencias sql de actualizacion en un unico batch
 	 */
@@ -203,14 +217,14 @@ public abstract class DbUtil {
 				}
 			}
 		} catch (SQLException e) {
-			// Importante:  no dejar pasar las excepciones 
+			// Importante: no dejar pasar las excepciones
 			// (no limitarse a dejar el codigo autogenerado por Eclipse con printStackTrace)
 			throw new UnexpectedException(e);
 		}
 	}
 
 	/**
-	 * Ejecuta un conjunto de sentencias sql de actualizacion en un unico batch, 
+	 * Ejecuta un conjunto de sentencias sql de actualizacion en un unico batch,
 	 * sin causar excepcion cuando falla la ejecucion
 	 * (usado normalmente para borrar tablas de la bd, que fallarian si no existen)
 	 */

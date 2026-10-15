@@ -35,15 +35,6 @@ public class MatriculacionRepository {
 		initMockData();
 	}
 
-	public MatriculacionRepository(giis.demo.util.Database db) {
-		try {
-			this.db = new Database();
-		} catch (Exception ignored) {
-		}
-		this.matriculacionModel = this.db != null ? new MatriculacionModel(this.db) : new MatriculacionModel();
-		initMockData();
-	}
-
 	private void initMockData() {
 		mockData = new ArrayList<>();
 		mockData.add(new MatriculacionDisplayDTO("M001", "Alejandro El Harchi Argüelles", "71649234A", "aharchi@uni.es", "Ing. Informática", "3º Curso", "A", "SOLICITADA"));
