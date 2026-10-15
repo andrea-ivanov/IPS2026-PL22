@@ -19,6 +19,13 @@ import util.exception.ValidationException;
  * de fechas, enums (EstadoMatricula) y booleanos.
  */
 public class MatriculacionModel {
+	// Constantes de negocio según base-de-datos.md (Sección 6.1)
+	public static final double PRECIO_CREDITO = 20.0;
+	public static final int CREDITOS_MINIMOS_ANIO = 12;
+	public static final int CREDITOS_MINIMOS_TERCER_ANIO = 90;
+	public static final int MAX_CONVOCATORIAS = 6;
+	public static final double NOTA_APROBADO = 5.0;
+
 	private Database db;
 
 	public MatriculacionModel() {
@@ -453,6 +460,180 @@ public class MatriculacionModel {
 		mock.add(new CalificacionDisplayDTO("2025-2026", "C005", "Fundamentos de Informatica", "ORDINARIA_ENERO", 7.5));
 		mock.add(new CalificacionDisplayDTO("2025-2026", "C006", "Calculo", "EXTRAORDINARIA_JULIO", 6.0));
 		return mock;
+	}
+
+	/**
+	 * Comprueba si el estudiante ya cuenta con una matrícula registrada (no cancelada)
+	 * para el grado y año académico indicados (impide solicitudes duplicadas - HU 35235).
+	 *
+	 * @param alumnoId Identificador del alumno (p. ej. "AL001")
+	 * @param gradoId Identificador del grado (p. ej. "G001")
+	 * @param anioAcademicoId Identificador del año académico (p. ej. "2026-2027")
+	 * @return true si ya existe una matrícula previa no cancelada
+	 */
+	public boolean comprobarMatriculaExistente(String alumnoId, String gradoId, String anioAcademicoId) {
+		if (alumnoId == null || gradoId == null || anioAcademicoId == null) {
+			return false;
+		}
+		try {
+			String sql = "SELECT COUNT(*) FROM Matricula "
+					+ "WHERE alumnoId = ? AND gradoId = ? AND anioAcademicoId = ? "
+					+ "  AND estado != 'CANCELADA'";
+			List<Object[]> rows = db.executeQueryArray(sql, alumnoId.trim(), gradoId.trim(), anioAcademicoId.trim());
+			if (rows != null && !rows.isEmpty() && rows.get(0)[0] != null) {
+				return ((Number) rows.get(0)[0]).intValue() > 0;
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al comprobar matrícula duplicada en BD: " + ex.getMessage());
+		}
+		return false;
+	}
+
+	/**
+	 * Devuelve el número de convocatorias con calificación numérica consumidas por el estudiante
+	 * en una asignatura a lo largo de todos sus años y grados (HU 35235 / Regla 6.3).
+	 * Las notas nulas (no presentado) no computan.
+	 *
+	 * @param alumnoId Identificador del alumno
+	 * @param cursoId Identificador de la asignatura (p. ej. "C005")
+	 * @return Cantidad de convocatorias consumidas (0 a 6)
+	 */
+	public int getConvocatoriasConsumidas(String alumnoId, String cursoId) {
+		if (alumnoId == null || cursoId == null) {
+			return 0;
+		}
+		try {
+			String sql = "SELECT COUNT(*) AS convocatoriasConsumidas "
+					+ "FROM Calificacion ca "
+					+ "JOIN Matricula m ON m.matriculaId = ca.matriculaId "
+					+ "WHERE m.alumnoId = ? AND ca.cursoId = ? "
+					+ "  AND ca.nota IS NOT NULL";
+			List<Object[]> rows = db.executeQueryArray(sql, alumnoId.trim(), cursoId.trim());
+			if (rows != null && !rows.isEmpty() && rows.get(0)[0] != null) {
+				return ((Number) rows.get(0)[0]).intValue();
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al consultar convocatorias consumidas en BD: " + ex.getMessage());
+		}
+		return 0;
+	}
+
+	/**
+	 * Comprueba si el alumno se encuentra al corriente de pago (HU 35235 / Regla 6.4).
+	 * No debe tener asignaturas SOLICITADAS sin pagar en años académicos ya iniciados,
+	 * ni cancelaciones previas por motivo de IMPAGO.
+	 *
+	 * @param alumnoId Identificador del alumno
+	 * @return true si está al corriente de pago, false si tiene deudas o impagos pendientes
+	 */
+	public boolean comprobarAlCorrienteDePago(String alumnoId) {
+		if (alumnoId == null || alumnoId.trim().isEmpty()) {
+			return true;
+		}
+		String cleanId = alumnoId.trim();
+		try {
+			// 1. Asignaturas sin pagar con el año ya iniciado
+			String sqlSinPagar = "SELECT COUNT(*) FROM MatriculaCurso mc "
+					+ "JOIN Matricula m ON m.matriculaId = mc.matriculaId "
+					+ "JOIN AnioAcademico a ON a.anioAcademicoId = m.anioAcademicoId "
+					+ "WHERE m.alumnoId = ? AND mc.estado = 'SOLICITADA' "
+					+ "  AND (mc.metodoPago IS NULL OR mc.pagoValidado = 0) "
+					+ "  AND a.fechaInicio <= date('now')";
+			List<Object[]> r1 = db.executeQueryArray(sqlSinPagar, cleanId);
+			if (r1 != null && !r1.isEmpty() && r1.get(0)[0] != null && ((Number) r1.get(0)[0]).intValue() > 0) {
+				return false;
+			}
+
+			// 2. Cancelaciones por IMPAGO
+			String sqlImpago = "SELECT COUNT(*) FROM MatriculaCurso mc "
+					+ "JOIN Matricula m ON m.matriculaId = mc.matriculaId "
+					+ "WHERE m.alumnoId = ? AND (mc.motivoCancelacion = 'IMPAGO' OR m.motivoCancelacion = 'IMPAGO')";
+			List<Object[]> r2 = db.executeQueryArray(sqlImpago, cleanId);
+			if (r2 != null && !r2.isEmpty() && r2.get(0)[0] != null && ((Number) r2.get(0)[0]).intValue() > 0) {
+				return false;
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al comprobar estado de pagos en BD: " + ex.getMessage());
+		}
+		return true;
+	}
+
+	/**
+	 * Verifica si el estudiante cumple el régimen de permanencia en el grado (HU 35235 / Regla 6.3):
+	 * 1. Mínimo anual: si la matrícula anterior en este grado no fue cancelada, debió superar >= 12 créditos.
+	 * 2. Mínimo al tercer año: si ya acumula >= 3 años en el grado, debe sumar >= 90 créditos totales superados.
+	 *
+	 * @param alumnoId Identificador del alumno
+	 * @param gradoId Identificador del grado
+	 * @return true si cumple el régimen de permanencia
+	 */
+	public boolean comprobarCumplimientoPermanencia(String alumnoId, String gradoId) {
+		HitosPermanenciaDTO hitos = getHitosPermanencia(alumnoId, gradoId);
+		if (hitos == null) {
+			return true;
+		}
+
+		// Si tuvo año evaluado previo, debe superar el mínimo anual de 12 créditos
+		if (hitos.getUltimoAnoEvaluadoId() != null && !hitos.getUltimoAnoEvaluadoId().isEmpty()) {
+			if (!hitos.isCumpleHitoAnual()) {
+				return false;
+			}
+		}
+
+		// Si lleva 3 o más años, debe sumar al menos 90 créditos
+		if (!hitos.isCumpleHitoTercerAnio()) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Valida integralmente una solicitud de matrícula frente a todas las reglas de negocio (HU 35235).
+	 * Lanza ValidationException con un mensaje descriptivo si alguna regla es vulnerada.
+	 *
+	 * @param alumnoId Identificador del alumno
+	 * @param gradoId Identificador del grado solicitado
+	 * @param anioAcademicoId Año académico actual
+	 * @param cursoIds Lista de asignaturas seleccionadas
+	 * @throws ValidationException si alguna regla no se cumple
+	 */
+	public void validarSolicitudMatricula(String alumnoId, String gradoId, String anioAcademicoId, List<String> cursoIds) {
+		if (alumnoId == null || alumnoId.trim().isEmpty()) {
+			throw new ValidationException("Debe especificarse el identificador del alumno.");
+		}
+		if (gradoId == null || gradoId.trim().isEmpty()) {
+			throw new ValidationException("Debe seleccionar un grado para la matrícula.");
+		}
+		if (anioAcademicoId == null || anioAcademicoId.trim().isEmpty()) {
+			throw new ValidationException("Debe especificarse el año académico actual.");
+		}
+		if (cursoIds == null || cursoIds.isEmpty()) {
+			throw new ValidationException("Debe seleccionar al menos una asignatura para matricularse.");
+		}
+
+		// 1. Validar al corriente de pago
+		if (!comprobarAlCorrienteDePago(alumnoId)) {
+			throw new ValidationException("No es posible solicitar la matrícula: el estudiante tiene pagos pendientes o deudas previas.");
+		}
+
+		// 2. Validar solicitud duplicada
+		if (comprobarMatriculaExistente(alumnoId, gradoId, anioAcademicoId)) {
+			throw new ValidationException("Ya existe una matrícula activa o en trámite para este grado en el año académico " + anioAcademicoId + ".");
+		}
+
+		// 3. Validar régimen de permanencia
+		if (!comprobarCumplimientoPermanencia(alumnoId, gradoId)) {
+			throw new ValidationException("La matrícula no cumple con los requisitos del régimen de permanencia en este grado.");
+		}
+
+		// 4. Validar límite de convocatorias por cada asignatura solicitada
+		for (String cId : cursoIds) {
+			int consumidas = getConvocatoriasConsumidas(alumnoId, cId);
+			if (consumidas >= MAX_CONVOCATORIAS) {
+				throw new ValidationException("No es posible matricularse en la asignatura '" + cId + "': se ha alcanzado el límite de " + MAX_CONVOCATORIAS + " convocatorias.");
+			}
+		}
 	}
 
 	private void validarFormatoId(String id) {
