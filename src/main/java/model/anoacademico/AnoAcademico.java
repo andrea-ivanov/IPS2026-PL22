@@ -3,18 +3,18 @@ package model.anoacademico;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
 /**
  * Entidad de dominio que representa un Año Académico.
- * Fiel a la tabla AnioAcademico de la base de datos (anioAcademicoId, fechaInicio, fechaFin, inicioMatriculacion, finMatriculacion).
- * Mantiene compatibilidad con identificadores numéricos y alias para la vista y las pruebas.
+ * Fiel a la tabla AnioAcademico de la base de datos (anioAcademicoId,
+ * fechaInicio, fechaFin, inicioMatriculacion, finMatriculacion).
+ * Mantiene compatibilidad con identificadores numéricos y alias para la vista y
+ * las pruebas.
  */
 @Getter
 @Setter

@@ -3,11 +3,8 @@ package controller.admin;
 import view.admin.AdminOfertaView;
 import view.admin.TestDataFactory;
 import model.anoacademico.AnoAcademico;
-import model.curso.Curso;
 import model.curso.CursoDisplayDTO;
-import model.grado.Grado;
 import model.grado.GradoDisplayDTO;
-import model.matriculacion.Matriculacion;
 import model.matriculacion.MatriculacionDisplayDTO;
 import repository.AlumnoRepository;
 import repository.AnoAcademicoRepository;
@@ -28,9 +25,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Controlador de la vista de administración de oferta académica (AdminOfertaView).
- * Conecta la vista con los repositorios y modelos de Grado, Curso, Matriculación y Año Académico.
- * Soporta navegación entre paneles (Grados -> Cursos -> Matrícula), filtrado reactivo,
+ * Controlador de la vista de administración de oferta académica
+ * (AdminOfertaView).
+ * Conecta la vista con los repositorios y modelos de Grado, Curso,
+ * Matriculación y Año Académico.
+ * Soporta navegación entre paneles (Grados -> Cursos -> Matrícula), filtrado
+ * reactivo,
  * gestión del Año Académico actual y mockeo estructurado.
  */
 public class AdminOfertaController {
@@ -60,26 +60,28 @@ public class AdminOfertaController {
 			this.alumnoRepository = new AlumnoRepository();
 			this.anoAcademicoRepository = new AnoAcademicoRepository();
 		} catch (Exception ex) {
-			System.err.println("Aviso: No se pudo conectar con los repositorios en base de datos. Modo mock activado: " + ex.getMessage());
+			System.err.println("Aviso: No se pudo conectar con los repositorios en base de datos. Modo mock activado: "
+					+ ex.getMessage());
 			this.anoAcademicoRepository = new AnoAcademicoRepository();
 		}
 		this.initView();
 	}
 
 	public AdminOfertaController(AdminOfertaView view,
-								 GradoRepository gradoRepository,
-								 CursoRepository cursoRepository,
-								 MatriculacionRepository matriculacionRepository,
-								 AlumnoRepository alumnoRepository) {
-		this(view, gradoRepository, cursoRepository, matriculacionRepository, alumnoRepository, new AnoAcademicoRepository());
+			GradoRepository gradoRepository,
+			CursoRepository cursoRepository,
+			MatriculacionRepository matriculacionRepository,
+			AlumnoRepository alumnoRepository) {
+		this(view, gradoRepository, cursoRepository, matriculacionRepository, alumnoRepository,
+				new AnoAcademicoRepository());
 	}
 
 	public AdminOfertaController(AdminOfertaView view,
-								 GradoRepository gradoRepository,
-								 CursoRepository cursoRepository,
-								 MatriculacionRepository matriculacionRepository,
-								 AlumnoRepository alumnoRepository,
-								 AnoAcademicoRepository anoAcademicoRepository) {
+			GradoRepository gradoRepository,
+			CursoRepository cursoRepository,
+			MatriculacionRepository matriculacionRepository,
+			AlumnoRepository alumnoRepository,
+			AnoAcademicoRepository anoAcademicoRepository) {
 		this.view = view;
 		this.gradoRepository = gradoRepository;
 		this.cursoRepository = cursoRepository;
@@ -90,7 +92,8 @@ public class AdminOfertaController {
 	}
 
 	public void initController() {
-		// 1. Carga inicial del Año Académico actual desde la base de datos y reflejo en la vista
+		// 1. Carga inicial del Año Académico actual desde la base de datos y reflejo en
+		// la vista
 		cargarAnoAcademicoActual();
 
 		// Conectar eventos para cambiar el año académico y periodo de matriculación
@@ -187,9 +190,11 @@ public class AdminOfertaController {
 	}
 
 	private Date parsearFechaInput(String text) {
-		if (text == null) return null;
+		if (text == null)
+			return null;
 		String clean = text.trim();
-		if (clean.isEmpty() || clean.contains("_")) return null;
+		if (clean.isEmpty() || clean.contains("_"))
+			return null;
 		String[] formatos = new String[] { "dd/MM/yy", "dd/MM/yyyy", "yyyy-MM-dd" };
 		for (String f : formatos) {
 			try {
@@ -280,9 +285,12 @@ public class AdminOfertaController {
 		String filtroEstado = (String) view.getCbEstadoGrado().getSelectedItem();
 
 		List<GradoDisplayDTO> filtrados = todosLosGrados.stream()
-				.filter(g -> filtroFacultad.isEmpty() || (g.getFacultad() != null && g.getFacultad().toLowerCase().contains(filtroFacultad)))
-				.filter(g -> filtroRama.isEmpty() || (g.getRama() != null && g.getRama().toLowerCase().contains(filtroRama)))
-				.filter(g -> filtroEstado == null || "TODOS".equalsIgnoreCase(filtroEstado) || (g.getEstado() != null && g.getEstado().equalsIgnoreCase(filtroEstado)))
+				.filter(g -> filtroFacultad.isEmpty()
+						|| (g.getFacultad() != null && g.getFacultad().toLowerCase().contains(filtroFacultad)))
+				.filter(g -> filtroRama.isEmpty()
+						|| (g.getRama() != null && g.getRama().toLowerCase().contains(filtroRama)))
+				.filter(g -> filtroEstado == null || "TODOS".equalsIgnoreCase(filtroEstado)
+						|| (g.getEstado() != null && g.getEstado().equalsIgnoreCase(filtroEstado)))
 				.collect(Collectors.toList());
 
 		view.actualizarTablaGrados(filtrados);
@@ -302,10 +310,14 @@ public class AdminOfertaController {
 		String filtroEstado = (String) view.getCbFiltroEstadoCurso().getSelectedItem();
 
 		List<CursoDisplayDTO> filtrados = todosLosCursos.stream()
-				.filter(c -> filtroAno.isEmpty() || (c.getAno() != null && c.getAno().toLowerCase().contains(filtroAno)))
-				.filter(c -> filtroItinerario.isEmpty() || (c.getItinerario() != null && c.getItinerario().toLowerCase().contains(filtroItinerario)))
-				.filter(c -> filtroProfesor.isEmpty() || (c.getProfesor() != null && c.getProfesor().toLowerCase().contains(filtroProfesor)))
-				.filter(c -> filtroEstado == null || "TODOS".equalsIgnoreCase(filtroEstado) || (c.getEstado() != null && c.getEstado().equalsIgnoreCase(filtroEstado)))
+				.filter(c -> filtroAno.isEmpty()
+						|| (c.getAno() != null && c.getAno().toLowerCase().contains(filtroAno)))
+				.filter(c -> filtroItinerario.isEmpty()
+						|| (c.getItinerario() != null && c.getItinerario().toLowerCase().contains(filtroItinerario)))
+				.filter(c -> filtroProfesor.isEmpty()
+						|| (c.getProfesor() != null && c.getProfesor().toLowerCase().contains(filtroProfesor)))
+				.filter(c -> filtroEstado == null || "TODOS".equalsIgnoreCase(filtroEstado)
+						|| (c.getEstado() != null && c.getEstado().equalsIgnoreCase(filtroEstado)))
 				.collect(Collectors.toList());
 
 		view.actualizarTablaCursos(filtrados);
@@ -330,13 +342,19 @@ public class AdminOfertaController {
 	private void addDocumentListener(JTextField textField, Runnable action) {
 		textField.getDocument().addDocumentListener(new DocumentListener() {
 			@Override
-			public void insertUpdate(DocumentEvent e) { action.run(); }
+			public void insertUpdate(DocumentEvent e) {
+				action.run();
+			}
 
 			@Override
-			public void removeUpdate(DocumentEvent e) { action.run(); }
+			public void removeUpdate(DocumentEvent e) {
+				action.run();
+			}
 
 			@Override
-			public void changedUpdate(DocumentEvent e) { action.run(); }
+			public void changedUpdate(DocumentEvent e) {
+				action.run();
+			}
 		});
 	}
 
