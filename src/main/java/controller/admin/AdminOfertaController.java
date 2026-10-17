@@ -367,3 +367,8 @@ public class AdminOfertaController {
 		view.getFrame().setVisible(true);
 	}
 }
+
+
+
+
+

@@ -53,16 +53,7 @@ public class AnoAcademicoModel {
 				Object[] r = rows.get(0);
 				String anioId = (String) r[0];
 				long idNum = parsearNumeroDeId(anioId, 1L);
-				return AnoAcademico.builder()
-						.id(idNum)
-						.nombre(anioId)
-						.anioAcademicoId(anioId)
-						.inicioAnoAcademico(mapearFecha(r[1]))
-						.finAnoAcademico(mapearFecha(r[2]))
-						.inicioPeriodoMatriculacion(mapearFecha(r[3]))
-						.finPeriodoMatriculacion(mapearFecha(r[4]))
-						.actual(true)
-						.build();
+				return new AnoAcademico(idNum,anioId,anioId,mapearFecha(r[1]),mapearFecha(r[2]),mapearFecha(r[3]),mapearFecha(r[4]),true); 
 			}
 		} catch (Exception ignored) {
 		}
@@ -137,16 +128,7 @@ public class AnoAcademicoModel {
 			if (rows != null && !rows.isEmpty()) {
 				Object[] r = rows.get(0);
 				String anioId = (String) r[0];
-				return AnoAcademico.builder()
-						.id(id)
-						.nombre(anioId)
-						.anioAcademicoId(anioId)
-						.inicioAnoAcademico(mapearFecha(r[1]))
-						.finAnoAcademico(mapearFecha(r[2]))
-						.inicioPeriodoMatriculacion(mapearFecha(r[3]))
-						.finPeriodoMatriculacion(mapearFecha(r[4]))
-						.actual(true)
-						.build();
+				return new AnoAcademico(id,anioId,anioId,mapearFecha(r[1]),mapearFecha(r[2]),mapearFecha(r[3]),mapearFecha(r[4]),true); 
 			}
 		} catch (Exception ignored) {
 		}
@@ -276,16 +258,7 @@ public class AnoAcademicoModel {
 			}
 		}
 
-		return AnoAcademico.builder()
-				.id(id)
-				.nombre(nombre)
-				.anioAcademicoId(nombre)
-				.inicioAnoAcademico(inicioAno)
-				.finAnoAcademico(finAno)
-				.inicioPeriodoMatriculacion(inicioMat)
-				.finPeriodoMatriculacion(finMat)
-				.actual(actual)
-				.build();
+		return new AnoAcademico(id,nombre,nombre,inicioAno,finAno,inicioMat,finMat,actual); 
 	}
 
 	private Date mapearFecha(Object fechaObj) {

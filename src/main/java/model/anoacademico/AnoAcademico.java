@@ -1,3 +1,4 @@
+
 package model.anoacademico;
 
 import java.text.SimpleDateFormat;
@@ -142,3 +143,4 @@ public class AnoAcademico {
 		return formatearRangoFechas(inicioPeriodoMatriculacion, finPeriodoMatriculacion);
 	}
 }
+
