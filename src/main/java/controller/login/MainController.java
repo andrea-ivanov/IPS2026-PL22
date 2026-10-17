@@ -6,12 +6,15 @@ import view.estudiante.EstudianteView;
 import view.secretario.SecretarioView; // Tu vista de secretario
 import view.profesor.ProfesorView;
 import java.awt.EventQueue;
+import java.time.LocalDate;
 
 import controller.admin.AdminOfertaController;
 import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
 import repository.AlumnoRepository;
+import repository.MatriculacionRepository;
+import util.Database;
 import util.SwingUtil;
 
 public class MainController {
@@ -23,6 +26,10 @@ public class MainController {
     }
 
     public void initController() {
+        // HU 35229: el sistema mantiene al día el estado de las matrículas en cada arranque,
+        // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA -> FINALIZADA al terminarlo)
+        SwingUtil.exceptionWrapper(() -> new MatriculacionRepository(new Database())
+                .actualizarCicloVida(LocalDate.now().toString()));
         cargarAlumnos();
 
         view.getCbRoles().addActionListener(e -> actualizarVisibilidadAlumno());
@@ -86,6 +93,7 @@ public class MainController {
     private void abrirVistaSecretario() {
         SecretarioView secView = new SecretarioView();
         SecretarioController secController = new SecretarioController(secView);
+        secController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         secController.initController();
         view.getFrame().setVisible(false);
     }

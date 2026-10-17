@@ -202,19 +202,28 @@ public abstract class DbUtil {
 	}
 
 	/**
-	 * Ejecuta un conjunto de sentencias sql de actualizacion en un unico batch
+	 * Ejecuta un conjunto de sentencias sql de actualizacion en un unico batch.
+	 * Se ejecuta en una transaccion: si alguna sentencia falla no se aplica ninguna,
+	 * evitando dejar la base de datos cargada a medias (p.ej. tablas maestras con datos y matriculas vacias).
 	 */
 	public void executeBatch(List<String> sqls) {
 		try (Connection cn = DriverManager.getConnection(getUrl()); Statement stmt = cn.createStatement()) {
-			for (String sql : sqls) {
-				try {
-					stmt.executeUpdate(sql);
-				} catch (SQLException e) {
-					if (e.getMessage() != null && e.getMessage().contains("already exists")) {
-						continue;
+			cn.setAutoCommit(false);
+			try {
+				for (String sql : sqls) {
+					try {
+						stmt.executeUpdate(sql);
+					} catch (SQLException e) {
+						if (e.getMessage() != null && e.getMessage().contains("already exists")) {
+							continue;
+						}
+						throw e;
 					}
-					throw e;
 				}
+				cn.commit();
+			} catch (SQLException e) {
+				cn.rollback();
+				throw e;
 			}
 		} catch (SQLException e) {
 			// Importante: no dejar pasar las excepciones

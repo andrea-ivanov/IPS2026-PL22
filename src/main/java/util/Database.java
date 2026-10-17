@@ -109,7 +109,7 @@ public class Database extends DbUtil {
 	/**
 	 * Comprueba si la BD tiene las tablas creadas y datos cargados.
 	 * Si la tabla Grado no existe → ejecuta schema.sql + data.sql.
-	 * Si existe pero está vacía → ejecuta solo data.sql.
+	 * Si existe pero Grado, Alumno o MatriculaCurso están vacías → ejecuta solo data.sql.
 	 *
 	 * Se usan dos bloques try-with-resources SEPARADOS para que la conexión de
 	 * lectura esté cerrada antes de que executeBatch abra conexiones de escritura.
@@ -125,8 +125,10 @@ public class Database extends DbUtil {
 					"SELECT count(*) FROM sqlite_master WHERE type='table' AND name='Grado'");
 			tableExists = rs.next() && rs.getInt(1) > 0;
 			if (tableExists) {
-				ResultSet rsData = stmt.executeQuery("SELECT count(*) FROM Grado");
-				dataExists = rsData.next() && rsData.getInt(1) > 0;
+				// Se comprueban tablas del principio y del final de data.sql para detectar cargas a medias
+				ResultSet rsData = stmt.executeQuery("SELECT (SELECT count(*) FROM Grado) * "
+						+ "(SELECT count(*) FROM Alumno) * (SELECT count(*) FROM MatriculaCurso)");
+				dataExists = rsData.next() && rsData.getLong(1) > 0;
 			}
 		} catch (Exception ex) {
 			System.err.println("Aviso al comprobar estado de BD: " + ex.getMessage());
