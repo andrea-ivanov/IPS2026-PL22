@@ -1,12 +1,21 @@
 package model.matriculacion;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import org.apache.commons.dbutils.DbUtils;
+
 import model.alumno.Alumno;
 import model.curso.Curso;
 import util.Database;
+import util.UnexpectedException;
 import util.Util;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
@@ -545,9 +554,9 @@ public class MatriculacionModel {
 			}
 
 			// 2. Cancelaciones por IMPAGO
-			String sqlImpago = "SELECT COUNT(*) FROM MatriculaCurso mc "
-					+ "JOIN Matricula m ON m.matriculaId = mc.matriculaId "
-					+ "WHERE m.alumnoId = ? AND (mc.motivoCancelacion = 'IMPAGO' OR m.motivoCancelacion = 'IMPAGO')";
+			String sqlImpago = "SELECT COUNT(*) FROM Matricula m "
+					+ "LEFT JOIN MatriculaCurso mc ON mc.matriculaId = m.matriculaId "
+					+ "WHERE m.alumnoId = ? AND (m.motivoCancelacion = 'IMPAGO' OR mc.motivoCancelacion = 'IMPAGO')";
 			List<Object[]> r2 = db.executeQueryArray(sqlImpago, cleanId);
 			if (r2 != null && !r2.isEmpty() && r2.get(0)[0] != null && ((Number) r2.get(0)[0]).intValue() > 0) {
 				return false;
@@ -634,6 +643,360 @@ public class MatriculacionModel {
 				throw new ValidationException("No es posible matricularse en la asignatura '" + cId + "': se ha alcanzado el límite de " + MAX_CONVOCATORIAS + " convocatorias.");
 			}
 		}
+	}
+
+	/**
+	 * Consulta la oferta de grados disponibles para nueva matrícula (HU 35235 / Fase 2).
+	 * Solo incluye grados en estado 'VIGENTE' o 'PENDIENTE_RENOVACION',
+	 * excluyendo los grados 'EN_EXTINCION' y 'EXTINTO'.
+	 *
+	 * @return Lista de OfertaGradoDTO disponibles
+	 */
+	public List<OfertaGradoDTO> getOfertaGradosDisponibles() {
+		String sql = "SELECT gradoId, nombre, facultad, ramaConocimiento, estado "
+				+ "FROM Grado "
+				+ "WHERE estado IN ('VIGENTE', 'PENDIENTE_RENOVACION') "
+				+ "ORDER BY nombre ASC";
+		try {
+			List<OfertaGradoDTO> list = db.executeQueryPojo(OfertaGradoDTO.class, sql);
+			return list != null ? list : new ArrayList<>();
+		} catch (Exception ex) {
+			System.err.println("Aviso al consultar grados disponibles en BD: " + ex.getMessage());
+			return new ArrayList<>();
+		}
+	}
+
+	/**
+	 * Consulta las asignaturas activas ofertadas para un grado seleccionado (HU 35235 / Fase 2).
+	 * Incluye el cálculo del precio (20.0 €/crédito) y, si se facilita el identificador del alumno,
+	 * el número de convocatorias consumidas con calificación en cada asignatura.
+	 *
+	 * @param gradoId Identificador del grado (p. ej. "G001")
+	 * @param alumnoId Identificador del alumno (p. ej. "AL001", opcional para cálculo de convocatorias)
+	 * @return Lista de OfertaCursoDTO activos en dicho grado
+	 */
+	public List<OfertaCursoDTO> getOfertaCursosPorGrado(String gradoId, String alumnoId) {
+		if (gradoId == null || gradoId.trim().isEmpty()) {
+			return new ArrayList<>();
+		}
+		String cleanGrado = gradoId.trim();
+		String sql = "SELECT c.cursoId, c.nombre, gc.anio, c.creditos, gc.itinerario "
+				+ "FROM GradoCurso gc "
+				+ "JOIN Curso c ON c.cursoId = gc.cursoId "
+				+ "WHERE gc.gradoId = ? AND gc.estado = 'ACTIVO' "
+				+ "ORDER BY gc.anio ASC, c.nombre ASC";
+		try {
+			List<OfertaCursoDTO> list = db.executeQueryPojo(OfertaCursoDTO.class, sql, cleanGrado);
+			if (list != null) {
+				for (OfertaCursoDTO curso : list) {
+					if (curso.getPrecio() <= 0 && curso.getCreditos() > 0) {
+						curso.setPrecio(curso.getCreditos() * PRECIO_CREDITO);
+					}
+					if (alumnoId != null && !alumnoId.trim().isEmpty()) {
+						curso.setConvocatoriasConsumidas(getConvocatoriasConsumidas(alumnoId, curso.getCursoId()));
+					}
+				}
+				return list;
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al consultar cursos ofertados en BD: " + ex.getMessage());
+		}
+		return new ArrayList<>();
+	}
+
+	/**
+	 * Sobrecarga de conveniencia para consultar las asignaturas ofertadas sin contextualizar alumno.
+	 *
+	 * @param gradoId Identificador del grado
+	 * @return Lista de OfertaCursoDTO activos en dicho grado
+	 */
+	public List<OfertaCursoDTO> getOfertaCursosPorGrado(String gradoId) {
+		return getOfertaCursosPorGrado(gradoId, null);
+	}
+
+	/**
+	 * Obtiene el identificador del año académico en curso o más reciente (HU 35235 / Fase 2).
+	 * Comprueba primero si la fecha actual está dentro del rango oficial (fechaInicio - fechaFin).
+	 *
+	 * @return Identificador del año académico (p. ej. "2026-2027")
+	 */
+	public String getAnioAcademicoActual() {
+		try {
+			String sqlVigente = "SELECT anioAcademicoId FROM AnioAcademico "
+					+ "WHERE date('now') BETWEEN fechaInicio AND fechaFin LIMIT 1";
+			List<Object[]> rows = db.executeQueryArray(sqlVigente);
+			if (rows != null && !rows.isEmpty() && rows.get(0)[0] != null) {
+				return rows.get(0)[0].toString();
+			}
+
+			String sqlMasReciente = "SELECT anioAcademicoId FROM AnioAcademico ORDER BY fechaInicio DESC LIMIT 1";
+			List<Object[]> rowsReciente = db.executeQueryArray(sqlMasReciente);
+			if (rowsReciente != null && !rowsReciente.isEmpty() && rowsReciente.get(0)[0] != null) {
+				return rowsReciente.get(0)[0].toString();
+			}
+		} catch (Exception ex) {
+			System.err.println("Aviso al consultar año académico actual en BD: " + ex.getMessage());
+		}
+		return "2026-2027";
+	}
+
+	/**
+	 * Alias explícito para comprobar las convocatorias consumidas con calificación en una asignatura
+	 * (solicitado según la nomenclatura de la Fase 2 del plan de trabajo).
+	 *
+	 * @param alumnoId Identificador del alumno
+	 * @param cursoId Identificador de la asignatura
+	 * @return Número de convocatorias consumidas (con nota != null)
+	 */
+	public int comprobarConvocatorias(String alumnoId, String cursoId) {
+		return getConvocatoriasConsumidas(alumnoId, cursoId);
+	}
+
+	/**
+	 * Alias explícito para comprobar el cumplimiento y los hitos del régimen de permanencia
+	 * (solicitado según la nomenclatura de la Fase 2 del plan de trabajo).
+	 *
+	 * @param alumnoId Identificador del alumno
+	 * @param gradoId Identificador del grado
+	 * @return Objeto HitosPermanenciaDTO con el desglose de permanencia
+	 */
+	public HitosPermanenciaDTO comprobarPermanencia(String alumnoId, String gradoId) {
+		return getHitosPermanencia(alumnoId, gradoId);
+	}
+
+	/**
+	 * Genera de forma segura el siguiente identificador correlativo para una matrícula (p. ej. "M017").
+	 * Utiliza la conexión proporcionada para operar dentro de una transacción.
+	 *
+	 * @param conn Conexión JDBC activa
+	 * @return Nuevo identificador formateado como "M%03d"
+	 * @throws SQLException si ocurre un error SQL
+	 */
+	public String generarSiguienteMatriculaId(Connection conn) throws SQLException {
+		String sql = "SELECT MAX(CAST(SUBSTR(matriculaId, 2) AS INTEGER)) FROM Matricula WHERE matriculaId LIKE 'M%'";
+		try (Statement stmt = conn.createStatement();
+			 ResultSet rs = stmt.executeQuery(sql)) {
+			int maxNum = 0;
+			if (rs.next()) {
+				maxNum = rs.getInt(1);
+			}
+			return String.format("M%03d", maxNum + 1);
+		}
+	}
+
+	/**
+	 * Genera el siguiente identificador correlativo para una matrícula abriendo una conexión puntual.
+	 *
+	 * @return Nuevo identificador formateado como "M%03d"
+	 */
+	public String generarSiguienteMatriculaId() {
+		try (Connection conn = db.getConnection()) {
+			return generarSiguienteMatriculaId(conn);
+		} catch (Exception ex) {
+			System.err.println("Aviso al generar siguiente matriculaId: " + ex.getMessage());
+			return "M001";
+		}
+	}
+
+	/**
+	 * Registra de forma transaccional una nueva solicitud de matrícula en la base de datos (HU 35235 / Fase 2).
+	 * <p>
+	 * Reglas de persistencia:
+	 * 1. Valida previamente permanencia, convocatorias, al corriente de pago y ausencia de duplicidad.
+	 * 2. Inserta el registro en {@code Matricula} con estado {@code 'SOLICITADA'}.
+	 * 3. Inserta cada asignatura en {@code MatriculaCurso}:
+	 *    - Si el pago es con {@code TARJETA}: estado {@code 'PAGADA'}, pagoValidado {@code = 1}.
+	 *    - Si es {@code TRANSFERENCIA} o {@code CARTA_PAGO}: estado {@code 'SOLICITADA'}, pagoValidado {@code = 0} (requiere aprobación manual de secretaría).
+	 * </p>
+	 *
+	 * @param solicitud DTO consolidado con toda la información de la solicitud y método de pago
+	 * @return El identificador de la nueva matrícula registrada (p. ej. "M017")
+	 * @throws ValidationException si alguna validación de negocio falla
+	 * @throws UnexpectedException si ocurre algún fallo transaccional en base de datos
+	 */
+	public String registrarSolicitudMatricula(ResumenSolicitudDTO solicitud) {
+		if (solicitud == null) {
+			throw new ValidationException("La información de la solicitud de matrícula no puede ser nula.");
+		}
+
+		String alumnoId = solicitud.getAlumnoId();
+		String gradoId = solicitud.getGradoId();
+		String anioAcademicoId = solicitud.getAnioAcademicoId();
+		if (anioAcademicoId == null || anioAcademicoId.trim().isEmpty()) {
+			anioAcademicoId = getAnioAcademicoActual();
+			solicitud.setAnioAcademicoId(anioAcademicoId);
+		}
+
+		List<OfertaCursoDTO> asignaturas = solicitud.getAsignaturas();
+		if (asignaturas == null || asignaturas.isEmpty()) {
+			throw new ValidationException("Debe seleccionar al menos una asignatura para matricularse.");
+		}
+
+		List<String> cursoIds = new ArrayList<>();
+		for (OfertaCursoDTO c : asignaturas) {
+			if (c != null && c.getCursoId() != null) {
+				cursoIds.add(c.getCursoId().trim());
+			}
+		}
+
+		// Validar reglas de negocio completas (permanencia, convocatorias, duplicados, al corriente de pago)
+		validarSolicitudMatricula(alumnoId, gradoId, anioAcademicoId, cursoIds);
+
+		// Validar método de pago admitido
+		String metodoPago = solicitud.getMetodoPago();
+		if (metodoPago == null || metodoPago.trim().isEmpty()) {
+			throw new ValidationException("Debe seleccionar un método de pago (TARJETA, TRANSFERENCIA o CARTA_PAGO).");
+		}
+		metodoPago = metodoPago.trim().toUpperCase();
+		if (!"TARJETA".equals(metodoPago) && !"TRANSFERENCIA".equals(metodoPago) && !"CARTA_PAGO".equals(metodoPago)) {
+			throw new ValidationException("Método de pago '" + metodoPago + "' no reconocido. Opciones válidas: TARJETA, TRANSFERENCIA o CARTA_PAGO.");
+		}
+
+		// Fecha de la solicitud (formato ISO YYYY-MM-DD)
+		String fecha = solicitud.getFechaSolicitud();
+		if (fecha == null || fecha.trim().isEmpty()) {
+			fecha = LocalDate.now().toString();
+			solicitud.setFechaSolicitud(fecha);
+		} else {
+			fecha = fecha.trim();
+		}
+
+		Connection conn = null;
+		try {
+			conn = db.getConnection();
+			// Asegurar enforcement de claves foráneas en la conexión SQLite
+			try (Statement pragmaStmt = conn.createStatement()) {
+				pragmaStmt.execute("PRAGMA foreign_keys = ON;");
+			}
+
+			// Iniciar transacción
+			conn.setAutoCommit(false);
+
+			// 1. Obtener nuevo ID correlativo de matrícula
+			String matriculaId = generarSiguienteMatriculaId(conn);
+
+			// 2. Insertar cabecera en Matricula (siempre SOLICITADA)
+			String sqlMatricula = "INSERT INTO Matricula (matriculaId, alumnoId, gradoId, anioAcademicoId, fechaSolicitud, estado, motivoCancelacion, fechaCancelacion) "
+					+ "VALUES (?, ?, ?, ?, ?, 'SOLICITADA', NULL, NULL)";
+			try (PreparedStatement psMatricula = conn.prepareStatement(sqlMatricula)) {
+				psMatricula.setString(1, matriculaId);
+				psMatricula.setString(2, alumnoId.trim());
+				psMatricula.setString(3, gradoId.trim());
+				psMatricula.setString(4, anioAcademicoId.trim());
+				psMatricula.setString(5, fecha);
+				psMatricula.executeUpdate();
+			}
+
+			// 3. Determinar estado y pago según método elegido
+			boolean esTarjeta = "TARJETA".equals(metodoPago);
+			String estadoCurso = esTarjeta ? "PAGADA" : "SOLICITADA";
+			int pagoValidado = esTarjeta ? 1 : 0;
+
+			// 4. Insertar cada asignatura en MatriculaCurso
+			String sqlCurso = "INSERT INTO MatriculaCurso (matriculaId, gradoId, cursoId, estado, motivoCancelacion, fechaCancelacion, importe, metodoPago, fechaPago, pagoValidado) "
+					+ "VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)";
+			try (PreparedStatement psCurso = conn.prepareStatement(sqlCurso)) {
+				for (OfertaCursoDTO c : asignaturas) {
+					double importe = c.getPrecio() > 0 ? c.getPrecio() : c.getCreditos() * PRECIO_CREDITO;
+					psCurso.setString(1, matriculaId);
+					psCurso.setString(2, gradoId.trim());
+					psCurso.setString(3, c.getCursoId().trim());
+					psCurso.setString(4, estadoCurso);
+					psCurso.setDouble(5, importe);
+					psCurso.setString(6, metodoPago);
+					psCurso.setString(7, fecha);
+					psCurso.setInt(8, pagoValidado);
+					psCurso.executeUpdate();
+				}
+			}
+
+			// Confirmar transacción
+			conn.commit();
+			return matriculaId;
+
+		} catch (SQLException ex) {
+			if (conn != null) {
+				try {
+					conn.rollback();
+				} catch (SQLException rollbackEx) {
+					System.err.println("Error al revertir transacción de matrícula: " + rollbackEx.getMessage());
+				}
+			}
+			if (ex.getMessage() != null && ex.getMessage().contains("UNIQUE constraint failed")) {
+				throw new ValidationException("Ya existe una matrícula registrada para este estudiante en el grado y año indicados.");
+			}
+			throw new UnexpectedException(ex);
+		} finally {
+			DbUtils.closeQuietly(conn);
+		}
+	}
+
+	/**
+	 * Sobrecarga de conveniencia para registrar solicitud a partir de los datos atómicos.
+	 *
+	 * @param alumnoId Identificador del alumno
+	 * @param gradoId Identificador del grado
+	 * @param anioAcademicoId Año académico
+	 * @param asignaturas Asignaturas seleccionadas
+	 * @param metodoPago Método de pago ("TARJETA", "TRANSFERENCIA", "CARTA_PAGO")
+	 * @return El ID de la matrícula creada
+	 */
+	public String registrarSolicitudMatricula(String alumnoId, String gradoId, String anioAcademicoId,
+			List<OfertaCursoDTO> asignaturas, String metodoPago) {
+		ResumenSolicitudDTO dto = new ResumenSolicitudDTO();
+		dto.setAlumnoId(alumnoId);
+		dto.setGradoId(gradoId);
+		dto.setAnioAcademicoId(anioAcademicoId);
+		dto.setAsignaturas(asignaturas);
+		dto.setMetodoPago(metodoPago);
+		return registrarSolicitudMatricula(dto);
+	}
+
+	/**
+	 * Carga los datos informativos del alumno y del grado seleccionado para precargar
+	 * el objeto ResumenSolicitudDTO que se presentará en la vista resumen (HU 35235).
+	 *
+	 * @param alumnoId Identificador del alumno
+	 * @param gradoId Identificador del grado (opcional)
+	 * @return DTO resumen precargado con datos del alumno, año académico y grado
+	 */
+	public ResumenSolicitudDTO obtenerDatosEstudianteParaSolicitud(String alumnoId, String gradoId) {
+		ResumenSolicitudDTO resumen = new ResumenSolicitudDTO();
+		resumen.setAlumnoId(alumnoId);
+		resumen.setGradoId(gradoId);
+		resumen.setAnioAcademicoId(getAnioAcademicoActual());
+		resumen.setFechaSolicitud(LocalDate.now().toString());
+
+		if (alumnoId != null && !alumnoId.trim().isEmpty()) {
+			try {
+				String sqlAlumno = "SELECT dni, nombre, apellidos, email FROM Alumno WHERE alumnoId = ?";
+				List<Object[]> rows = db.executeQueryArray(sqlAlumno, alumnoId.trim());
+				if (rows != null && !rows.isEmpty()) {
+					Object[] r = rows.get(0);
+					resumen.setDni(r[0] != null ? r[0].toString() : "");
+					String nom = r[1] != null ? r[1].toString() : "";
+					String ape = r[2] != null ? r[2].toString() : "";
+					resumen.setNombreCompleto((nom + " " + ape).trim());
+					resumen.setEmail(r[3] != null ? r[3].toString() : "");
+				}
+			} catch (Exception ex) {
+				System.err.println("Aviso al obtener datos del alumno para resumen: " + ex.getMessage());
+			}
+		}
+
+		if (gradoId != null && !gradoId.trim().isEmpty()) {
+			try {
+				String sqlGrado = "SELECT nombre FROM Grado WHERE gradoId = ?";
+				List<Object[]> rows = db.executeQueryArray(sqlGrado, gradoId.trim());
+				if (rows != null && !rows.isEmpty() && rows.get(0)[0] != null) {
+					resumen.setNombreGrado(rows.get(0)[0].toString());
+				}
+			} catch (Exception ex) {
+				System.err.println("Aviso al obtener nombre del grado para resumen: " + ex.getMessage());
+			}
+		}
+
+		return resumen;
 	}
 
 	private void validarFormatoId(String id) {
