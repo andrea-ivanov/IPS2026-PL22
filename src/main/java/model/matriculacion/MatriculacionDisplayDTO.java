@@ -1,10 +1,5 @@
 package model.matriculacion;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-
 /**
  * DTO para la visualización de Matrículas / Alumnos tanto en la vista de
  * administración,
@@ -23,10 +18,6 @@ import lombok.ToString;
  * - getIdCurso() / getCurso()
  * - getId() / getIdMatricula()
  */
-@Getter
-@Setter
-@Builder
-@ToString
 public class MatriculacionDisplayDTO {
 	private String id; // Código o Nº de referencia (p. ej. "U00123", "M001")
 	private String nombreAlumno; // Nombre completo del alumno / estudiante
@@ -42,6 +33,105 @@ public class MatriculacionDisplayDTO {
 	private String anioAcademicoId; // Código del año académico (p. ej. "2026-2027")
 	private int anio; // Anio del grado dentro del plan de estudios (1º, 2º, 3º, 4º)
 	private int numMatricula; // Número de matrícula (1ª, 2ª, etc.)
+
+	public static Builder builder() {
+		return new Builder();
+	}
+
+	public static class Builder {
+		private String id;
+		private String nombreAlumno;
+		private String idCurso;
+		private String email;
+		private String estado;
+		private String dni;
+		private String grado;
+		private String curso;
+		private String grupo;
+		private String fecha;
+		private Long idAnoAcademico;
+		private String anioAcademicoId;
+		private int anio;
+		private int numMatricula;
+
+		public Builder() {
+		}
+
+		public Builder id(String id) {
+			this.id = id;
+			return this;
+		}
+
+		public Builder nombreAlumno(String nombreAlumno) {
+			this.nombreAlumno = nombreAlumno;
+			return this;
+		}
+
+		public Builder idCurso(String idCurso) {
+			this.idCurso = idCurso;
+			return this;
+		}
+
+		public Builder email(String email) {
+			this.email = email;
+			return this;
+		}
+
+		public Builder estado(String estado) {
+			this.estado = estado;
+			return this;
+		}
+
+		public Builder dni(String dni) {
+			this.dni = dni;
+			return this;
+		}
+
+		public Builder grado(String grado) {
+			this.grado = grado;
+			return this;
+		}
+
+		public Builder curso(String curso) {
+			this.curso = curso;
+			return this;
+		}
+
+		public Builder grupo(String grupo) {
+			this.grupo = grupo;
+			return this;
+		}
+
+		public Builder fecha(String fecha) {
+			this.fecha = fecha;
+			return this;
+		}
+
+		public Builder idAnoAcademico(Long idAnoAcademico) {
+			this.idAnoAcademico = idAnoAcademico;
+			return this;
+		}
+
+		public Builder anioAcademicoId(String anioAcademicoId) {
+			this.anioAcademicoId = anioAcademicoId;
+			return this;
+		}
+
+		public Builder anio(int anio) {
+			this.anio = anio;
+			return this;
+		}
+
+		public Builder numMatricula(int numMatricula) {
+			this.numMatricula = numMatricula;
+			return this;
+		}
+
+		public MatriculacionDisplayDTO build() {
+			return new MatriculacionDisplayDTO(id, nombreAlumno, idCurso, email, estado, dni, grado, curso, grupo,
+					fecha, idAnoAcademico, anioAcademicoId, anio, numMatricula);
+		}
+	}
 
 	/**
 	 * Constructor por defecto sin argumentos para Apache Commons DbUtils.
