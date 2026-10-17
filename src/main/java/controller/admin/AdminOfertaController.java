@@ -40,7 +40,6 @@ public class AdminOfertaController {
 	private GradoRepository gradoRepository;
 	private CursoRepository cursoRepository;
 	private MatriculacionRepository matriculacionRepository;
-	private AlumnoRepository alumnoRepository;
 	private AnoAcademicoRepository anoAcademicoRepository;
 
 	// Estado del Año Académico actual
@@ -57,7 +56,6 @@ public class AdminOfertaController {
 			this.gradoRepository = new GradoRepository();
 			this.cursoRepository = new CursoRepository();
 			this.matriculacionRepository = new MatriculacionRepository();
-			this.alumnoRepository = new AlumnoRepository();
 			this.anoAcademicoRepository = new AnoAcademicoRepository();
 		} catch (Exception ex) {
 			System.err.println("Aviso: No se pudo conectar con los repositorios en base de datos. Modo mock activado: "
@@ -86,7 +84,6 @@ public class AdminOfertaController {
 		this.gradoRepository = gradoRepository;
 		this.cursoRepository = cursoRepository;
 		this.matriculacionRepository = matriculacionRepository;
-		this.alumnoRepository = alumnoRepository;
 		this.anoAcademicoRepository = anoAcademicoRepository;
 		this.initView();
 	}
@@ -253,7 +250,14 @@ public class AdminOfertaController {
 		todasLasMatriculaciones.clear();
 		try {
 			if (matriculacionRepository != null) {
-				todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCurso(idCurso);
+				if (anoAcademicoActual != null) {
+					todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCursoYAnoActual(
+							idCurso, 
+							anoAcademicoActual.getAnioAcademicoId()
+					);
+				} else {
+					todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCurso(idCurso);
+				}
 			}
 		} catch (Exception ex) {
 			System.err.println("Aviso al cargar matrículas desde repositorio: " + ex.getMessage());

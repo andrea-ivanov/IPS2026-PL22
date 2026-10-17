@@ -102,16 +102,7 @@ public class AnoAcademicoModel {
 				Object[] r = rows.get(0);
 				String anioId = (String) r[0];
 				long idNum = parsearNumeroDeId(anioId, 1L);
-				return AnoAcademico.builder()
-						.id(idNum)
-						.nombre(anioId)
-						.anioAcademicoId(anioId)
-						.inicioAnoAcademico(mapearFecha(r[1]))
-						.finAnoAcademico(mapearFecha(r[2]))
-						.inicioPeriodoMatriculacion(mapearFecha(r[3]))
-						.finPeriodoMatriculacion(mapearFecha(r[4]))
-						.actual(true)
-						.build();
+				return new AnoAcademico(idNum,anioId,anioId,mapearFecha(r[1]),mapearFecha(r[2]),mapearFecha(r[3]),mapearFecha(r[4]),true); 
 			}
 		} catch (Exception ignored) {
 		}
