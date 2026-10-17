@@ -82,7 +82,7 @@ public class GradoModelTest extends BaseModelTest {
 			Grado grado = gradoModel.buscarPorId("1");
 
 			assertAll("Verificación de tipos mapeados",
-					() -> assertEquals(EstadoGrado.ACTIVO, grado.getEstado(), "El estado debe mapearse al enum EstadoGrado.ACTIVO"),
+					() -> assertEquals(EstadoGrado.VIGENTE, grado.getEstado(), "El estado debe mapearse al enum EstadoGrado.VIGENTE"),
 					() -> assertTrue(grado.isActivo(), "El campo booleano activo debe ser true"),
 					() -> assertEquals(Long.valueOf(1L), grado.getCursos().get(0).getIdGrado(), "El idGrado del curso hijo debe coincidir")
 			);

@@ -1,5 +1,6 @@
 package repository;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 import model.anoacademico.AnoAcademico;
@@ -35,47 +36,27 @@ public class AnoAcademicoRepository {
     }
 
     /**
-     * Obtiene el año académico actual directamente desde la base de datos.
+     * Obtiene el año académico actual (el último configurado) desde la base de datos.
      */
     public AnoAcademico getAnoAcademicoActual() {
         return anoAcademicoModel.buscarActual();
     }
 
-    /**
-     * Actualiza las fechas del año académico actual en la base de datos.
-     */
-    public void actualizarFechasAnoAcademico(Date inicio, Date fin) {
-        AnoAcademico actual = getAnoAcademicoActual();
-        if (actual != null) {
-            String anioId = actual.getAnioAcademicoId();
-            if (anioId != null && !anioId.isEmpty()) {
-                anoAcademicoModel.actualizarFechasAnoAcademico(anioId, inicio, fin);
-            } else if (actual.getId() != null) {
-                anoAcademicoModel.actualizarFechasAnoAcademico(actual.getId(), inicio, fin);
-            }
-        }
+    public void validarAnoAnteriorTerminado() {
+        anoAcademicoModel.validarAnoAnteriorTerminado(LocalDate.now().toString());
     }
 
-    /**
-     * Actualiza las fechas del periodo de matriculación del año académico actual en la base de datos.
-     */
-    public void actualizarFechasMatriculacion(Date inicio, Date fin) {
-        AnoAcademico actual = getAnoAcademicoActual();
-        if (actual != null) {
-            String anioId = actual.getAnioAcademicoId();
-            if (anioId != null && !anioId.isEmpty()) {
-                anoAcademicoModel.actualizarFechasMatriculacion(anioId, inicio, fin);
-            } else if (actual.getId() != null) {
-                anoAcademicoModel.actualizarFechasMatriculacion(actual.getId(), inicio, fin);
-            }
-        }
+    public String validarNuevoAnoAcademico(Date inicioAnio, Date finAnio, Date inicioMatriculacion, Date finMatriculacion) {
+        return anoAcademicoModel.validarNuevoAnoAcademico(LocalDate.now().toString(), inicioAnio, finAnio,
+                inicioMatriculacion, finMatriculacion);
+    }
+
+    public String iniciarNuevoAnoAcademico(Date inicioAnio, Date finAnio, Date inicioMatriculacion, Date finMatriculacion) {
+        return anoAcademicoModel.iniciarNuevoAnoAcademico(LocalDate.now().toString(), inicioAnio, finAnio,
+                inicioMatriculacion, finMatriculacion);
     }
 
     public AnoAcademico findById(String id) {
-        return anoAcademicoModel.buscarPorId(id);
-    }
-
-    public AnoAcademico findById(Long id) {
         return anoAcademicoModel.buscarPorId(id);
     }
 }

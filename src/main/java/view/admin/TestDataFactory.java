@@ -76,7 +76,7 @@ public class TestDataFactory {
 				.facultad("Escuela de Ingeniería Informática")
 				.rama("Ingeniería y Arquitectura")
 				.cursos(cursos)
-				.estado(EstadoGrado.ACTIVO)
+				.estado(EstadoGrado.VIGENTE)
 				.fechaCreacion(new Date())
 				.activo(true)
 				.build();
@@ -127,16 +127,16 @@ public class TestDataFactory {
 	public static List<CursoDisplayDTO> crearMockCursosDisplay(String idGrado) {
 		List<CursoDisplayDTO> list = new ArrayList<>();
 		if ("2".equals(idGrado)) {
-			list.add(new CursoDisplayDTO("201", "Sistemas de Comunicación", "2026", "Telecomunicación", "Dr. Fernández", "ABIERTO", "2"));
-			list.add(new CursoDisplayDTO("202", "Teoría de Señales", "2026", "Telemática", "Dra. García", "CERRADO", "2"));
+			list.add(new CursoDisplayDTO("201", "Sistemas de Comunicación", "2026", "Telecomunicación", "Dr. Fernández", "ACTIVO", "2"));
+			list.add(new CursoDisplayDTO("202", "Teoría de Señales", "2026", "Telemática", "Dra. García", "INACTIVO", "2"));
 		} else if ("3".equals(idGrado)) {
-			list.add(new CursoDisplayDTO("301", "Álgebra Lineal", "2026", "Básica", "Dr. Suárez", "ABIERTO", "3"));
-			list.add(new CursoDisplayDTO("302", "Cálculo Infinitesimal", "2026", "Básica", "Dra. Álvarez", "CERRADO", "3"));
+			list.add(new CursoDisplayDTO("301", "Álgebra Lineal", "2026", "Básica", "Dr. Suárez", "ACTIVO", "3"));
+			list.add(new CursoDisplayDTO("302", "Cálculo Infinitesimal", "2026", "Básica", "Dra. Álvarez", "INACTIVO", "3"));
 		} else {
 			// Por defecto o Grado 1 (Informática)
-			list.add(new CursoDisplayDTO("1", "Programación", "2026", "Desarrollo de Software", "Profesor Martinez", "ABIERTO", "1"));
-			list.add(new CursoDisplayDTO("2", "Bases de Datos", "2026", "Gestión de Datos", "Profesora Lopez", "ABIERTO", "1"));
-			list.add(new CursoDisplayDTO("101", "Programación Orientada a Objetos", "2026", "Desarrollo", "Dr. López", "ABIERTO", "1"));
+			list.add(new CursoDisplayDTO("1", "Programación", "2026", "Desarrollo de Software", "Profesor Martinez", "ACTIVO", "1"));
+			list.add(new CursoDisplayDTO("2", "Bases de Datos", "2026", "Gestión de Datos", "Profesora Lopez", "ACTIVO", "1"));
+			list.add(new CursoDisplayDTO("101", "Programación Orientada a Objetos", "2026", "Desarrollo", "Dr. López", "ACTIVO", "1"));
 		}
 		return list;
 	}

@@ -1,7 +1,9 @@
 package controller.admin;
 
 import view.admin.AdminOfertaView;
-import view.admin.TestDataFactory;
+import view.admin.AnoAcademicoFormDialog;
+import view.admin.CursoFormDialog;
+import view.admin.GradoFormDialog;
 import model.anoacademico.AnoAcademico;
 import model.curso.CursoDisplayDTO;
 import model.grado.GradoDisplayDTO;
@@ -11,7 +13,10 @@ import repository.AnoAcademicoRepository;
 import repository.CursoRepository;
 import repository.GradoRepository;
 import repository.MatriculacionRepository;
+import repository.ProfesorRepository;
+import util.SwingUtil;
 
+import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -36,6 +41,9 @@ import java.util.stream.Collectors;
 public class AdminOfertaController {
 	private AdminOfertaView view;
 
+	//Boton de volver inicio
+	private Runnable onVolverInicio = () -> { };
+
 	// Repositorios de acceso a datos
 	private GradoRepository gradoRepository;
 	private CursoRepository cursoRepository;
@@ -49,6 +57,12 @@ public class AdminOfertaController {
 	private List<GradoDisplayDTO> todosLosGrados = new ArrayList<>();
 	private List<CursoDisplayDTO> todosLosCursos = new ArrayList<>();
 	private List<MatriculacionDisplayDTO> todasLasMatriculaciones = new ArrayList<>();
+
+	// Grado y curso que se están viendo en los paneles CURSOS y MATRICULACION
+	private String gradoActualId;
+	private String gradoActualNombre;
+	private String cursoActualId;
+	private String cursoActualNombre;
 
 	public AdminOfertaController(AdminOfertaView view) {
 		this.view = view;
@@ -88,14 +102,18 @@ public class AdminOfertaController {
 		this.initView();
 	}
 
+	public void setOnVolverInicio(Runnable onVolverInicio) {
+        this.onVolverInicio = onVolverInicio;
+    }
+
 	public void initController() {
+		view.getBtnVolverInicio().addActionListener(e -> volverInicio());
 		// 1. Carga inicial del Año Académico actual desde la base de datos y reflejo en
 		// la vista
 		cargarAnoAcademicoActual();
 
-		// Conectar eventos para cambiar el año académico y periodo de matriculación
-		view.setOnGuardarAnoAcademico(this::onGuardarFechasAnoAcademico);
-		view.setOnGuardarPeriodoMatriculacion(this::onGuardarFechasPeriodoMatriculacion);
+		// Configuración de un nuevo año académico y su periodo de matriculación
+		view.getBtnNuevoAnoAcademico().addActionListener(e -> SwingUtil.exceptionWrapper(this::onNuevoAnoAcademico));
 
 		// 2. Carga inicial de datos de Grados
 		cargarGrados();
@@ -140,6 +158,94 @@ public class AdminOfertaController {
 		configurarFiltrosGrados();
 		configurarFiltrosCursos();
 		configurarFiltrosMatriculacion();
+
+		// 6. Alta y baja de grados y cursos (HU 35223)
+		view.getBtnAnadirGrado().addActionListener(e -> SwingUtil.exceptionWrapper(this::onAnadirGrado));
+		view.getBtnAnadirCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onAnadirCurso));
+		view.getBtnEliminarGrado().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarGrado));
+		view.getBtnEliminarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarCurso));
+	}
+
+	/** Cierra la ventana de Secretaría y vuelve a la pantalla de selección de rol. */
+	private void volverInicio() {
+		view.getFrame().dispose();
+		onVolverInicio.run();
+	}
+
+	private void onAnadirGrado() {
+		GradoFormDialog form = new GradoFormDialog(view.getFrame());
+		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+			gradoRepository.crearGrado(form.getTxtNombre().getText(), form.getTxtFacultad().getText(),
+					form.getTxtRama().getText(), getAnioActualId());
+			form.cerrar();
+			cargarGrados();
+		}));
+		form.mostrar();
+	}
+
+	private void onAnadirCurso() {
+		CursoFormDialog form = new CursoFormDialog(view.getFrame());
+		for (Object[] profesor : new ProfesorRepository().getListaProfesores()) {
+			form.getCbCoordinador().addItem(String.valueOf(profesor[0]));
+		}
+		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+			cursoRepository.crearCurso(gradoActualId, form.getTxtNombre().getText(), form.getTxtCreditos().getText(),
+					form.getTxtAnio().getText(), extraerProfesorId((String) form.getCbCoordinador().getSelectedItem()),
+					form.getTxtItinerario().getText());
+			form.cerrar();
+			cargarCursosDeGrado(gradoActualId, gradoActualNombre);
+		}));
+		form.mostrar();
+	}
+
+	private void onEliminarGrado() {
+		String anioActualId = getAnioActualId();
+		gradoRepository.validarEliminacion(gradoActualId, anioActualId);
+
+		int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
+				"¿Desea eliminar el grado " + gradoActualNombre + "?\n"
+						+ "El grado pasará a EN_EXTINCION y todos sus cursos a INACTIVO.",
+				"Eliminar grado", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+		if (confirm != JOptionPane.YES_OPTION) {
+			return;
+		}
+
+		gradoRepository.eliminarGrado(gradoActualId, anioActualId);
+		JOptionPane.showMessageDialog(view.getFrame(), "Grado " + gradoActualNombre + " eliminado correctamente.",
+				"Eliminar grado", JOptionPane.INFORMATION_MESSAGE);
+		cargarGrados();
+		view.showGradosView();
+	}
+
+	private void onEliminarCurso() {
+		String anioActualId = getAnioActualId();
+		cursoRepository.validarEliminacion(gradoActualId, cursoActualId, anioActualId);
+
+		int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
+				"¿Desea eliminar el curso " + cursoActualNombre + " del grado " + gradoActualNombre + "?\n"
+						+ "El curso pasará a INACTIVO en este grado.",
+				"Eliminar curso", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+		if (confirm != JOptionPane.YES_OPTION) {
+			return;
+		}
+
+		cursoRepository.eliminarCurso(gradoActualId, cursoActualId, anioActualId);
+		JOptionPane.showMessageDialog(view.getFrame(), "Curso " + cursoActualNombre + " eliminado correctamente.",
+				"Eliminar curso", JOptionPane.INFORMATION_MESSAGE);
+		cargarCursosDeGrado(gradoActualId, gradoActualNombre);
+		view.showCursosView(gradoActualNombre);
+	}
+
+	private String getAnioActualId() {
+		return anoAcademicoActual != null ? anoAcademicoActual.getAnioAcademicoId() : null;
+	}
+
+	private String extraerProfesorId(String profesor) {
+		if (profesor == null) {
+			return null;
+		}
+		int separador = profesor.indexOf(" - ");
+		return separador >= 0 ? profesor.substring(0, separador) : profesor;
 	}
 
 	public void cargarAnoAcademicoActual() {
@@ -152,38 +258,37 @@ public class AdminOfertaController {
 		}
 	}
 
-	public void onGuardarFechasAnoAcademico(String desdeStr, String hastaStr) {
-		Date d = parsearFechaInput(desdeStr);
-		Date h = parsearFechaInput(hastaStr);
-		if (d != null && h != null) {
-			if (anoAcademicoRepository != null) {
-				anoAcademicoRepository.actualizarFechasAnoAcademico(d, h);
-				this.anoAcademicoActual = anoAcademicoRepository.getAnoAcademicoActual();
-			} else if (anoAcademicoActual != null) {
-				anoAcademicoActual.setInicioAnoAcademico(d);
-				anoAcademicoActual.setFinAnoAcademico(h);
-			}
-			if (anoAcademicoActual != null) {
-				view.actualizarAnoAcademico(anoAcademicoActual.getAnoAcademicoDisplay());
-			}
-		}
-	}
+	private void onNuevoAnoAcademico() {
+		anoAcademicoRepository.validarAnoAnteriorTerminado();
 
-	public void onGuardarFechasPeriodoMatriculacion(String desdeStr, String hastaStr) {
-		Date d = parsearFechaInput(desdeStr);
-		Date h = parsearFechaInput(hastaStr);
-		if (d != null && h != null) {
-			if (anoAcademicoRepository != null) {
-				anoAcademicoRepository.actualizarFechasMatriculacion(d, h);
-				this.anoAcademicoActual = anoAcademicoRepository.getAnoAcademicoActual();
-			} else if (anoAcademicoActual != null) {
-				anoAcademicoActual.setInicioPeriodoMatriculacion(d);
-				anoAcademicoActual.setFinPeriodoMatriculacion(h);
+		AnoAcademicoFormDialog form = new AnoAcademicoFormDialog(view.getFrame());
+		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+			Date inicioAnio = parsearFechaInput(form.getTxtInicioAnio().getText());
+			Date finAnio = parsearFechaInput(form.getTxtFinAnio().getText());
+			Date inicioMatriculacion = parsearFechaInput(form.getTxtInicioMatriculacion().getText());
+			Date finMatriculacion = parsearFechaInput(form.getTxtFinMatriculacion().getText());
+
+			String anioId = anoAcademicoRepository.validarNuevoAnoAcademico(inicioAnio, finAnio, inicioMatriculacion,
+					finMatriculacion);
+
+			int confirm = JOptionPane.showConfirmDialog(form.getDialog(),
+					"Se configurará el año académico " + anioId + ", que pasará a ser el actual.\n"
+							+ "Los grados con la vigencia caducada pasarán a PENDIENTE_RENOVACION\n"
+							+ "y los cursos de grados en extinción a INACTIVO. ¿Desea continuar?",
+					"Configurar Nuevo Año Académico", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+			if (confirm != JOptionPane.YES_OPTION) {
+				return;
 			}
-			if (anoAcademicoActual != null) {
-				view.actualizarPeriodoMatriculacion(anoAcademicoActual.getPeriodoMatriculacionDisplay());
-			}
-		}
+
+			anoAcademicoRepository.iniciarNuevoAnoAcademico(inicioAnio, finAnio, inicioMatriculacion, finMatriculacion);
+			form.cerrar();
+			JOptionPane.showMessageDialog(view.getFrame(), "Año académico " + anioId + " configurado correctamente.",
+					"Configurar Nuevo Año Académico", JOptionPane.INFORMATION_MESSAGE);
+			cargarAnoAcademicoActual();
+			cargarGrados();
+			view.showGradosView();
+		}));
+		form.mostrar();
 	}
 
 	private Date parsearFechaInput(String text) {
@@ -218,10 +323,6 @@ public class AdminOfertaController {
 			System.err.println("Aviso al cargar grados desde repositorio: " + ex.getMessage());
 		}
 
-		if (todosLosGrados == null || todosLosGrados.isEmpty()) {
-			todosLosGrados = TestDataFactory.crearMockGradosDisplay();
-		}
-
 		aplicarFiltrosGrados();
 	}
 
@@ -230,6 +331,8 @@ public class AdminOfertaController {
 	}
 
 	public void cargarCursosDeGrado(String idGrado, String nombreGrado) {
+		this.gradoActualId = idGrado;
+		this.gradoActualNombre = nombreGrado;
 		todosLosCursos.clear();
 		try {
 			if (cursoRepository != null) {
@@ -239,14 +342,12 @@ public class AdminOfertaController {
 			System.err.println("Aviso al cargar cursos desde repositorio: " + ex.getMessage());
 		}
 
-		if (todosLosCursos == null || todosLosCursos.isEmpty()) {
-			todosLosCursos = TestDataFactory.crearMockCursosDisplay(idGrado);
-		}
-
 		aplicarFiltrosCursos();
 	}
 
 	public void cargarMatriculasDeCurso(String idCurso, String nombreCurso) {
+		this.cursoActualId = idCurso;
+		this.cursoActualNombre = nombreCurso;
 		todasLasMatriculaciones.clear();
 		try {
 			if (matriculacionRepository != null) {
@@ -261,10 +362,6 @@ public class AdminOfertaController {
 			}
 		} catch (Exception ex) {
 			System.err.println("Aviso al cargar matrículas desde repositorio: " + ex.getMessage());
-		}
-
-		if (todasLasMatriculaciones == null || todasLasMatriculaciones.isEmpty()) {
-			todasLasMatriculaciones = TestDataFactory.crearMockMatriculacionesDisplay(idCurso);
 		}
 
 		Long idAnoActual = anoAcademicoActual != null ? anoAcademicoActual.getId() : 1L;

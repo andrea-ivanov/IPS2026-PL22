@@ -681,14 +681,14 @@ public class MatriculacionModel {
 							 "WHERE mc.cursoId = ? " +
 							 "ORDER BY a.alumnoId";
 				List<MatriculacionDisplayDTO> list = db.executeQueryPojo(MatriculacionDisplayDTO.class, sql, idCurso);
-				if (list != null && !list.isEmpty()) {
+				if (list != null) {
 					return list;
 				}
 			} catch (Exception ex) {
 				System.err.println("Aviso al consultar BD en getMatriculacionesPorCurso: " + ex.getMessage());
 			}
 		}
-		return view.admin.TestDataFactory.crearMockMatriculacionesDisplay(idCurso);
+		return new ArrayList<>();
 	}
 
 	/**
@@ -737,6 +737,6 @@ public class MatriculacionModel {
                 System.err.println("Aviso al consultar BD en getMatriculacionesPorCurso: " + ex.getMessage());
             }
         }
-        return view.admin.TestDataFactory.crearMockMatriculacionesDisplay(idCurso);
+        return new ArrayList<>();
     }
 }

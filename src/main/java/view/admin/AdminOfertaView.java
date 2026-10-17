@@ -5,11 +5,9 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import javax.swing.text.MaskFormatter;
 
 import model.grado.GradoDisplayDTO;
 import model.curso.CursoDisplayDTO;
@@ -21,9 +19,9 @@ public class AdminOfertaView {
     // Top components
     private JLabel lblAnoAcademico;
     private JLabel lblPeriodoMatriculacion;
-    private JButton btnSetAnoAcademico;
-    private JButton btnSetPeriodoMatriculacion;
+    private JButton btnNuevoAnoAcademico;
     private JButton btnVolver;
+    private JButton btnVolverInicio;
 
     // Card Layout
     private JPanel cardsPanel;
@@ -35,6 +33,7 @@ public class AdminOfertaView {
 
     private JComboBox<String> cbEstadoGrado;
     private JTable tabGrados;
+    private JButton btnAnadirGrado;
 
     // -- CURSOS VIEW --
     private JTextField txtFiltroAnoCurso;
@@ -43,11 +42,14 @@ public class AdminOfertaView {
     private JComboBox<String> cbFiltroEstadoCurso;
     private JTable tabCursos;
     private JLabel lblTituloCursos;
+    private JButton btnAnadirCurso;
+    private JButton btnEliminarGrado;
 
     // -- MATRICULACION VIEW --
     private JTextField txtFiltroAlumno;
     private JTable tabMatriculacion;
     private JLabel lblTituloMatriculas;
+    private JButton btnEliminarCurso;
 
     // State for back navigation
     private String currentView = "GRADOS";
@@ -55,8 +57,6 @@ public class AdminOfertaView {
     // Callbacks de navegación para el controlador
     private BiConsumer<String, String> onVerGrado;
     private BiConsumer<String, String> onVerCurso;
-    private BiConsumer<String, String> onGuardarAnoAcademico;
-    private BiConsumer<String, String> onGuardarPeriodoMatriculacion;
 
     public AdminOfertaView() {
         initialize();
@@ -82,17 +82,18 @@ public class AdminOfertaView {
         datesPanel.add(lblAnoAcademico);
         datesPanel.add(lblPeriodoMatriculacion);
 
-        // Buttons panel (Left to right: Establecer Año Académico, Periodo de
-        // matriculacion y volver)
+        // Buttons panel (Left to right: Configurar Nuevo Año Académico y volver)
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnSetAnoAcademico = new JButton("Establecer Año Académico");
-        btnSetPeriodoMatriculacion = new JButton("Periodo de Matriculación");
+        btnNuevoAnoAcademico = new JButton("Configurar Nuevo Año Académico");
         btnVolver = new JButton("Volver");
         btnVolver.setEnabled(false);
 
-        buttonsPanel.add(btnSetAnoAcademico);
-        buttonsPanel.add(btnSetPeriodoMatriculacion);
+        buttonsPanel.add(btnNuevoAnoAcademico);
         buttonsPanel.add(btnVolver);
+
+        btnVolverInicio = new JButton("Volver al inicio");
+        btnVolverInicio.setToolTipText("Volver a la pantalla de selección de rol");
+        buttonsPanel.add(btnVolverInicio);
 
         topContainer.add(datesPanel, BorderLayout.WEST);
         topContainer.add(buttonsPanel, BorderLayout.EAST);
@@ -108,20 +109,6 @@ public class AdminOfertaView {
         cardsPanel.add(createMatriculacionPanel(), "MATRICULACION");
 
         frame.getContentPane().add(cardsPanel, BorderLayout.CENTER);
-
-        // Dialog actions
-        btnSetAnoAcademico.addActionListener(
-                e -> showFechasDialog(frame, "Establecer Año Académico", lblAnoAcademico, "Año Académico: ", (d, h) -> {
-                    if (onGuardarAnoAcademico != null) {
-                        onGuardarAnoAcademico.accept(d, h);
-                    }
-                }));
-        btnSetPeriodoMatriculacion.addActionListener(e -> showFechasDialog(frame, "Establecer Periodo de Matriculación",
-                lblPeriodoMatriculacion, "Matriculación: ", (d, h) -> {
-                    if (onGuardarPeriodoMatriculacion != null) {
-                        onGuardarPeriodoMatriculacion.accept(d, h);
-                    }
-                }));
 
         // Navigation actions
         btnVolver.addActionListener(e -> goBack());
@@ -154,7 +141,7 @@ public class AdminOfertaView {
 
         filterPanel.add(Box.createVerticalStrut(10));
         addFilterComponent(filterPanel, "Estado");
-        cbEstadoGrado = new JComboBox<>(new String[] { "TODOS", "VIGENTE", "EN_EXTINCION", "EXTINTO" });
+        cbEstadoGrado = new JComboBox<>(new String[] { "TODOS", "VIGENTE", "PENDIENTE_RENOVACION", "EN_EXTINCION" });
         cbEstadoGrado.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
         filterPanel.add(cbEstadoGrado);
 
@@ -169,11 +156,14 @@ public class AdminOfertaView {
             }
         };
         tabGrados = new JTable(model);
-
-        // Carga inicial mockeada usando los DTOs de dominio
-        actualizarTablaGrados(obtenerMocksGrados());
+        actualizarTablaGrados(new ArrayList<>());
 
         panel.add(new JScrollPane(tabGrados), BorderLayout.CENTER);
+
+        JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnAnadirGrado = new JButton("Añadir");
+        accionesPanel.add(btnAnadirGrado);
+        panel.add(accionesPanel, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -211,7 +201,7 @@ public class AdminOfertaView {
 
         filterPanel.add(Box.createVerticalStrut(10));
         addFilterComponent(filterPanel, "Estado");
-        cbFiltroEstadoCurso = new JComboBox<>(new String[] { "TODOS", "ABIERTO", "CERRADO" });
+        cbFiltroEstadoCurso = new JComboBox<>(new String[] { "TODOS", "ACTIVO", "INACTIVO" });
         cbFiltroEstadoCurso.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
         filterPanel.add(cbFiltroEstadoCurso);
 
@@ -226,9 +216,16 @@ public class AdminOfertaView {
             }
         };
         tabCursos = new JTable(model);
-        actualizarTablaCursos(obtenerMocksCursos());
+        actualizarTablaCursos(new ArrayList<>());
 
         panel.add(new JScrollPane(tabCursos), BorderLayout.CENTER);
+
+        JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnAnadirCurso = new JButton("Añadir");
+        btnEliminarGrado = new JButton("Eliminar");
+        accionesPanel.add(btnAnadirCurso);
+        accionesPanel.add(btnEliminarGrado);
+        panel.add(accionesPanel, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -263,9 +260,13 @@ public class AdminOfertaView {
             }
         };
         tabMatriculacion = new JTable(model);
-        actualizarTablaMatriculacion(obtenerMocksMatriculaciones());
 
         panel.add(new JScrollPane(tabMatriculacion), BorderLayout.CENTER);
+
+        JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnEliminarCurso = new JButton("Eliminar");
+        accionesPanel.add(btnEliminarCurso);
+        panel.add(accionesPanel, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -274,58 +275,6 @@ public class AdminOfertaView {
         JLabel label = new JLabel(labelText);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(label);
-    }
-
-    private void showFechasDialog(Frame owner, String title, JLabel targetLabel, String prefix,
-            BiConsumer<String, String> onGuardar) {
-        JDialog dialog = new JDialog(owner, title, true);
-        dialog.setLayout(new BorderLayout());
-
-        JPanel formPanel = new JPanel(new GridLayout(2, 2, 10, 10));
-        formPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
-
-        formPanel.add(new JLabel("Desde (dd/mm/yy):"));
-        JFormattedTextField txtDesde = createDateField();
-        formPanel.add(txtDesde);
-
-        formPanel.add(new JLabel("Hasta (dd/mm/yy):"));
-        JFormattedTextField txtHasta = createDateField();
-        formPanel.add(txtHasta);
-
-        JPanel btnPanel = new JPanel();
-        JButton btnGuardar = new JButton("Guardar");
-        JButton btnCancelar = new JButton("Cancelar");
-
-        btnGuardar.addActionListener(e -> {
-            String desdeStr = txtDesde.getText();
-            String hastaStr = txtHasta.getText();
-            targetLabel.setText(prefix + desdeStr + " - " + hastaStr);
-            if (onGuardar != null) {
-                onGuardar.accept(desdeStr, hastaStr);
-            }
-            dialog.dispose();
-        });
-        btnCancelar.addActionListener(e -> dialog.dispose());
-
-        btnPanel.add(btnGuardar);
-        btnPanel.add(btnCancelar);
-
-        dialog.add(formPanel, BorderLayout.CENTER);
-        dialog.add(btnPanel, BorderLayout.SOUTH);
-
-        dialog.pack();
-        dialog.setLocationRelativeTo(owner);
-        dialog.setVisible(true);
-    }
-
-    private JFormattedTextField createDateField() {
-        try {
-            MaskFormatter dateMask = new MaskFormatter("##/##/##");
-            dateMask.setPlaceholderCharacter('_');
-            return new JFormattedTextField(dateMask);
-        } catch (ParseException e) {
-            return new JFormattedTextField();
-        }
     }
 
     // --- Navigation Methods ---
@@ -491,29 +440,6 @@ public class AdminOfertaView {
         }
     }
 
-    // --- Métodos generadores de mocks iniciales ---
-
-    public List<GradoDisplayDTO> obtenerMocksGrados() {
-        List<GradoDisplayDTO> mocks = new ArrayList<>();
-        mocks.add(
-                new GradoDisplayDTO("1", "Ingeniería Informática", "Ciencias", "Ingeniería y Arquitectura", "VIGENTE"));
-        mocks.add(new GradoDisplayDTO("2", "Matemáticas", "Ciencias", "Ciencias", "EN_EXTINCION"));
-        return mocks;
-    }
-
-    public List<CursoDisplayDTO> obtenerMocksCursos() {
-        List<CursoDisplayDTO> mocks = new ArrayList<>();
-        mocks.add(new CursoDisplayDTO("101", "Programación Orientada a Objetos", "2026", "Desarrollo", "Dr. López",
-                "ABIERTO", "1"));
-        return mocks;
-    }
-
-    public List<MatriculacionDisplayDTO> obtenerMocksMatriculaciones() {
-        List<MatriculacionDisplayDTO> mocks = new ArrayList<>();
-        mocks.add(new MatriculacionDisplayDTO("U00123", "Juan Pérez", "101", "juan@uni.es", "ACTIVA"));
-        return mocks;
-    }
-
     // --- Callbacks y Getters para controlador ---
 
     public void setOnVerGrado(BiConsumer<String, String> onVerGrado) {
@@ -526,6 +452,10 @@ public class AdminOfertaView {
 
     public JLabel getLblTituloCursos() {
         return lblTituloCursos;
+    }
+
+    public JButton getBtnVolverInicio() { 
+        return btnVolverInicio;
     }
 
     public JLabel getLblTituloMatriculas() {
@@ -588,12 +518,24 @@ public class AdminOfertaView {
         return btnVolver;
     }
 
-    public JButton getBtnSetAnoAcademico() {
-        return btnSetAnoAcademico;
+    public JButton getBtnAnadirGrado() {
+        return btnAnadirGrado;
     }
 
-    public JButton getBtnSetPeriodoMatriculacion() {
-        return btnSetPeriodoMatriculacion;
+    public JButton getBtnAnadirCurso() {
+        return btnAnadirCurso;
+    }
+
+    public JButton getBtnEliminarGrado() {
+        return btnEliminarGrado;
+    }
+
+    public JButton getBtnEliminarCurso() {
+        return btnEliminarCurso;
+    }
+
+    public JButton getBtnNuevoAnoAcademico() {
+        return btnNuevoAnoAcademico;
     }
 
     public JLabel getLblAnoAcademico() {
@@ -610,13 +552,5 @@ public class AdminOfertaView {
 
     public void actualizarPeriodoMatriculacion(String displayFechas) {
         lblPeriodoMatriculacion.setText("Matriculación: " + displayFechas);
-    }
-
-    public void setOnGuardarAnoAcademico(BiConsumer<String, String> onGuardarAnoAcademico) {
-        this.onGuardarAnoAcademico = onGuardarAnoAcademico;
-    }
-
-    public void setOnGuardarPeriodoMatriculacion(BiConsumer<String, String> onGuardarPeriodoMatriculacion) {
-        this.onGuardarPeriodoMatriculacion = onGuardarPeriodoMatriculacion;
     }
 }
