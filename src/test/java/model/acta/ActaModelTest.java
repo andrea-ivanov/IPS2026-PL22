@@ -20,7 +20,8 @@ import util.exception.ValidationException;
 
 /**
  * Pruebas de la HU 35239: asignaciones del profesor, notas y cierre de actas (ActaModel).
- * Cada prueba parte de los datos de data.sql (fecha de referencia: octubre de 2026)
+ * Cada prueba parte de sus propios datos (loadCleanDatabase), independientes de data.sql,
+ * con fecha de referencia octubre de 2026
  */
 public class ActaModelTest {
 	private static final String HOY = "2026-10-12";
@@ -35,10 +36,95 @@ public class ActaModelTest {
 
 	@BeforeEach
 	public void setUp() {
-		db.createDatabase(false);
-		db.loadDatabase();
+		db.createDatabase(true);
+		loadCleanDatabase(db);
 		actaModel = new ActaModel(db);
 		profesorRepository = new ProfesorRepository();
+	}
+
+	/**
+	 * Datos de prueba:
+	 * - P003 imparte 5 grupos: DOCENTE en C001 (coordina P001) y COORDINADOR en C003 y C013
+	 * - C005 (coordina P004, imparte tambien P006) esta en 3 grados
+	 * - Acta abierta de C005 en enero 2026-2027 con 4 alumnos calificables (uno mas SOLICITADA, que no sale)
+	 * - Acta cerrada de C005 en enero 2025-2026 con 3 notas
+	 * - Acta abierta de C001 en julio 2025-2026, con la convocatoria ya terminada: la cierra el sistema
+	 * - Otra acta abierta de enero 2026-2027 (C003) y una de junio 2026-2027 (C006)
+	 */
+	public static void loadCleanDatabase(Database db) {
+		db.executeBatch(new String[] {
+				"DELETE FROM Calificacion", "DELETE FROM MatriculaGrupo", "DELETE FROM MatriculaCurso",
+				"DELETE FROM Matricula", "DELETE FROM Acta", "DELETE FROM Convocatoria", "DELETE FROM Imparte",
+				"DELETE FROM Grupo", "DELETE FROM PropuestaCurso", "DELETE FROM GradoCurso", "DELETE FROM Curso",
+				"DELETE FROM Grado", "DELETE FROM AnioAcademico", "DELETE FROM Profesor", "DELETE FROM Alumno",
+				"INSERT INTO AnioAcademico VALUES ('2025-2026','2025-09-08','2026-07-31','2025-07-01','2025-09-30')",
+				"INSERT INTO AnioAcademico VALUES ('2026-2027','2026-09-07','2027-07-30','2026-07-01','2026-09-30')",
+				"INSERT INTO Grado VALUES ('G001','Software','EII','Ingenieria','VIGENTE','2024-09-01')",
+				"INSERT INTO Grado VALUES ('G002','Tecnologias','EPI','Ingenieria','VIGENTE','2025-09-01')",
+				"INSERT INTO Grado VALUES ('G006','Doble Grado','EII','Ingenieria','VIGENTE','2024-09-01')",
+				"INSERT INTO Profesor VALUES ('P001','10000001A','Ana','Garcia','p001@uni.es')",
+				"INSERT INTO Profesor VALUES ('P003','10000003C','Marta','Suarez','p003@uni.es')",
+				"INSERT INTO Profesor VALUES ('P004','10000004D','Pablo','Menendez','p004@uni.es')",
+				"INSERT INTO Profesor VALUES ('P006','10000006F','Jorge','Alonso','p006@uni.es')",
+				"INSERT INTO Curso VALUES ('C001','P001','Proceso Software',6)",
+				"INSERT INTO Curso VALUES ('C003','P003','Calidad',6)",
+				"INSERT INTO Curso VALUES ('C005','P004','Fundamentos de Informatica',6)",
+				"INSERT INTO Curso VALUES ('C006',NULL,'Calculo',6)",
+				"INSERT INTO Curso VALUES ('C013','P003','Estructuras de Datos',6)",
+				"INSERT INTO GradoCurso VALUES ('G001','C001',3,NULL,'ACTIVO')",
+				"INSERT INTO GradoCurso VALUES ('G001','C003',3,NULL,'ACTIVO')",
+				"INSERT INTO GradoCurso VALUES ('G001','C005',1,NULL,'ACTIVO')",
+				"INSERT INTO GradoCurso VALUES ('G002','C005',1,NULL,'ACTIVO')",
+				"INSERT INTO GradoCurso VALUES ('G006','C005',1,NULL,'ACTIVO')",
+				"INSERT INTO GradoCurso VALUES ('G001','C006',1,NULL,'ACTIVO')",
+				"INSERT INTO GradoCurso VALUES ('G001','C013',2,NULL,'ACTIVO')",
+				"INSERT INTO Grupo VALUES ('C001','PA1','PA',40)", "INSERT INTO Grupo VALUES ('C001','PL2','PL',20)",
+				"INSERT INTO Grupo VALUES ('C003','TE1','TE',80)", "INSERT INTO Grupo VALUES ('C003','PL1','PL',20)",
+				"INSERT INTO Grupo VALUES ('C013','TE1','TE',80)", "INSERT INTO Grupo VALUES ('C005','TE1','TE',80)",
+				"INSERT INTO Grupo VALUES ('C005','PA1','PA',40)",
+				"INSERT INTO Imparte VALUES ('P003','C001','PA1')", "INSERT INTO Imparte VALUES ('P003','C001','PL2')",
+				"INSERT INTO Imparte VALUES ('P003','C003','TE1')", "INSERT INTO Imparte VALUES ('P003','C003','PL1')",
+				"INSERT INTO Imparte VALUES ('P003','C013','TE1')", "INSERT INTO Imparte VALUES ('P004','C005','TE1')",
+				"INSERT INTO Imparte VALUES ('P006','C005','PA1')",
+				"INSERT INTO Convocatoria VALUES ('2025-2026','ORDINARIA_ENERO','2026-01-08','2026-01-31')",
+				"INSERT INTO Convocatoria VALUES ('2025-2026','EXTRAORDINARIA_JULIO','2026-06-29','2026-07-17')",
+				"INSERT INTO Convocatoria VALUES ('2026-2027','ORDINARIA_ENERO','2027-01-07','2027-01-29')",
+				"INSERT INTO Convocatoria VALUES ('2026-2027','ORDINARIA_JUNIO','2027-05-24','2027-06-14')",
+				"INSERT INTO Acta VALUES ('C005','2025-2026','ORDINARIA_ENERO','CERRADA','2026-02-05',0)",
+				"INSERT INTO Acta VALUES ('C001','2025-2026','EXTRAORDINARIA_JULIO','ABIERTA',NULL,0)",
+				"INSERT INTO Acta VALUES ('C005','2026-2027','ORDINARIA_ENERO','ABIERTA',NULL,0)",
+				"INSERT INTO Acta VALUES ('C003','2026-2027','ORDINARIA_ENERO','ABIERTA',NULL,0)",
+				"INSERT INTO Acta VALUES ('C006','2026-2027','ORDINARIA_JUNIO','ABIERTA',NULL,0)",
+				// 2025-2026: tres alumnos con nota en el acta cerrada de enero
+				"INSERT INTO Alumno VALUES ('AL001','20000001A','Ana','Alvarez','al001@uni.es')",
+				"INSERT INTO Alumno VALUES ('AL002','20000002B','Bruno','Blanco','al002@uni.es')",
+				"INSERT INTO Alumno VALUES ('AL003','20000003C','Carla','Castro','al003@uni.es')",
+				"INSERT INTO Matricula VALUES ('M001','AL001','G001','2025-2026','2025-07-10','FINALIZADA',NULL,NULL)",
+				"INSERT INTO Matricula VALUES ('M002','AL002','G001','2025-2026','2025-07-10','FINALIZADA',NULL,NULL)",
+				"INSERT INTO Matricula VALUES ('M003','AL003','G002','2025-2026','2025-07-10','FINALIZADA',NULL,NULL)",
+				"INSERT INTO MatriculaCurso VALUES ('M001','G001','C005','FINALIZADA',NULL,NULL,120,'TARJETA','2025-07-10',1)",
+				"INSERT INTO MatriculaCurso VALUES ('M002','G001','C005','FINALIZADA',NULL,NULL,120,'TARJETA','2025-07-10',1)",
+				"INSERT INTO MatriculaCurso VALUES ('M003','G002','C005','FINALIZADA',NULL,NULL,120,'TARJETA','2025-07-10',1)",
+				"INSERT INTO Calificacion VALUES ('M001','C005','2025-2026','ORDINARIA_ENERO',7.5)",
+				"INSERT INTO Calificacion VALUES ('M002','C005','2025-2026','ORDINARIA_ENERO',3.5)",
+				"INSERT INTO Calificacion VALUES ('M003','C005','2025-2026','ORDINARIA_ENERO',6)",
+				// 2026-2027: cuatro alumnos calificables en C005 (ACTIVA o PAGADA) y uno SOLICITADA que no sale
+				"INSERT INTO Alumno VALUES ('AL011','20000011A','Diana','Diaz','al011@uni.es')",
+				"INSERT INTO Alumno VALUES ('AL012','20000012B','Elena','Estevez','al012@uni.es')",
+				"INSERT INTO Alumno VALUES ('AL013','20000013C','Fabio','Fernandez','al013@uni.es')",
+				"INSERT INTO Alumno VALUES ('AL014','20000014D','Gema','Garcia','al014@uni.es')",
+				"INSERT INTO Alumno VALUES ('AL015','20000015E','Hugo','Herrero','al015@uni.es')",
+				"INSERT INTO Matricula VALUES ('M011','AL011','G001','2026-2027','2026-07-10','ACTIVA',NULL,NULL)",
+				"INSERT INTO Matricula VALUES ('M012','AL012','G001','2026-2027','2026-07-10','ACTIVA',NULL,NULL)",
+				"INSERT INTO Matricula VALUES ('M013','AL013','G002','2026-2027','2026-07-10','ACTIVA',NULL,NULL)",
+				"INSERT INTO Matricula VALUES ('M014','AL014','G006','2026-2027','2026-07-10','ACTIVA',NULL,NULL)",
+				"INSERT INTO Matricula VALUES ('M015','AL015','G001','2026-2027','2026-07-10','SOLICITADA',NULL,NULL)",
+				"INSERT INTO MatriculaCurso VALUES ('M011','G001','C005','ACTIVA',NULL,NULL,120,'TARJETA','2026-07-10',1)",
+				"INSERT INTO MatriculaCurso VALUES ('M012','G001','C005','ACTIVA',NULL,NULL,120,'TARJETA','2026-07-10',1)",
+				"INSERT INTO MatriculaCurso VALUES ('M013','G002','C005','ACTIVA',NULL,NULL,120,'TARJETA','2026-07-10',1)",
+				"INSERT INTO MatriculaCurso VALUES ('M014','G006','C005','PAGADA',NULL,NULL,120,'TARJETA','2026-10-01',1)",
+				"INSERT INTO MatriculaCurso VALUES ('M015','G001','C005','SOLICITADA',NULL,NULL,120,NULL,NULL,0)"
+		});
 	}
 
 	// //////////////////////////////////////////////
@@ -168,7 +254,7 @@ public class ActaModelTest {
 		assertEquals(HOY, fila.get(0)[0]);
 		assertEquals(0, ((Number) fila.get(0)[1]).intValue());
 
-		Map<String, String> notas = Map.of("M015", "5");
+		Map<String, String> notas = Map.of("M011", "5");
 		ValidationException e = assertThrows(ValidationException.class,
 				() -> actaModel.guardarNotas("P004", CURSO, ANIO, CONV, notas));
 		assertEquals("El acta está cerrada: las notas son de solo lectura", e.getMessage());
@@ -200,8 +286,8 @@ public class ActaModelTest {
 	@Test
 	public void testCierreAutomaticoTrasConvocatoria() {
 		List<ActaDisplayDTO> cerradas = actaModel.cerrarActasVencidas("2027-01-30");
-		// la vencida de 2025-2026 y las 7 de enero de 2026-2027; la de junio sigue abierta
-		assertEquals(8, cerradas.size());
+		// la vencida de 2025-2026 y las 2 de enero de 2026-2027 (C005 y C003); la de junio sigue abierta
+		assertEquals(3, cerradas.size());
 		assertEquals("ABIERTA", getActa("C006", ANIO, "ORDINARIA_JUNIO").getEstado());
 	}
 
