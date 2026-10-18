@@ -1,6 +1,7 @@
 package controller.profesor;
 
 import model.acta.ActaDisplayDTO;
+import model.acta.ActaModel;
 import model.acta.CalificacionActaDisplayDTO;
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
 import repository.ActaRepository;
@@ -148,7 +149,7 @@ public class ProfesorController {
             return;
         }
 
-        boolean editable = "COORDINADOR".equals(asignacionSelec.getRol()) && "ABIERTA".equals(acta.getEstado());
+        boolean editable = ActaModel.puedeEditarNotas(asignacionSelec.getRol(), acta.getEstado());
         List<CalificacionActaDisplayDTO> notas = actaRepository.getCalificaciones(acta.getCursoId(),
                 acta.getAnioAcademicoId(), acta.getTipoConvocatoria());
 
@@ -165,7 +166,7 @@ public class ProfesorController {
 
         if (editable)
             view.getLblEstadoActa().setText("Acta ABIERTA: escribe la nota (0 a 10), NP o dejala vacia");
-        else if ("ABIERTA".equals(acta.getEstado()))
+        else if (ActaModel.ESTADO_ABIERTA.equals(acta.getEstado()))
             view.getLblEstadoActa().setText("Rol DOCENTE: solo consulta");
         else
             view.getLblEstadoActa().setText("Acta CERRADA: solo lectura");

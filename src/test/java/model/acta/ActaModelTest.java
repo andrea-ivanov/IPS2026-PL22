@@ -1,7 +1,8 @@
-package repository;
+package model.acta;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,17 +13,16 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import model.acta.ActaDisplayDTO;
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
-import model.acta.CalificacionActaDisplayDTO;
-import util.ApplicationException;
+import repository.ProfesorRepository;
 import util.Database;
+import util.exception.ValidationException;
 
 /**
- * Pruebas de la HU 35239: asignaciones del profesor, notas y cierre de actas.
+ * Pruebas de la HU 35239: asignaciones del profesor, notas y cierre de actas (ActaModel).
  * Cada prueba parte de los datos de data.sql (fecha de referencia: octubre de 2026)
  */
-public class TestActaRepository {
+public class ActaModelTest {
 	private static final String HOY = "2026-10-12";
 	// Acta abierta de Fundamentos de Informatica (coordinador P004, docente P006)
 	private static final String CURSO = "C005";
@@ -30,14 +30,14 @@ public class TestActaRepository {
 	private static final String CONV = "ORDINARIA_ENERO";
 
 	private static Database db = new Database();
-	private ActaRepository actaRepository;
+	private ActaModel actaModel;
 	private ProfesorRepository profesorRepository;
 
 	@BeforeEach
 	public void setUp() {
 		db.createDatabase(false);
 		db.loadDatabase();
-		actaRepository = new ActaRepository();
+		actaModel = new ActaModel(db);
 		profesorRepository = new ProfesorRepository();
 	}
 
@@ -78,7 +78,7 @@ public class TestActaRepository {
 		notas.put(alumnos.get(0).getMatriculaId(), "7,5");
 		notas.put(alumnos.get(1).getMatriculaId(), "NP");
 		notas.put(alumnos.get(2).getMatriculaId(), "10");
-		actaRepository.guardarNotas("P004", CURSO, ANIO, CONV, notas);
+		actaModel.guardarNotas("P004", CURSO, ANIO, CONV, notas);
 
 		List<CalificacionActaDisplayDTO> guardadas = getNotas();
 		assertAll(() -> assertEquals("7.5", guardadas.get(0).getNota()),
@@ -91,11 +91,11 @@ public class TestActaRepository {
 	@Test
 	public void testCoordinadorCambiaYQuitaNota() {
 		String matricula = getNotas().get(0).getMatriculaId();
-		actaRepository.guardarNotas("P004", CURSO, ANIO, CONV, Map.of(matricula, "4"));
-		actaRepository.guardarNotas("P004", CURSO, ANIO, CONV, Map.of(matricula, "6.25"));
+		actaModel.guardarNotas("P004", CURSO, ANIO, CONV, Map.of(matricula, "4"));
+		actaModel.guardarNotas("P004", CURSO, ANIO, CONV, Map.of(matricula, "6.25"));
 		assertEquals("6.25", getNotas().get(0).getNota());
 
-		actaRepository.guardarNotas("P004", CURSO, ANIO, CONV, Map.of(matricula, ""));
+		actaModel.guardarNotas("P004", CURSO, ANIO, CONV, Map.of(matricula, ""));
 		assertEquals("", getNotas().get(0).getNota());
 	}
 
@@ -107,8 +107,8 @@ public class TestActaRepository {
 			Map<String, String> notas = new LinkedHashMap<>();
 			notas.put(alumnos.get(0).getMatriculaId(), "8");
 			notas.put(alumnos.get(1).getMatriculaId(), mal);
-			ApplicationException e = assertThrows(ApplicationException.class,
-					() -> actaRepository.guardarNotas("P004", CURSO, ANIO, CONV, notas), "Nota " + mal);
+			ValidationException e = assertThrows(ValidationException.class,
+					() -> actaModel.guardarNotas("P004", CURSO, ANIO, CONV, notas), "Nota " + mal);
 			assertTrue(e.getMessage().contains("entre 0 y 10"));
 		}
 		assertEquals("", getNotas().get(0).getNota());
@@ -121,7 +121,7 @@ public class TestActaRepository {
 		Map<String, String> notas = new LinkedHashMap<>();
 		notas.put(alumnos.get(0).getMatriculaId(), "0");
 		notas.put(alumnos.get(1).getMatriculaId(), "10");
-		actaRepository.guardarNotas("P004", CURSO, ANIO, CONV, notas);
+		actaModel.guardarNotas("P004", CURSO, ANIO, CONV, notas);
 		assertEquals("0", getNotas().get(0).getNota());
 	}
 
@@ -129,18 +129,27 @@ public class TestActaRepository {
 	@Test
 	public void testDocenteNoModifica() {
 		Map<String, String> notas = Map.of(getNotas().get(0).getMatriculaId(), "5");
-		ApplicationException e = assertThrows(ApplicationException.class,
-				() -> actaRepository.guardarNotas("P006", CURSO, ANIO, CONV, notas));
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> actaModel.guardarNotas("P006", CURSO, ANIO, CONV, notas));
 		assertEquals("Solo el coordinador de la asignatura puede modificar las notas", e.getMessage());
-		assertThrows(ApplicationException.class, () -> actaRepository.cerrarActa("P006", CURSO, ANIO, CONV, HOY));
+		assertThrows(ValidationException.class, () -> actaModel.cerrarActa("P006", CURSO, ANIO, CONV, HOY));
 		assertEquals(4, getNotas().size());
 		assertEquals("ABIERTA", getActa(CURSO, ANIO, CONV).getEstado());
+	}
+
+	/** Solo el coordinador con el acta abierta puede editar las notas (lo que habilita la tabla y los botones) */
+	@Test
+	public void testPuedeEditarNotas() {
+		assertAll(() -> assertTrue(ActaModel.puedeEditarNotas("COORDINADOR", "ABIERTA")),
+				() -> assertFalse(ActaModel.puedeEditarNotas("COORDINADOR", "CERRADA")),
+				() -> assertFalse(ActaModel.puedeEditarNotas("DOCENTE", "ABIERTA")),
+				() -> assertFalse(ActaModel.puedeEditarNotas("DOCENTE", "CERRADA")));
 	}
 
 	/** En un acta cerrada solo salen los alumnos con calificacion */
 	@Test
 	public void testConsultaActaCerrada() {
-		List<CalificacionActaDisplayDTO> notas = actaRepository.getCalificaciones(CURSO, "2025-2026", "ORDINARIA_ENERO");
+		List<CalificacionActaDisplayDTO> notas = actaModel.getCalificaciones(CURSO, "2025-2026", "ORDINARIA_ENERO");
 		assertEquals(3, notas.size());
 	}
 
@@ -151,7 +160,7 @@ public class TestActaRepository {
 	/** El coordinador cierra el acta: queda cerrada manualmente y las notas pasan a solo lectura */
 	@Test
 	public void testCierreManual() {
-		actaRepository.cerrarActa("P004", CURSO, ANIO, CONV, HOY);
+		actaModel.cerrarActa("P004", CURSO, ANIO, CONV, HOY);
 
 		assertEquals("CERRADA", getActa(CURSO, ANIO, CONV).getEstado());
 		List<Object[]> fila = db.executeQueryArray("SELECT fechaCierre, cierreAutomatico FROM Acta"
@@ -160,10 +169,10 @@ public class TestActaRepository {
 		assertEquals(0, ((Number) fila.get(0)[1]).intValue());
 
 		Map<String, String> notas = Map.of("M015", "5");
-		ApplicationException e = assertThrows(ApplicationException.class,
-				() -> actaRepository.guardarNotas("P004", CURSO, ANIO, CONV, notas));
-		assertEquals("El acta esta cerrada: las notas son de solo lectura", e.getMessage());
-		assertThrows(ApplicationException.class, () -> actaRepository.cerrarActa("P004", CURSO, ANIO, CONV, HOY));
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> actaModel.guardarNotas("P004", CURSO, ANIO, CONV, notas));
+		assertEquals("El acta está cerrada: las notas son de solo lectura", e.getMessage());
+		assertThrows(ValidationException.class, () -> actaModel.cerrarActa("P004", CURSO, ANIO, CONV, HOY));
 	}
 
 	/**
@@ -172,36 +181,36 @@ public class TestActaRepository {
 	 */
 	@Test
 	public void testCierreAutomatico() {
-		int notificacionesAntes = actaRepository.getActasCerradasAutomaticamente().size();
+		int notificacionesAntes = actaModel.getActasCerradasAutomaticamente().size();
 
-		List<ActaDisplayDTO> cerradas = actaRepository.cerrarActasVencidas(HOY);
+		List<ActaDisplayDTO> cerradas = actaModel.cerrarActasVencidas(HOY);
 		assertEquals(1, cerradas.size());
 		assertEquals("C001", cerradas.get(0).getCursoId());
 		assertEquals("EXTRAORDINARIA_JULIO", cerradas.get(0).getTipoConvocatoria());
 
 		assertEquals("CERRADA", getActa("C001", "2025-2026", "EXTRAORDINARIA_JULIO").getEstado());
 		assertEquals("ABIERTA", getActa(CURSO, ANIO, CONV).getEstado());
-		assertEquals(notificacionesAntes + 1, actaRepository.getActasCerradasAutomaticamente().size());
+		assertEquals(notificacionesAntes + 1, actaModel.getActasCerradasAutomaticamente().size());
 
 		// una segunda ejecucion no cierra nada mas
-		assertEquals(0, actaRepository.cerrarActasVencidas(HOY).size());
+		assertEquals(0, actaModel.cerrarActasVencidas(HOY).size());
 	}
 
 	/** Al pasar el fin de la convocatoria de enero de 2027 se cierran todas las actas abiertas de enero */
 	@Test
 	public void testCierreAutomaticoTrasConvocatoria() {
-		List<ActaDisplayDTO> cerradas = actaRepository.cerrarActasVencidas("2027-01-30");
+		List<ActaDisplayDTO> cerradas = actaModel.cerrarActasVencidas("2027-01-30");
 		// la vencida de 2025-2026 y las 7 de enero de 2026-2027; la de junio sigue abierta
 		assertEquals(8, cerradas.size());
 		assertEquals("ABIERTA", getActa("C006", ANIO, "ORDINARIA_JUNIO").getEstado());
 	}
 
 	private List<CalificacionActaDisplayDTO> getNotas() {
-		return actaRepository.getCalificaciones(CURSO, ANIO, CONV);
+		return actaModel.getCalificaciones(CURSO, ANIO, CONV);
 	}
 
 	private ActaDisplayDTO getActa(String cursoId, String anio, String conv) {
-		return actaRepository.getActasCurso(cursoId).stream()
+		return actaModel.getActasCurso(cursoId).stream()
 				.filter(a -> a.getAnioAcademicoId().equals(anio) && a.getTipoConvocatoria().equals(conv))
 				.findFirst().get();
 	}
