@@ -17,7 +17,7 @@ public class CursoDisplayDTO {
 	private String ano;        // Año académico
 	private String itinerario; // Itinerario formativo
 	private String profesor;   // Profesor coordinador / responsable
-	private String estado;     // Estado (ABIERTO, CERRADO, etc.)
+	private String estado;     // Estado (ACTIVO, INACTIVO)
 	private String idGrado;    // Referencia al grado contenedor
 
 	public CursoDisplayDTO() {

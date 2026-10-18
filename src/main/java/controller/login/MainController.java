@@ -118,6 +118,7 @@ public class MainController {
     private void abrirVistaAdministrador() {
         AdminOfertaView adminView = new AdminOfertaView();
         AdminOfertaController adminController = new AdminOfertaController(adminView);
+        adminController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         adminController.initController();
         view.getFrame().setVisible(false);
     }
