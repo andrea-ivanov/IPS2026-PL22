@@ -1,8 +1,8 @@
 package controller.profesor;
 
-import model.ActaDisplayDTO;
-import model.AsignacionDocenteDisplayDTO;
-import model.CalificacionDisplayDTO;
+import model.acta.ActaDisplayDTO;
+import model.acta.CalificacionActaDisplayDTO;
+import model.asignaciondocente.AsignacionDocenteDisplayDTO;
 import repository.ActaRepository;
 import repository.ProfesorRepository;
 import util.SwingUtil;
@@ -149,7 +149,7 @@ public class ProfesorController {
         }
 
         boolean editable = "COORDINADOR".equals(asignacionSelec.getRol()) && "ABIERTA".equals(acta.getEstado());
-        List<CalificacionDisplayDTO> notas = actaRepository.getCalificaciones(acta.getCursoId(),
+        List<CalificacionActaDisplayDTO> notas = actaRepository.getCalificaciones(acta.getCursoId(),
                 acta.getAnioAcademicoId(), acta.getTipoConvocatoria());
 
         DefaultTableModel model = new DefaultTableModel(new String[] { "matriculaId", "alumnoId", "alumno", "dni", "nota" }, 0) {
@@ -158,7 +158,7 @@ public class ProfesorController {
                 return editable && column == COLUMNA_NOTA;
             }
         };
-        for (CalificacionDisplayDTO c : notas)
+        for (CalificacionActaDisplayDTO c : notas)
             model.addRow(new Object[] { c.getMatriculaId(), c.getAlumnoId(), c.getAlumno(), c.getDni(), c.getNota() });
         view.getTabNotas().setModel(model);
         SwingUtil.autoAdjustColumns(view.getTabNotas());
@@ -217,23 +217,6 @@ public class ProfesorController {
         }
     }
 
-    /**
-     * Las actas abiertas cuya convocatoria ya ha terminado las cierra el sistema;
-     * secretaria las ve en su vista (Acta.cierreAutomatico = 1)
-     */
-    private void cerrarActasVencidas() {
-        List<ActaDisplayDTO> cerradas = actaRepository.cerrarActasVencidas(LocalDate.now().toString());
-        if (cerradas.isEmpty())
-            return;
-        StringBuilder sb = new StringBuilder("El sistema ha cerrado " + cerradas.size()
-                + " acta(s) cuya convocatoria ya habia terminado y lo ha notificado a secretaria:\n");
-        for (ActaDisplayDTO a : cerradas)
-            sb.append("\n- ").append(a.getCursoId()).append(" ").append(a.getAnioAcademicoId())
-                    .append(" ").append(a.getTipoConvocatoria()).append(" (fin ").append(a.getFechaFin()).append(")");
-        JOptionPane.showMessageDialog(view.getFrame(), sb.toString(), "Cierre automatico de actas",
-                JOptionPane.INFORMATION_MESSAGE);
-    }
-
     private ActaDisplayDTO getActaSeleccionada() {
         int indice = view.getCbActas().getSelectedIndex();
         if (asignacionSelec == null || indice < 0 || indice >= actas.size())
@@ -244,6 +227,5 @@ public class ProfesorController {
     private void initView() {
         view.getCbProfesores().setModel(SwingUtil.getComboModelFromList(repository.getListaProfesores()));
         view.getFrame().setVisible(true);
-        SwingUtil.exceptionWrapper(() -> cerrarActasVencidas());
     }
 }

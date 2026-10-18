@@ -12,9 +12,9 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import model.ActaDisplayDTO;
-import model.AsignacionDocenteDisplayDTO;
-import model.CalificacionDisplayDTO;
+import model.acta.ActaDisplayDTO;
+import model.asignaciondocente.AsignacionDocenteDisplayDTO;
+import model.acta.CalificacionActaDisplayDTO;
 import util.ApplicationException;
 import util.Database;
 
@@ -71,7 +71,7 @@ public class TestActaRepository {
 	/** El coordinador pone una nota, una nota con coma decimal y un NP */
 	@Test
 	public void testCoordinadorGuardaNotas() {
-		List<CalificacionDisplayDTO> alumnos = getNotas();
+		List<CalificacionActaDisplayDTO> alumnos = getNotas();
 		assertEquals(4, alumnos.size());
 
 		Map<String, String> notas = new LinkedHashMap<>();
@@ -80,7 +80,7 @@ public class TestActaRepository {
 		notas.put(alumnos.get(2).getMatriculaId(), "10");
 		actaRepository.guardarNotas("P004", CURSO, ANIO, CONV, notas);
 
-		List<CalificacionDisplayDTO> guardadas = getNotas();
+		List<CalificacionActaDisplayDTO> guardadas = getNotas();
 		assertAll(() -> assertEquals("7.5", guardadas.get(0).getNota()),
 				() -> assertEquals("NP", guardadas.get(1).getNota()),
 				() -> assertEquals("10", guardadas.get(2).getNota()),
@@ -102,7 +102,7 @@ public class TestActaRepository {
 	/** Las notas que no son numeros entre 0 y 10 se rechazan y no se guarda ninguna del acta */
 	@Test
 	public void testNotasNoValidas() {
-		List<CalificacionDisplayDTO> alumnos = getNotas();
+		List<CalificacionActaDisplayDTO> alumnos = getNotas();
 		for (String mal : new String[] { "11", "-1", "10.01", "abc", "5 puntos" }) {
 			Map<String, String> notas = new LinkedHashMap<>();
 			notas.put(alumnos.get(0).getMatriculaId(), "8");
@@ -117,7 +117,7 @@ public class TestActaRepository {
 	/** Los limites 0 y 10 son validos */
 	@Test
 	public void testNotasLimite() {
-		List<CalificacionDisplayDTO> alumnos = getNotas();
+		List<CalificacionActaDisplayDTO> alumnos = getNotas();
 		Map<String, String> notas = new LinkedHashMap<>();
 		notas.put(alumnos.get(0).getMatriculaId(), "0");
 		notas.put(alumnos.get(1).getMatriculaId(), "10");
@@ -140,7 +140,7 @@ public class TestActaRepository {
 	/** En un acta cerrada solo salen los alumnos con calificacion */
 	@Test
 	public void testConsultaActaCerrada() {
-		List<CalificacionDisplayDTO> notas = actaRepository.getCalificaciones(CURSO, "2025-2026", "ORDINARIA_ENERO");
+		List<CalificacionActaDisplayDTO> notas = actaRepository.getCalificaciones(CURSO, "2025-2026", "ORDINARIA_ENERO");
 		assertEquals(3, notas.size());
 	}
 
@@ -196,7 +196,7 @@ public class TestActaRepository {
 		assertEquals("ABIERTA", getActa("C006", ANIO, "ORDINARIA_JUNIO").getEstado());
 	}
 
-	private List<CalificacionDisplayDTO> getNotas() {
+	private List<CalificacionActaDisplayDTO> getNotas() {
 		return actaRepository.getCalificaciones(CURSO, ANIO, CONV);
 	}
 

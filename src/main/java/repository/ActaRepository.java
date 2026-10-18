@@ -3,8 +3,8 @@ package repository;
 import java.util.List;
 import java.util.Map;
 
-import model.ActaDisplayDTO;
-import model.CalificacionDisplayDTO;
+import model.acta.ActaDisplayDTO;
+import model.acta.CalificacionActaDisplayDTO;
 import util.ApplicationException;
 import util.Database;
 
@@ -29,7 +29,7 @@ public class ActaRepository {
      * (PAGADA, ACTIVA o FINALIZADA); en una cerrada solo los que tienen calificacion.
      * La nota sale vacia si no tiene calificacion y NP si la calificacion no tiene nota
      */
-    public List<CalificacionDisplayDTO> getCalificaciones(String cursoId, String anioAcademicoId, String tipoConvocatoria) {
+    public List<CalificacionActaDisplayDTO> getCalificaciones(String cursoId, String anioAcademicoId, String tipoConvocatoria) {
         String sql = "SELECT mc.matriculaId, al.alumnoId, al.nombre || ' ' || al.apellidos AS alumno, al.dni,"
                 + " CASE WHEN ca.matriculaId IS NULL THEN '' WHEN ca.nota IS NULL THEN 'NP' ELSE CAST(ca.nota AS TEXT) END AS nota"
                 + " FROM MatriculaCurso mc"
@@ -42,7 +42,7 @@ public class ActaRepository {
                 + "   AND mc.estado IN ('PAGADA', 'ACTIVA', 'FINALIZADA')"
                 + "   AND (a.estado = 'ABIERTA' OR ca.matriculaId IS NOT NULL)"
                 + " ORDER BY al.apellidos, al.nombre";
-        return db.executeQueryPojo(CalificacionDisplayDTO.class, sql, cursoId, anioAcademicoId, tipoConvocatoria);
+        return db.executeQueryPojo(CalificacionActaDisplayDTO.class, sql, cursoId, anioAcademicoId, tipoConvocatoria);
     }
 
     /**

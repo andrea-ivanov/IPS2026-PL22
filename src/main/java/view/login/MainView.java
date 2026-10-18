@@ -6,6 +6,8 @@ import java.awt.*;
 public class MainView {
     private JFrame frame;
     private JComboBox<String> cbRoles;
+    private JPanel panelAlumno;
+    private JComboBox<Object> cbAlumnos;
     private JButton btnAcceder;
 
     public MainView() {
@@ -14,22 +16,37 @@ public class MainView {
 
     private void initialize() {
         frame = new JFrame("Sistema de Matriculación - Login");
-        frame.setBounds(100, 100, 450, 200);
+        frame.setBounds(100, 100, 480, 260);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().setLayout(new FlowLayout(FlowLayout.CENTER, 20, 40));
+        frame.getContentPane().setLayout(new BorderLayout(10, 10));
 
         JPanel panelCentral = new JPanel();
-        panelCentral.setLayout(new GridLayout(3, 1, 10, 10));
+        panelCentral.setLayout(new BoxLayout(panelCentral, BoxLayout.Y_AXIS));
+        panelCentral.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
 
-        panelCentral.add(new JLabel("Selecciona tu rol de acceso:", SwingConstants.CENTER));
-
+        // Panel selección de rol
+        JPanel panelRol = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        panelRol.add(new JLabel("Rol de acceso:"));
         cbRoles = new JComboBox<>(new String[] { "Administrador", "Secretario", "Profesor", "Estudiante" });
-        panelCentral.add(cbRoles);
+        panelRol.add(cbRoles);
+        panelCentral.add(panelRol);
 
+        // Panel selección de alumno (visible cuando se selecciona Estudiante)
+        panelAlumno = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        panelAlumno.add(new JLabel("Alumno:"));
+        cbAlumnos = new JComboBox<>();
+        cbAlumnos.setPreferredSize(new Dimension(280, 26));
+        panelAlumno.add(cbAlumnos);
+        panelAlumno.setVisible(false);
+        panelCentral.add(panelAlumno);
+
+        // Panel botón acceder
+        JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         btnAcceder = new JButton("Acceder");
-        panelCentral.add(btnAcceder);
+        panelBoton.add(btnAcceder);
+        panelCentral.add(panelBoton);
 
-        frame.getContentPane().add(panelCentral);
+        frame.getContentPane().add(panelCentral, BorderLayout.CENTER);
     }
 
     public JFrame getFrame() {
@@ -38,6 +55,14 @@ public class MainView {
 
     public JComboBox<String> getCbRoles() {
         return cbRoles;
+    }
+
+    public JPanel getPanelAlumno() {
+        return panelAlumno;
+    }
+
+    public JComboBox<Object> getCbAlumnos() {
+        return cbAlumnos;
     }
 
     public JButton getBtnAcceder() {

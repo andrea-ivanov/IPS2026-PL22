@@ -21,27 +21,27 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		
+
 		<junit.version>6.1.3</junit.version>
-		
+
 		<surefire.version>3.5.6</surefire.version>
-		
+
 		<slf4j.version>2.0.18</slf4j.version>
-		
+
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-engine</artifactId>
-		    <version>${junit.version}</version>
+			<version>${junit.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-		    <groupId>org.junit.jupiter</groupId>
-		    <artifactId>junit-jupiter-params</artifactId>
-		    <version>${junit.version}</version>
-		    <scope>test</scope>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-params</artifactId>
+			<version>${junit.version}</version>
+			<scope>test</scope>
 		</dependency>
 		<!-- lombok, para generar automaticamente getters y setters -->
 		<dependency>
@@ -51,9 +51,9 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
-		  <groupId>io.github.javiertuya</groupId>
-		  <artifactId>visual-assert</artifactId>
-		  <version>2.6.2</version>
+			<groupId>io.github.javiertuya</groupId>
+			<artifactId>visual-assert</artifactId>
+			<version>2.6.2</version>
 		</dependency>
 
 		<!-- drivers de base de datos -->
@@ -64,23 +64,23 @@
 		</dependency>
 		<!-- Logs -->
 		<dependency>
-		    <groupId>org.slf4j</groupId>
-		    <artifactId>slf4j-api</artifactId>
-		    <version>${slf4j.version}</version>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
 		</dependency>
 		<dependency>
-		    <groupId>org.slf4j</groupId>
-		    <artifactId>slf4j-reload4j</artifactId>
-		    <version>${slf4j.version}</version>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-reload4j</artifactId>
+			<version>${slf4j.version}</version>
 		</dependency>
-		
+
 		<!-- UI swing -->
 		<dependency>
 			<groupId>com.miglayout</groupId>
 			<artifactId>miglayout</artifactId>
 			<version>3.7.4</version>
 		</dependency>
-		
+
 		<!-- utilidades varias para manejo de objetos y json -->
 		<dependency>
 			<groupId>commons-dbutils</groupId>
@@ -109,15 +109,23 @@
 				<configuration>
 					<testFailureIgnore>true</testFailureIgnore>
 					<!-- Sets the VM argument line used when unit tests are run under JaCoCo -->
-					<argLine>${surefireArgLine}</argLine>
+					<argLine>-Dfile.encoding=UTF-8 ${surefireArgLine}</argLine>
 					<redirectTestOutputToFile>true</redirectTestOutputToFile>
-					<!--para evitar fallos con openjdk en linux-->
-                	<useSystemClassLoader>false</useSystemClassLoader>
+					<!--para
+					evitar fallos con openjdk en linux-->
+					<useSystemClassLoader>false</useSystemClassLoader>
+					<includes>
+						<include>**/model/**/*Test.java</include>
+					</includes>
+					<excludes>
+						<exclude>**/giis/**</exclude>
+					</excludes>
 				</configuration>
 			</plugin>
 
 			<!-- jacoco plugin for code coverage, 
-			     Ver: https://www.petrikainulainen.net/programming/maven/creating-code-coverage-reports-for-unit-and-integration-tests-with-the-jacoco-maven-plugin/ -->
+			     Ver:
+			https://www.petrikainulainen.net/programming/maven/creating-code-coverage-reports-for-unit-and-integration-tests-with-the-jacoco-maven-plugin/ -->
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
@@ -206,7 +214,7 @@
 					</dependency>
 				</dependencies>
 			</plugin>
-			
+
 			<!-- Generacion de documentacion javadoc (en fase install) -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -214,8 +222,10 @@
 				<version>3.12.0</version>
 				<configuration>
 					<overview>${basedir}/src/main/java/overview.html</overview>
-					<sourcepath>${basedir}/src/main/java;${basedir}/src/test/java;${basedir}/src/it/java</sourcepath>
-					<!-- Desde v3.10, destDir ha sido eliminada, la doc indica que ahora es reportOutputDirectory
+					<sourcepath>
+						${basedir}/src/main/java;${basedir}/src/test/java;${basedir}/src/it/java</sourcepath>
+					<!-- Desde v3.10, destDir ha sido eliminada, la doc indica que ahora es
+					reportOutputDirectory
 					Pero esto tampoco funciona con v3.10, uso directorio por defecto: target/reports/testapidocs -->
 					<quiet>true</quiet>
 					<doclint>none</doclint>
@@ -230,7 +240,7 @@
 					</execution>
 				</executions>
 			</plugin>
-			
+
 		</plugins>
 	</build>
 </project>

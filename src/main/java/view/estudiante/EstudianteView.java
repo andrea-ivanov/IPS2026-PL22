@@ -6,6 +6,7 @@ import java.awt.*;
 public class EstudianteView {
     private JFrame frame;
     private JLabel lblTitle;
+    private JButton btnMisMatriculas;
 
     public EstudianteView() {
         initialize();
@@ -19,7 +20,19 @@ public class EstudianteView {
 
         lblTitle = new JLabel("Bienvenido, Estudiante", SwingConstants.CENTER);
         lblTitle.setFont(new Font("Tahoma", Font.BOLD, 18));
-        frame.getContentPane().add(lblTitle, BorderLayout.CENTER);
+        frame.getContentPane().add(lblTitle, BorderLayout.NORTH);
+
+        JPanel panelBotones = new JPanel();
+        panelBotones.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 50));
+
+        btnMisMatriculas = new JButton("Consultar Mis Matrículas");
+        panelBotones.add(btnMisMatriculas);
+
+        frame.getContentPane().add(panelBotones, BorderLayout.CENTER);
+    }
+
+    public JButton getBtnMisMatriculas() {
+        return btnMisMatriculas;
     }
 
     public JFrame getFrame() {
@@ -27,6 +40,10 @@ public class EstudianteView {
     }
 
     public void setEstudianteInfo(String uo) {
-        lblTitle.setText("Bienvenido, Estudiante (" + uo + ")");
+        if (uo != null && !uo.trim().isEmpty()) {
+            lblTitle.setText("Bienvenido, Estudiante (" + uo + ")");
+        } else {
+            lblTitle.setText("Bienvenido, Estudiante");
+        }
     }
 }

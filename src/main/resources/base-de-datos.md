@@ -669,7 +669,7 @@ También hay una asignatura sin grado ni coordinador (C012) y tres propuestas, u
 
 ### Actas
 
-- **2025-26:** todas cerradas, y una cerrada automáticamente por el sistema (Cálculo, extraordinaria de julio). Excepto la extraordinaria de julio de Ingeniería del Proceso Software (C001), que se carga ABIERTA aunque su convocatoria ya terminó: es la que cierra el sistema la primera vez que se abre la vista del profesor o la de actas de secretaría (HU 35239).
+- **2025-26:** todas cerradas, y una cerrada automáticamente por el sistema (Cálculo, extraordinaria de julio). Excepto la extraordinaria de julio de Ingeniería del Proceso Software (C001), que se carga ABIERTA aunque su convocatoria ya terminó: es la que cierra el sistema al arrancar la aplicación (HU 35239).
 - **2026-27:** abiertas y todavía sin notas.
 
 ---

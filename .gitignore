@@ -1,7 +1,8 @@
 target
 .sonar
 #sqlite databases
-*.db 
+*.db
+*.db-journal
 
 .project
 .classpath
