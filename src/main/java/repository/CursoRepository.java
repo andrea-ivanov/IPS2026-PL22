@@ -1,12 +1,13 @@
 package repository;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import model.curso.Curso;
 import model.curso.CursoDisplayDTO;
+import model.curso.CursoEdicionDTO;
 import model.curso.CursoModel;
 import util.Database;
-import view.admin.TestDataFactory;
 
 /**
  * Repositorio para el acceso a datos de Curso / Asignatura.
@@ -57,14 +58,39 @@ public class CursoRepository {
 							 "WHERE gc.gradoId = ? " +
 							 "ORDER BY gc.anio, c.cursoId";
 				List<CursoDisplayDTO> list = db.executeQueryPojo(CursoDisplayDTO.class, sql, idGrado);
-				if (list != null && !list.isEmpty()) {
+				if (list != null) {
 					return list;
 				}
 			} catch (Exception ex) {
 				System.err.println("Aviso al consultar BD en getCursosPorGrado: " + ex.getMessage());
 			}
 		}
-		return TestDataFactory.crearMockCursosDisplay(idGrado);
+		return new ArrayList<>();
+	}
+
+	public String crearCurso(String gradoId, String nombre, String creditos, String anio, String coordinadorId,
+			String itinerario) {
+		return cursoModel.crearCurso(gradoId, nombre, creditos, anio, coordinadorId, itinerario);
+	}
+
+	public void modificarCurso(String gradoId, String cursoId, String anio, String itinerario, String creditos) {
+		cursoModel.modificarCurso(gradoId, cursoId, anio, itinerario, creditos);
+	}
+
+	public CursoEdicionDTO buscarDatosEdicion(String gradoId, String cursoId) {
+		return cursoModel.buscarDatosEdicion(gradoId, cursoId);
+	}
+
+	public int contarGradosDelCurso(String cursoId) {
+		return cursoModel.contarGradosDelCurso(cursoId);
+	}
+
+	public void validarEliminacion(String gradoId, String cursoId, String anioAcademicoId) {
+		cursoModel.validarEliminacion(gradoId, cursoId, anioAcademicoId);
+	}
+
+	public void eliminarCurso(String gradoId, String cursoId, String anioAcademicoId) {
+		cursoModel.eliminarCurso(gradoId, cursoId, anioAcademicoId);
 	}
 }
 

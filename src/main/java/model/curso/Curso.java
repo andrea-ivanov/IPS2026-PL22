@@ -20,7 +20,7 @@ public class Curso {
 	private Long idCoordinador;
 
 	@Builder.Default
-	private String ano = "2026";
+	private String ano = "1";
 
 	@Builder.Default
 	private String itinerario = "General";
@@ -78,7 +78,7 @@ public class Curso {
 				.ano(ano != null ? ano : "2026")
 				.itinerario(itinerario != null ? itinerario : "General")
 				.profesor(profesor != null ? profesor : "Profesor Coordinador")
-				.estado(estado != null ? estado.name() : "ABIERTO")
+				.estado(estado != null ? estado.name() : "ACTIVO")
 				.idGrado(idGrado != null ? idGrado.toString() : "")
 				.build();
 	}

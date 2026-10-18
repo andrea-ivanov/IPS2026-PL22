@@ -115,28 +115,16 @@ public class MatriculacionRepository {
 	 * Obtiene las matrículas (alumnos) asociadas a un curso específico para la tabla de AdminOfertaView.
 	 */
 	public List<MatriculacionDisplayDTO> getMatriculacionesPorCurso(String idCurso) {
-		if (db != null && idCurso != null) {
-			try {
-				String sql = "SELECT a.alumnoId AS id, " +
-							 "       a.nombre || ' ' || a.apellidos AS nombreAlumno, " +
-							 "       mc.cursoId AS idCurso, " +
-							 "       a.email AS email, " +
-							 "       mc.estado AS estado " +
-							 "FROM MatriculaCurso mc " +
-							 "JOIN Matricula m ON mc.matriculaId = m.matriculaId " +
-							 "JOIN Alumno a ON m.alumnoId = a.alumnoId " +
-							 "WHERE mc.cursoId = ? " +
-							 "ORDER BY a.alumnoId";
-				List<MatriculacionDisplayDTO> list = db.executeQueryPojo(MatriculacionDisplayDTO.class, sql, idCurso);
-				if (list != null && !list.isEmpty()) {
-					return list;
-				}
-			} catch (Exception ex) {
-				System.err.println("Aviso al consultar BD en getMatriculacionesPorCurso: " + ex.getMessage());
-			}
-		}
-		return view.admin.TestDataFactory.crearMockMatriculacionesDisplay(idCurso);
+		return matriculacionModel.getMatriculacionesPorCurso(idCurso);
 	}
+
+	/**
+     * Obtiene las matrículas (alumnos) asociadas a un curso específico
+     * filtradas por el año académico indicado.
+     */
+    public List<MatriculacionDisplayDTO> getMatriculacionesPorCursoYAnoActual(String idCurso, String anioAcademicoId) {
+        return matriculacionModel.getMatriculacionesPorCursoYAnoActual(idCurso, anioAcademicoId);
+    }
 
 	/**
 	 * Obtiene los grados en los que está o ha estado matriculado el estudiante.
