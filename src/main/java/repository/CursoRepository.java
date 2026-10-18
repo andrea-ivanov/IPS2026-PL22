@@ -5,6 +5,7 @@ import java.util.List;
 
 import model.curso.Curso;
 import model.curso.CursoDisplayDTO;
+import model.curso.CursoEdicionDTO;
 import model.curso.CursoModel;
 import util.Database;
 
@@ -70,6 +71,18 @@ public class CursoRepository {
 	public String crearCurso(String gradoId, String nombre, String creditos, String anio, String coordinadorId,
 			String itinerario) {
 		return cursoModel.crearCurso(gradoId, nombre, creditos, anio, coordinadorId, itinerario);
+	}
+
+	public void modificarCurso(String gradoId, String cursoId, String anio, String itinerario, String creditos) {
+		cursoModel.modificarCurso(gradoId, cursoId, anio, itinerario, creditos);
+	}
+
+	public CursoEdicionDTO buscarDatosEdicion(String gradoId, String cursoId) {
+		return cursoModel.buscarDatosEdicion(gradoId, cursoId);
+	}
+
+	public int contarGradosDelCurso(String cursoId) {
+		return cursoModel.contarGradosDelCurso(cursoId);
 	}
 
 	public void validarEliminacion(String gradoId, String cursoId, String anioAcademicoId) {

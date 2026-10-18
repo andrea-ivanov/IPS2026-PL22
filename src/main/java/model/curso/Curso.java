@@ -20,7 +20,7 @@ public class Curso {
 	private Long idCoordinador;
 
 	@Builder.Default
-	private String ano = "2026";
+	private String ano = "1";
 
 	@Builder.Default
 	private String itinerario = "General";

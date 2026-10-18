@@ -12,7 +12,7 @@ import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
 /**
- * Formulario modal para añadir un grado (HU 35223).
+ * Formulario modal para añadir o modificar un grado (HU 35223).
  */
 public class GradoFormDialog {
     private JDialog dialog;
@@ -23,7 +23,11 @@ public class GradoFormDialog {
     private JButton btnCancelar;
 
     public GradoFormDialog(Frame owner) {
-        dialog = new JDialog(owner, "Añadir grado", true);
+        this(owner, "Añadir grado");
+    }
+
+    public GradoFormDialog(Frame owner, String titulo) {
+        dialog = new JDialog(owner, titulo, true);
         dialog.setLayout(new BorderLayout());
 
         JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 10));

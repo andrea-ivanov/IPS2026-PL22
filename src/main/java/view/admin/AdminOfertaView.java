@@ -43,12 +43,14 @@ public class AdminOfertaView {
     private JTable tabCursos;
     private JLabel lblTituloCursos;
     private JButton btnAnadirCurso;
+    private JButton btnModificarGrado;
     private JButton btnEliminarGrado;
 
     // -- MATRICULACION VIEW --
     private JTextField txtFiltroAlumno;
     private JTable tabMatriculacion;
     private JLabel lblTituloMatriculas;
+    private JButton btnModificarCurso;
     private JButton btnEliminarCurso;
 
     // State for back navigation
@@ -161,7 +163,7 @@ public class AdminOfertaView {
         panel.add(new JScrollPane(tabGrados), BorderLayout.CENTER);
 
         JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnAnadirGrado = new JButton("Añadir");
+        btnAnadirGrado = new JButton("Añadir grado");
         accionesPanel.add(btnAnadirGrado);
         panel.add(accionesPanel, BorderLayout.SOUTH);
 
@@ -221,9 +223,11 @@ public class AdminOfertaView {
         panel.add(new JScrollPane(tabCursos), BorderLayout.CENTER);
 
         JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnAnadirCurso = new JButton("Añadir");
-        btnEliminarGrado = new JButton("Eliminar");
+        btnAnadirCurso = new JButton("Añadir curso");
+        btnModificarGrado = new JButton("Modificar grado");
+        btnEliminarGrado = new JButton("Eliminar grado");
         accionesPanel.add(btnAnadirCurso);
+        accionesPanel.add(btnModificarGrado);
         accionesPanel.add(btnEliminarGrado);
         panel.add(accionesPanel, BorderLayout.SOUTH);
 
@@ -264,7 +268,9 @@ public class AdminOfertaView {
         panel.add(new JScrollPane(tabMatriculacion), BorderLayout.CENTER);
 
         JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnEliminarCurso = new JButton("Eliminar");
+        btnModificarCurso = new JButton("Modificar curso");
+        btnEliminarCurso = new JButton("Eliminar curso");
+        accionesPanel.add(btnModificarCurso);
         accionesPanel.add(btnEliminarCurso);
         panel.add(accionesPanel, BorderLayout.SOUTH);
 
@@ -526,8 +532,16 @@ public class AdminOfertaView {
         return btnAnadirCurso;
     }
 
+    public JButton getBtnModificarGrado() {
+        return btnModificarGrado;
+    }
+
     public JButton getBtnEliminarGrado() {
         return btnEliminarGrado;
+    }
+
+    public JButton getBtnModificarCurso() {
+        return btnModificarCurso;
     }
 
     public JButton getBtnEliminarCurso() {

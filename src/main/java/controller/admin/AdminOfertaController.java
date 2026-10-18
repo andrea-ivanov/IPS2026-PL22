@@ -6,6 +6,7 @@ import view.admin.CursoFormDialog;
 import view.admin.GradoFormDialog;
 import model.anoacademico.AnoAcademico;
 import model.curso.CursoDisplayDTO;
+import model.curso.CursoEdicionDTO;
 import model.grado.GradoDisplayDTO;
 import model.matriculacion.MatriculacionDisplayDTO;
 import repository.AlumnoRepository;
@@ -159,10 +160,12 @@ public class AdminOfertaController {
 		configurarFiltrosCursos();
 		configurarFiltrosMatriculacion();
 
-		// 6. Alta y baja de grados y cursos (HU 35223)
+		// 6. Alta, modificación y baja de grados y cursos (HU 35223)
 		view.getBtnAnadirGrado().addActionListener(e -> SwingUtil.exceptionWrapper(this::onAnadirGrado));
 		view.getBtnAnadirCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onAnadirCurso));
+		view.getBtnModificarGrado().addActionListener(e -> SwingUtil.exceptionWrapper(this::onModificarGrado));
 		view.getBtnEliminarGrado().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarGrado));
+		view.getBtnModificarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onModificarCurso));
 		view.getBtnEliminarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarCurso));
 	}
 
@@ -175,9 +178,12 @@ public class AdminOfertaController {
 	private void onAnadirGrado() {
 		GradoFormDialog form = new GradoFormDialog(view.getFrame());
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
-			gradoRepository.crearGrado(form.getTxtNombre().getText(), form.getTxtFacultad().getText(),
-					form.getTxtRama().getText(), getAnioActualId());
+			String nombre = form.getTxtNombre().getText();
+			gradoRepository.crearGrado(nombre, form.getTxtFacultad().getText(), form.getTxtRama().getText(),
+					getAnioActualId());
 			form.cerrar();
+			JOptionPane.showMessageDialog(view.getFrame(), "Grado " + nombre.trim() + " añadido correctamente.",
+					"Añadir grado", JOptionPane.INFORMATION_MESSAGE);
 			cargarGrados();
 		}));
 		form.mostrar();
@@ -185,17 +191,76 @@ public class AdminOfertaController {
 
 	private void onAnadirCurso() {
 		CursoFormDialog form = new CursoFormDialog(view.getFrame());
-		for (Object[] profesor : new ProfesorRepository().getListaProfesores()) {
-			form.getCbCoordinador().addItem(String.valueOf(profesor[0]));
-		}
+		cargarCoordinadores(form);
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
-			cursoRepository.crearCurso(gradoActualId, form.getTxtNombre().getText(), form.getTxtCreditos().getText(),
+			String nombre = form.getTxtNombre().getText();
+			cursoRepository.crearCurso(gradoActualId, nombre, form.getTxtCreditos().getText(),
 					form.getTxtAnio().getText(), extraerProfesorId((String) form.getCbCoordinador().getSelectedItem()),
 					form.getTxtItinerario().getText());
 			form.cerrar();
+			JOptionPane.showMessageDialog(view.getFrame(), "Curso " + nombre.trim() + " añadido correctamente.",
+					"Añadir curso", JOptionPane.INFORMATION_MESSAGE);
 			cargarCursosDeGrado(gradoActualId, gradoActualNombre);
 		}));
 		form.mostrar();
+	}
+
+	private void onModificarGrado() {
+		GradoFormDialog form = new GradoFormDialog(view.getFrame(), "Modificar grado");
+		for (GradoDisplayDTO grado : todosLosGrados) {
+			if (grado.getId() != null && grado.getId().equals(gradoActualId)) {
+				form.getTxtNombre().setText(grado.getNombre());
+				form.getTxtFacultad().setText(grado.getFacultad());
+				form.getTxtRama().setText(grado.getRama());
+			}
+		}
+		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+			String nombre = form.getTxtNombre().getText();
+			gradoRepository.modificarGrado(gradoActualId, nombre, form.getTxtFacultad().getText(),
+					form.getTxtRama().getText());
+			form.cerrar();
+			JOptionPane.showMessageDialog(view.getFrame(), "Grado " + nombre.trim() + " modificado correctamente.",
+					"Modificar grado", JOptionPane.INFORMATION_MESSAGE);
+			gradoActualNombre = nombre.trim();
+			cargarGrados();
+			view.showCursosView(gradoActualNombre);
+		}));
+		form.mostrar();
+	}
+
+	private void onModificarCurso() {
+		CursoEdicionDTO datos = cursoRepository.buscarDatosEdicion(gradoActualId, cursoActualId);
+		CursoFormDialog form = new CursoFormDialog(view.getFrame(), "Modificar curso");
+		cargarCoordinadores(form);
+		form.getCbCoordinador().setSelectedIndex(-1);
+		for (int i = 0; i < form.getCbCoordinador().getItemCount(); i++) {
+			if (extraerProfesorId(form.getCbCoordinador().getItemAt(i)).equals(datos.getCoordinadorId())) {
+				form.getCbCoordinador().setSelectedIndex(i);
+			}
+		}
+		form.getTxtNombre().setText(datos.getNombre());
+		form.getTxtItinerario().setText(datos.getItinerario());
+		form.getTxtCreditos().setText(datos.getCreditos());
+		form.getTxtAnio().setText(datos.getAnio());
+		form.deshabilitarNoEditables();
+		if (cursoRepository.contarGradosDelCurso(cursoActualId) > 1) {
+			form.mostrarAvisoCreditos();
+		}
+		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+			cursoRepository.modificarCurso(gradoActualId, cursoActualId, form.getTxtAnio().getText(),
+					form.getTxtItinerario().getText(), form.getTxtCreditos().getText());
+			form.cerrar();
+			JOptionPane.showMessageDialog(view.getFrame(), "Curso " + cursoActualNombre + " modificado correctamente.",
+					"Modificar curso", JOptionPane.INFORMATION_MESSAGE);
+			cargarCursosDeGrado(gradoActualId, gradoActualNombre);
+		}));
+		form.mostrar();
+	}
+
+	private void cargarCoordinadores(CursoFormDialog form) {
+		for (Object[] profesor : new ProfesorRepository().getListaProfesores()) {
+			form.getCbCoordinador().addItem(String.valueOf(profesor[0]));
+		}
 	}
 
 	private void onEliminarGrado() {

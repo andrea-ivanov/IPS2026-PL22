@@ -65,6 +65,10 @@ public class GradoRepository {
 		return gradoModel.crearGrado(nombre, facultad, ramaConocimiento, anioAcademicoId);
 	}
 
+	public void modificarGrado(String gradoId, String nombre, String facultad, String ramaConocimiento) {
+		gradoModel.modificarGrado(gradoId, nombre, facultad, ramaConocimiento);
+	}
+
 	public void validarEliminacion(String gradoId, String anioAcademicoId) {
 		gradoModel.validarEliminacion(gradoId, anioAcademicoId);
 	}

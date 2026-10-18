@@ -174,6 +174,28 @@ public class GradoModel {
 	}
 
 	/**
+	 * Modifica los datos editables del grado (nombre, facultad y rama), en cualquier estado.
+	 *
+	 * @throws ValidationException Si falta algún dato obligatorio
+	 * @throws ResourceNotFoundException Si no existe el grado
+	 */
+	public void modificarGrado(String gradoId, String nombre, String facultad, String ramaConocimiento) {
+		validarObligatorio(gradoId, "Debe indicarse el grado a modificar");
+		validarObligatorio(nombre, "El nombre del grado es obligatorio");
+		validarObligatorio(facultad, "La facultad del grado es obligatoria");
+		validarObligatorio(ramaConocimiento, "La rama de conocimiento del grado es obligatoria");
+
+		enTransaccion(conn -> {
+			int filas = update(conn, "UPDATE Grado SET nombre = ?, facultad = ?, ramaConocimiento = ? WHERE gradoId = ?",
+					nombre.trim(), facultad.trim(), ramaConocimiento.trim(), gradoId);
+			if (filas == 0) {
+				throw new ResourceNotFoundException("Grado", gradoId);
+			}
+			return null;
+		});
+	}
+
+	/**
 	 * Comprueba que el grado se puede eliminar en el año académico indicado.
 	 *
 	 * @throws ValidationException Si el grado ya está en extinción o alguno de sus cursos tiene matrículas en el año
