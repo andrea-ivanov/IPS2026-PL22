@@ -1,20 +1,25 @@
 package controller.secretario;
 
 import model.MatriculaDisplayDTO;
+import repository.ActaRepository;
 import repository.MatriculaRepository;
+import util.SwingUtil;
 import view.secretario.SecretarioView;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import java.time.LocalDate;
 import java.util.List;
 
 public class SecretarioController {
     private SecretarioView view;
     private MatriculaRepository repository;
+    private ActaRepository actaRepository;
 
     public SecretarioController(SecretarioView view) {
         this.view = view;
         this.repository = new MatriculaRepository(); // Inicializamos el repositorio
+        this.actaRepository = new ActaRepository();
         this.initView();
     }
 
@@ -23,7 +28,8 @@ public class SecretarioController {
         view.getBtnAceptarSolicitud().addActionListener(e -> aceptarSolicitud());
         view.getBtnModificarMatricula().addActionListener(e -> modificarMatricula());
         view.getBtnCancelarMatricula().addActionListener(e -> cancelarMatricula());
-        
+        view.getBtnActasCerradas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> mostrarActasCerradas()));
+
         cargarMatriculasFiltradas();
     }
 
@@ -109,6 +115,30 @@ public class SecretarioController {
             view.showListadoView();
             cargarMatriculasFiltradas(); // Refrescar la tabla
         }
+    }
+
+    /**
+     * Notificaciones de la HU 35239: cada acta que el sistema cerro al terminar la convocatoria
+     * sin que la cerrase el coordinador. Antes se cierran las que hayan vencido desde la ultima vez
+     */
+    private void mostrarActasCerradas() {
+        actaRepository.cerrarActasVencidas(LocalDate.now().toString());
+        List<Object[]> actas = actaRepository.getActasCerradasAutomaticamente();
+        if (actas.isEmpty()) {
+            JOptionPane.showMessageDialog(view.getFrame(), "No hay actas cerradas por el sistema.",
+                    "Actas cerradas por el sistema", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        DefaultTableModel model = new DefaultTableModel(new String[] { "Curso", "Asignatura", "Año", "Convocatoria",
+                "Fecha cierre", "Coordinador" }, 0);
+        for (Object[] a : actas)
+            model.addRow(a);
+        JTable tabla = new JTable(model);
+        tabla.setDefaultEditor(Object.class, null);
+        JScrollPane scroll = new JScrollPane(tabla);
+        scroll.setPreferredSize(new java.awt.Dimension(750, 200));
+        JOptionPane.showMessageDialog(view.getFrame(), scroll,
+                "Actas cerradas por el sistema (" + actas.size() + ")", JOptionPane.WARNING_MESSAGE);
     }
 
     private void initView() {

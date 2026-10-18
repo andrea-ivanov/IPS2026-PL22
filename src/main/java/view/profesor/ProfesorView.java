@@ -17,6 +17,7 @@ public class ProfesorView {
     private JLabel lblEstadoActa;
     private JTable tabNotas;
     private JButton btnGuardarNotas;
+    private JButton btnCerrarActa;
 
     public ProfesorView() {
         initialize();
@@ -86,6 +87,9 @@ public class ProfesorView {
         btnGuardarNotas = new JButton("Guardar Notas");
         btnGuardarNotas.setEnabled(false);
         panelBotonesActa.add(btnGuardarNotas);
+        btnCerrarActa = new JButton("Cerrar Acta");
+        btnCerrarActa.setEnabled(false);
+        panelBotonesActa.add(btnCerrarActa);
         panelActa.add(panelBotonesActa, BorderLayout.SOUTH);
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, scrollPane, panelActa);
@@ -139,5 +143,9 @@ public class ProfesorView {
 
     public JButton getBtnGuardarNotas() {
         return btnGuardarNotas;
+    }
+
+    public JButton getBtnCerrarActa() {
+        return btnCerrarActa;
     }
 }

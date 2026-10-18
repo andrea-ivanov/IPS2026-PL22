@@ -72,6 +72,49 @@ public class ActaRepository {
         }
     }
 
+    /**
+     * Cierre manual del acta por el coordinador (cierreAutomatico = 0).
+     * Una vez cerrada, las notas son de solo lectura
+     */
+    public void cerrarActa(String profesorId, String cursoId, String anioAcademicoId, String tipoConvocatoria, String hoy) {
+        comprobarCoordinador(profesorId, cursoId);
+        comprobarActaAbierta(cursoId, anioAcademicoId, tipoConvocatoria);
+        db.executeUpdate("UPDATE Acta SET estado = 'CERRADA', fechaCierre = ?, cierreAutomatico = 0"
+                + " WHERE cursoId = ? AND anioAcademicoId = ? AND tipoConvocatoria = ?",
+                hoy, cursoId, anioAcademicoId, tipoConvocatoria);
+    }
+
+    /**
+     * Cierra las actas abiertas cuya convocatoria ya ha terminado (cierreAutomatico = 1).
+     * Cada acta cerrada asi es una notificacion para secretaria (ver getActasCerradasAutomaticamente).
+     * Devuelve las actas que ha cerrado
+     */
+    public List<ActaDisplayDTO> cerrarActasVencidas(String hoy) {
+        List<ActaDisplayDTO> vencidas = db.executeQueryPojo(ActaDisplayDTO.class,
+                "SELECT a.cursoId, a.anioAcademicoId, a.tipoConvocatoria, cv.fechaFin, a.estado"
+                        + " FROM Acta a"
+                        + " JOIN Convocatoria cv ON cv.anioAcademicoId = a.anioAcademicoId AND cv.tipoConvocatoria = a.tipoConvocatoria"
+                        + " WHERE a.estado = 'ABIERTA' AND cv.fechaFin < ?", hoy);
+        db.executeUpdate("UPDATE Acta SET estado = 'CERRADA', fechaCierre = ?, cierreAutomatico = 1"
+                + " WHERE estado = 'ABIERTA'"
+                + " AND EXISTS (SELECT 1 FROM Convocatoria cv"
+                + "   WHERE cv.anioAcademicoId = Acta.anioAcademicoId AND cv.tipoConvocatoria = Acta.tipoConvocatoria"
+                + "   AND cv.fechaFin < ?)", hoy, hoy);
+        return vencidas;
+    }
+
+    /** Notificaciones para secretaria: actas que ha cerrado el sistema, de la mas reciente a la mas antigua */
+    public List<Object[]> getActasCerradasAutomaticamente() {
+        String sql = "SELECT a.cursoId, c.nombre, a.anioAcademicoId, a.tipoConvocatoria, a.fechaCierre,"
+                + " COALESCE(p.nombre || ' ' || p.apellidos, '(sin coordinador)')"
+                + " FROM Acta a"
+                + " JOIN Curso c ON c.cursoId = a.cursoId"
+                + " LEFT JOIN Profesor p ON p.profesorId = c.coordinadorId"
+                + " WHERE a.cierreAutomatico = 1"
+                + " ORDER BY a.fechaCierre DESC, a.cursoId";
+        return db.executeQueryArray(sql);
+    }
+
     /** Convierte el texto de la tabla en nota: null si es vacio o NP; admite coma o punto decimal */
     private Double parseNota(String matriculaId, String texto) {
         texto = texto == null ? "" : texto.trim();

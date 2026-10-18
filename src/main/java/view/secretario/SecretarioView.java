@@ -12,7 +12,8 @@ public class SecretarioView {
     // Top components
     private JLabel lblTituloCabecera;
     private JButton btnVolver;
-    private JButton btnCargarMatriculas; 
+    private JButton btnCargarMatriculas;
+    private JButton btnActasCerradas;
     
     // Card Layout
     private JPanel cardsPanel;
@@ -53,6 +54,8 @@ public class SecretarioView {
         lblTituloCabecera.setFont(new Font("Tahoma", Font.BOLD, 16));
         
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnActasCerradas = new JButton("Actas cerradas por el sistema");
+        buttonsPanel.add(btnActasCerradas);
         btnVolver = new JButton("Volver al Listado");
         btnVolver.setEnabled(false);
         buttonsPanel.add(btnVolver);
@@ -270,6 +273,7 @@ public class SecretarioView {
     // --- GETTERS ---
     public JFrame getFrame() { return frame; }
     public JButton getBtnCargarMatriculas() { return btnCargarMatriculas; }
+    public JButton getBtnActasCerradas() { return btnActasCerradas; }
     public JTable getTabMatriculas() { return tabMatriculas; }
     public JComboBox<String> getCbFiltroEstado() { return cbFiltroEstado; }
     

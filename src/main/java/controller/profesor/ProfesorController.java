@@ -12,6 +12,7 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -53,6 +54,7 @@ public class ProfesorController {
         });
         view.getCbActas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarNotas()));
         view.getBtnGuardarNotas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> guardarNotas()));
+        view.getBtnCerrarActa().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cerrarActa()));
     }
 
     private void cargarAsignaciones() {
@@ -142,6 +144,7 @@ public class ProfesorController {
             view.getTabNotas().setModel(new DefaultTableModel());
             view.getLblEstadoActa().setText(asignacionSelec == null ? "Selecciona una asignacion" : "La asignatura no tiene actas");
             view.getBtnGuardarNotas().setEnabled(false);
+            view.getBtnCerrarActa().setEnabled(false);
             return;
         }
 
@@ -167,6 +170,7 @@ public class ProfesorController {
         else
             view.getLblEstadoActa().setText("Acta CERRADA: solo lectura");
         view.getBtnGuardarNotas().setEnabled(editable);
+        view.getBtnCerrarActa().setEnabled(editable);
     }
 
     private void guardarNotas() {
@@ -191,6 +195,45 @@ public class ProfesorController {
         cargarNotas();
     }
 
+    private void cerrarActa() {
+        ActaDisplayDTO acta = getActaSeleccionada();
+        if (acta == null)
+            return;
+        int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
+                "¿Estás seguro de que deseas cerrar el acta de " + asignacionSelec.getCurso() + " ("
+                        + acta.getAnioAcademicoId() + " - " + acta.getTipoConvocatoria() + ")?\n"
+                        + "Una vez cerrada, las notas no se podrán modificar.",
+                "Cerrar Acta", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            actaRepository.cerrarActa(profesorId, acta.getCursoId(), acta.getAnioAcademicoId(),
+                    acta.getTipoConvocatoria(), LocalDate.now().toString());
+
+            JOptionPane.showMessageDialog(view.getFrame(), "Acta cerrada correctamente.", "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE);
+            int indice = view.getCbActas().getSelectedIndex();
+            cargarActas(); // recarga las actas para que el combo muestre el nuevo estado
+            view.getCbActas().setSelectedIndex(indice);
+        }
+    }
+
+    /**
+     * Las actas abiertas cuya convocatoria ya ha terminado las cierra el sistema;
+     * secretaria las ve en su vista (Acta.cierreAutomatico = 1)
+     */
+    private void cerrarActasVencidas() {
+        List<ActaDisplayDTO> cerradas = actaRepository.cerrarActasVencidas(LocalDate.now().toString());
+        if (cerradas.isEmpty())
+            return;
+        StringBuilder sb = new StringBuilder("El sistema ha cerrado " + cerradas.size()
+                + " acta(s) cuya convocatoria ya habia terminado y lo ha notificado a secretaria:\n");
+        for (ActaDisplayDTO a : cerradas)
+            sb.append("\n- ").append(a.getCursoId()).append(" ").append(a.getAnioAcademicoId())
+                    .append(" ").append(a.getTipoConvocatoria()).append(" (fin ").append(a.getFechaFin()).append(")");
+        JOptionPane.showMessageDialog(view.getFrame(), sb.toString(), "Cierre automatico de actas",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private ActaDisplayDTO getActaSeleccionada() {
         int indice = view.getCbActas().getSelectedIndex();
         if (asignacionSelec == null || indice < 0 || indice >= actas.size())
@@ -201,5 +244,6 @@ public class ProfesorController {
     private void initView() {
         view.getCbProfesores().setModel(SwingUtil.getComboModelFromList(repository.getListaProfesores()));
         view.getFrame().setVisible(true);
+        SwingUtil.exceptionWrapper(() -> cerrarActasVencidas());
     }
 }

@@ -392,6 +392,10 @@ INSERT INTO Acta VALUES ('C003','2025-2026','EXTRAORDINARIA_JULIO','CERRADA','20
 
 INSERT INTO Acta VALUES ('C007','2025-2026','ORDINARIA_ENERO','CERRADA','2026-02-04',0);
 
+-- Acta que el coordinador (P001) no cerro: la convocatoria ya termino, asi que el sistema la cierra
+-- al abrir la vista del profesor o la de actas de secretaria (HU 35239)
+INSERT INTO Acta VALUES ('C001','2025-2026','EXTRAORDINARIA_JULIO','ABIERTA',NULL,0);
+
 
 
 -- AL001 supera 12 creditos (Calculo en extraordinaria): cumple permanencia
