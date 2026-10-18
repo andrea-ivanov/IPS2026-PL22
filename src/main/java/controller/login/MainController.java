@@ -134,6 +134,7 @@ public class MainController {
     private void abrirVistaProfesor() {
         ProfesorView profView = new ProfesorView();
         ProfesorController profController = new ProfesorController(profView);
+        profController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         profController.initController();
         view.getFrame().setVisible(false);
     }

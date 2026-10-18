@@ -6,11 +6,14 @@ import model.acta.CalificacionActaDisplayDTO;
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
 import repository.ActaRepository;
 import repository.ProfesorRepository;
+import util.ComboBuscable;
 import util.SwingUtil;
+import util.exception.ValidationException;
 import view.profesor.ProfesorView;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
+import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import java.time.LocalDate;
@@ -35,6 +38,8 @@ public class ProfesorController {
     // asignacion seleccionada y sus actas, en el mismo orden que el combo
     private AsignacionDocenteDisplayDTO asignacionSelec;
     private List<ActaDisplayDTO> actas = new ArrayList<>();
+    // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
+    private Runnable onVolverInicio = () -> { };
 
     public ProfesorController(ProfesorView view) {
         this.view = view;
@@ -43,8 +48,16 @@ public class ProfesorController {
         this.initView();
     }
 
+    public void setOnVolverInicio(Runnable onVolverInicio) {
+        this.onVolverInicio = onVolverInicio;
+    }
+
     public void initController() {
+        view.getBtnVolverInicio().addActionListener(e -> volverInicio());
         view.getBtnCargarAsignaciones().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarAsignaciones()));
+        // Enter en el combo de profesores (despues de escribir o elegir) tambien carga sus asignaciones
+        ((JTextField) view.getCbProfesores().getEditor().getEditorComponent())
+                .addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarAsignaciones()));
         view.getCbFiltroGrado().addActionListener(e -> aplicarFiltros());
         view.getCbFiltroCurso().addActionListener(e -> aplicarFiltros());
         view.getCbFiltroTipo().addActionListener(e -> aplicarFiltros());
@@ -58,10 +71,18 @@ public class ProfesorController {
         view.getBtnCerrarActa().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cerrarActa()));
     }
 
+    /** Cierra la ventana del profesor y vuelve a la pantalla de selección de rol. */
+    private void volverInicio() {
+        view.getFrame().dispose();
+        onVolverInicio.run();
+    }
+
     private void cargarAsignaciones() {
-        Object seleccionado = view.getCbProfesores().getSelectedItem();
+        // en el combo se puede escribir: solo vale si el texto corresponde a un profesor de la lista
+        Object seleccionado = ComboBuscable.getSeleccion(view.getCbProfesores());
         if (seleccionado == null)
-            return;
+            throw new ValidationException("Selecciona un profesor de la lista");
+        view.getCbProfesores().setSelectedItem(seleccionado);
         // el item del combo es "P001 - Nombre Apellidos": el id es lo que va antes del separador
         profesorId = seleccionado.toString().split(" - ")[0];
 
@@ -227,6 +248,7 @@ public class ProfesorController {
 
     private void initView() {
         view.getCbProfesores().setModel(SwingUtil.getComboModelFromList(repository.getListaProfesores()));
+        ComboBuscable.hacerBuscable(view.getCbProfesores());
         view.getFrame().setVisible(true);
     }
 }

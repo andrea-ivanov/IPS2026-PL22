@@ -8,6 +8,7 @@ public class ProfesorView {
     private JFrame frame;
     private JComboBox<Object> cbProfesores;
     private JButton btnCargarAsignaciones;
+    private JButton btnVolverInicio;
     private JComboBox<String> cbFiltroGrado;
     private JComboBox<String> cbFiltroCurso;
     private JComboBox<String> cbFiltroTipo;
@@ -31,13 +32,23 @@ public class ProfesorView {
 
         JPanel panelNorte = new JPanel(new GridLayout(2, 1));
 
-        JPanel panelProfesor = new JPanel();
-        panelProfesor.add(new JLabel("Profesor:"));
+        JPanel panelProfesor = new JPanel(new BorderLayout());
+        JPanel panelSelecProfesor = new JPanel();
+        panelSelecProfesor.add(new JLabel("Profesor:"));
+        // se puede escribir para buscar (ComboBuscable, lo configura el controlador al cargar los profesores)
         cbProfesores = new JComboBox<>();
-        panelProfesor.add(cbProfesores);
+        cbProfesores.setPreferredSize(new Dimension(280, 26));
+        panelSelecProfesor.add(cbProfesores);
 
         btnCargarAsignaciones = new JButton("Ver Asignaciones");
-        panelProfesor.add(btnCargarAsignaciones);
+        panelSelecProfesor.add(btnCargarAsignaciones);
+        panelProfesor.add(panelSelecProfesor, BorderLayout.CENTER);
+
+        JPanel panelVolver = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnVolverInicio = new JButton("Volver al inicio");
+        btnVolverInicio.setToolTipText("Volver a la pantalla de selección de rol");
+        panelVolver.add(btnVolverInicio);
+        panelProfesor.add(panelVolver, BorderLayout.EAST);
         panelNorte.add(panelProfesor);
 
         // Filtros: grado y curso se rellenan con las asignaciones del profesor al cargarlas
@@ -107,6 +118,10 @@ public class ProfesorView {
 
     public JButton getBtnCargarAsignaciones() {
         return btnCargarAsignaciones;
+    }
+
+    public JButton getBtnVolverInicio() {
+        return btnVolverInicio;
     }
 
     public JComboBox<String> getCbFiltroGrado() {
