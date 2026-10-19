@@ -5,8 +5,6 @@ import view.estudiante.EstudianteView;
 import view.estudiante.MisMatriculasView;
 import view.estudiante.SolicitudMatriculaView;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 /**
@@ -107,13 +105,13 @@ public class EstudianteController {
                     matriculacionModel,
                     uo,
                     () -> {
-                        // Al volver al menú principal, refrescamos también la vista de matrículas si ya estaba creada
+                        // Al volver al menú principal, refrescamos también la vista de matrículas si ya
+                        // estaba creada
                         if (misMatriculasController != null) {
                             misMatriculasController.refrescarTodo();
                         }
                         view.mostrarMenu();
-                    }
-            );
+                    });
             solicitudMatriculaController.initController();
 
             view.getPanelSolicitudContainer().removeAll();

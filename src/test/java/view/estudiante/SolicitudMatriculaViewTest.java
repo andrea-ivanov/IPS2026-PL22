@@ -15,11 +15,11 @@ import controller.estudiante.SolicitudMatriculaController;
 import model.fixtures.BaseModelTest;
 import model.matriculacion.MatriculacionModel;
 import model.matriculacion.OfertaCursoDTO;
-import model.matriculacion.OfertaGradoDTO;
 import model.matriculacion.ResumenSolicitudDTO;
 
 /**
- * Pruebas unitarias para la Vista y Controlador de Solicitud de Matrícula (HU 35235 / Fases 3 y 4).
+ * Pruebas unitarias para la Vista y Controlador de Solicitud de Matrícula (HU
+ * 35235 / Fases 3 y 4).
  */
 public class SolicitudMatriculaViewTest extends BaseModelTest {
     private SolicitudMatriculaView view;
@@ -115,5 +115,45 @@ public class SolicitudMatriculaViewTest extends BaseModelTest {
         view.getBtnVolverMenuDesdePaso1().doClick();
         assertTrue(menuVuelto.get(), "Debe haberse invocado el callback para regresar al menú");
     }
-}
 
+    @Test
+    @DisplayName("Fase 4: Cálculo en vivo de créditos e importe al seleccionar asignaturas")
+    public void testCalculoEnVivoCreditosEImporte() {
+        // Asegurar que hay al menos un curso en el modelo de tabla
+        if (view.getModelCursos().getRowCount() > 0) {
+            // Marcar la primera fila
+            view.getModelCursos().setValueAt(Boolean.TRUE, 0, 0);
+
+            List<OfertaCursoDTO> seleccionadas = view.getAsignaturasSeleccionadas();
+            assertFalse(seleccionadas.isEmpty(), "Debe haber al menos 1 asignatura seleccionada");
+
+            double creds = (Double) view.getModelCursos().getValueAt(0, 5);
+            assertEquals(creds, seleccionadas.get(0).getCreditos(), 0.001);
+            assertEquals(creds * 20.0, seleccionadas.get(0).getPrecio(), 0.001);
+        }
+    }
+
+    @Test
+    @DisplayName("Fase 4: Bloqueo de selección si la asignatura tiene 6 convocatorias consumidas")
+    public void testBloqueoConvocatoriasEnTabla() {
+        // Añadir una fila sintética con 6 convocatorias
+        view.getModelCursos().addRow(new Object[] {
+                Boolean.FALSE,
+                "TEST99",
+                "Asignatura Agotada",
+                1,
+                "General",
+                6.0,
+                6, // 6 convocatorias
+                "120.00 €"
+        });
+
+        int rowIndex = view.getModelCursos().getRowCount() - 1;
+        // Intentar marcarla
+        view.getModelCursos().setValueAt(Boolean.TRUE, rowIndex, 0);
+
+        // El controlador debe desmarcarla inmediatamente
+        Boolean checkFinal = (Boolean) view.getModelCursos().getValueAt(rowIndex, 0);
+        assertFalse(checkFinal, "Una asignatura con 6 convocatorias consumidas no debe poder quedar seleccionada");
+    }
+}

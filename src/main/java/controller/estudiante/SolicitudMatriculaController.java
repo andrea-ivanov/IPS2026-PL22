@@ -4,7 +4,6 @@ import model.matriculacion.MatriculacionModel;
 import model.matriculacion.OfertaCursoDTO;
 import model.matriculacion.OfertaGradoDTO;
 import model.matriculacion.ResumenSolicitudDTO;
-import util.SwingUtil;
 import util.exception.ValidationException;
 import view.estudiante.SolicitudMatriculaView;
 
@@ -16,7 +15,8 @@ import java.util.List;
 
 /**
  * Controlador para la Solicitud de Matrícula (HU 35235 / Fase 4).
- * Coordina la lógica de negocio, validaciones en tiempo real y persistencia transaccional.
+ * Coordina la lógica de negocio, validaciones en tiempo real y persistencia
+ * transaccional.
  */
 public class SolicitudMatriculaController {
     private final SolicitudMatriculaView view;
@@ -27,7 +27,8 @@ public class SolicitudMatriculaController {
     private boolean actualizandoTabla = false;
     private ResumenSolicitudDTO resumenActual;
 
-    public SolicitudMatriculaController(SolicitudMatriculaView view, MatriculacionModel model, String alumnoId, Runnable onVolverMenu) {
+    public SolicitudMatriculaController(SolicitudMatriculaView view, MatriculacionModel model, String alumnoId,
+            Runnable onVolverMenu) {
         this.view = view;
         this.model = model != null ? model : new MatriculacionModel();
         this.alumnoId = alumnoId;
@@ -41,7 +42,8 @@ public class SolicitudMatriculaController {
         // 2. Escuchar cambio de grado para recargar dinámicamente las asignaturas
         view.getCbGrados().addActionListener(e -> cargarAsignaturasDelGradoSeleccionado());
 
-        // 3. Listener en la tabla para validación de convocatorias y cálculo en tiempo real
+        // 3. Listener en la tabla para validación de convocatorias y cálculo en tiempo
+        // real
         view.getModelCursos().addTableModelListener(this::onTablaCursosModificada);
 
         // 4. Navegación Paso 1 -> Menú Principal
@@ -51,7 +53,8 @@ public class SolicitudMatriculaController {
             }
         });
 
-        // 5. Navegación Paso 1 -> Paso 2 (Continuar al Resumen con validaciones de negocio)
+        // 5. Navegación Paso 1 -> Paso 2 (Continuar al Resumen con validaciones de
+        // negocio)
         view.getBtnContinuarPaso2().addActionListener(e -> validarYContinuarAlResumen());
 
         // 6. Navegación Paso 2 -> Paso 1 (Modificar Asignaturas)
@@ -146,7 +149,8 @@ public class SolicitudMatriculaController {
                 actualizandoTabla = false;
                 JOptionPane.showMessageDialog(view.getFrame(),
                         "No es posible seleccionar la asignatura '" + nombre + "' (" + cursoId + "):\n" +
-                                "Ha consumido el límite máximo reglamentario de " + MatriculacionModel.MAX_CONVOCATORIAS + " convocatorias evaluadas.",
+                                "Ha consumido el límite máximo reglamentario de " + MatriculacionModel.MAX_CONVOCATORIAS
+                                + " convocatorias evaluadas.",
                         "Límite de Convocatorias Agotado",
                         JOptionPane.WARNING_MESSAGE);
                 recalcularTotales();
@@ -196,7 +200,8 @@ public class SolicitudMatriculaController {
             cursoIds.add(c.getCursoId());
         }
 
-        // Ejecutar validaciones integrales de negocio antes de permitir avanzar al resumen
+        // Ejecutar validaciones integrales de negocio antes de permitir avanzar al
+        // resumen
         try {
             model.validarSolicitudMatricula(alumnoId, grado.getGradoId(), anioAcademicoId, cursoIds);
         } catch (ValidationException ex) {
@@ -294,4 +299,3 @@ public class SolicitudMatriculaController {
         return view;
     }
 }
-
