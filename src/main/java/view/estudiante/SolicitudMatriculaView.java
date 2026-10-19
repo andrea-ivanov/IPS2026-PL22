@@ -3,6 +3,7 @@ package view.estudiante;
 import model.matriculacion.OfertaCursoDTO;
 import model.matriculacion.OfertaGradoDTO;
 import model.matriculacion.ResumenSolicitudDTO;
+import view.comun.Estilo;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
@@ -313,15 +314,13 @@ public class SolicitudMatriculaView {
         panelSur.setOpaque(false);
         panelSur.setBorder(new EmptyBorder(6, 0, 0, 0));
 
-        btnVolverMenuDesdePaso1 = new JButton("Volver al Menú");
+        btnVolverMenuDesdePaso1 = Estilo.estilizarSecundario(new JButton("Volver al Menú"));
         btnVolverMenuDesdePaso1.setFont(new Font("Tahoma", Font.BOLD, 12));
         btnVolverMenuDesdePaso1.setPreferredSize(new Dimension(150, 34));
 
-        btnContinuarPaso2 = new JButton("Continuar al Resumen");
+        btnContinuarPaso2 = Estilo.estilizarPrimario(new JButton("Continuar al Resumen"));
         btnContinuarPaso2.setFont(new Font("Tahoma", Font.BOLD, 13));
         btnContinuarPaso2.setPreferredSize(new Dimension(220, 36));
-        btnContinuarPaso2.setBackground(new Color(13, 110, 253));
-        btnContinuarPaso2.setForeground(Color.WHITE);
 
         panelSur.add(btnVolverMenuDesdePaso1, BorderLayout.WEST);
         panelSur.add(btnContinuarPaso2, BorderLayout.EAST);
@@ -409,14 +408,13 @@ public class SolicitudMatriculaView {
         panelSur.setOpaque(false);
         panelSur.setBorder(new EmptyBorder(6, 0, 0, 0));
 
-        btnModificarAsignaturas = new JButton("<  Modificar Asignaturas");
+        btnModificarAsignaturas = Estilo.estilizarSecundario(new JButton("<  Modificar Asignaturas"));
         btnModificarAsignaturas.setFont(new Font("Tahoma", Font.PLAIN, 12));
         btnModificarAsignaturas.setPreferredSize(new Dimension(190, 34));
 
-        btnContinuarPaso3 = new JButton("Proceder al Pago  >");
+        btnContinuarPaso3 = Estilo.estilizarPrimario(new JButton("Proceder al Pago  >"));
         btnContinuarPaso3.setFont(new Font("Tahoma", Font.BOLD, 13));
         btnContinuarPaso3.setPreferredSize(new Dimension(200, 36));
-        btnContinuarPaso3.setForeground(Color.WHITE);
 
         panelSur.add(btnModificarAsignaturas, BorderLayout.WEST);
         panelSur.add(btnContinuarPaso3, BorderLayout.EAST);
@@ -509,14 +507,13 @@ public class SolicitudMatriculaView {
         panelSur.setOpaque(false);
         panelSur.setBorder(new EmptyBorder(6, 0, 0, 0));
 
-        btnVolverPaso2 = new JButton("<  Volver al Resumen");
+        btnVolverPaso2 = Estilo.estilizarSecundario(new JButton("<  Volver al Resumen"));
         btnVolverPaso2.setFont(new Font("Tahoma", Font.PLAIN, 12));
         btnVolverPaso2.setPreferredSize(new Dimension(170, 34));
 
-        btnConfirmarMatricula = new JButton("Confirmar Solicitud de Matrícula");
+        btnConfirmarMatricula = Estilo.estilizarExito(new JButton("Confirmar Solicitud de Matrícula"));
         btnConfirmarMatricula.setFont(new Font("Tahoma", Font.BOLD, 14));
         btnConfirmarMatricula.setPreferredSize(new Dimension(280, 40));
-        btnConfirmarMatricula.setBackground(new Color(25, 135, 84));
 
         panelSur.add(btnVolverPaso2, BorderLayout.WEST);
         panelSur.add(btnConfirmarMatricula, BorderLayout.EAST);

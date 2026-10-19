@@ -31,7 +31,8 @@ public class AlumnoRepository {
 	}
 
     /**
-     * Lista de alumnos para el combo del login con formato "UOxxxxx - Nombre"
+     * Lista de alumnos para el combo del login con formato "UOxxxxx - Nombre Apellidos"
+     * (con los apellidos se distinguen los alumnos que se llaman igual)
      */
     public List<Object[]> getListaAlumnos() {
         try {
@@ -39,7 +40,7 @@ public class AlumnoRepository {
                     + "  WHEN alumnoId LIKE 'AL%' THEN 'UO' || SUBSTR(alumnoId, 3) "
                     + "  WHEN alumnoId LIKE 'UO%' THEN alumnoId "
                     + "  ELSE 'UO' || alumnoId "
-                    + "END || ' - ' || nombre FROM Alumno ORDER BY alumnoId";
+                    + "END || ' - ' || nombre || ' ' || apellidos FROM Alumno ORDER BY alumnoId";
             List<Object[]> rows = db.executeQueryArray(sql);
             if (rows != null && !rows.isEmpty()) {
                 return rows;

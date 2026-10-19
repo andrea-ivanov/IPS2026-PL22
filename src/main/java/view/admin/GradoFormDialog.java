@@ -1,6 +1,7 @@
 package view.admin;
 
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.GridLayout;
 
@@ -10,6 +11,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
+
+import view.comun.Estilo;
 
 /**
  * Formulario modal para añadir o modificar un grado (HU 35223).
@@ -45,15 +48,16 @@ public class GradoFormDialog {
         txtRama = new JTextField(20);
         formPanel.add(txtRama);
 
-        JPanel btnPanel = new JPanel();
-        btnGuardar = new JButton("Guardar");
-        btnCancelar = new JButton("Cancelar");
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 10));
+        btnGuardar = Estilo.botonPrimario("Guardar");
+        btnCancelar = Estilo.botonSecundario("Cancelar");
         btnCancelar.addActionListener(e -> cerrar());
         btnPanel.add(btnGuardar);
         btnPanel.add(btnCancelar);
 
         dialog.add(formPanel, BorderLayout.CENTER);
         dialog.add(btnPanel, BorderLayout.SOUTH);
+        Estilo.estilizarFormulario(dialog, formPanel, btnPanel);
         dialog.pack();
         dialog.setLocationRelativeTo(owner);
     }

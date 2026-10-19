@@ -1,6 +1,6 @@
 # Base de datos IPS — Cómo funciona
 
-Documentación del modelo de datos tal y como está en `schema.sql` y `data.sql` (versión del 9 de octubre de 2026). Recoge las decisiones tomadas con el PO durante el refinamiento.
+Documentación del modelo de datos tal y como está en `schema.sql` y `data.sql` (versión del 19 de octubre de 2026). Recoge las decisiones tomadas con el PO durante el refinamiento.
 
 ## Índice
 
@@ -87,7 +87,7 @@ erDiagram
 - **Motor:** SQLite.
 - **Nombres:** tablas en PascalCase y columnas en camelCase, sin subrayados. Es el convenio de Java que exige DbUtils para mapear columnas a los atributos de los DTO.
 - **Restricciones:** todas tienen nombre, con prefijo `pk_`, `fk_`, `uq_` o `ck_`. Estos nombres sí llevan subrayado porque no se mapean a Java.
-- **Claves primarias:** son texto con prefijo legible (`AL001`, `G001`, `M001`…). En entidades débiles y relaciones, la clave es compuesta.
+- **Claves primarias:** son texto con prefijo legible (`AL0001`, `G001`, `M00001`, `PR001`…). En entidades débiles y relaciones, la clave es compuesta.
 - **Fechas:** texto en formato ISO, `'AAAA-MM-DD'`. Se comparan correctamente como texto.
 - **Booleanos:** `INT` con valor 0 o 1, controlado con `CHECK`.
 - **Valores enumerados** (estados, tipos, motivos): texto en MAYÚSCULAS, controlado con `CHECK ... IN (...)`.
@@ -106,7 +106,7 @@ En cada tabla, **PK** indica clave primaria, **FK** clave foránea y **Nulo** si
 
 | Columna | Tipo | Nulo | Descripción |
 |---|---|---|---|
-| alumnoId | VARCHAR(10) | no | **PK**. Por ejemplo, `AL001`. |
+| alumnoId | VARCHAR(10) | no | **PK**. Por ejemplo, `AL0001`. |
 | dni | VARCHAR(9) | no | Único. |
 | nombre | VARCHAR(50) | no | |
 | apellidos | VARCHAR(100) | no | |
@@ -308,6 +308,8 @@ Una nota por cada asignatura matriculada y cada convocatoria.
 
 Como `cursoId` es compartido, el acta tiene que ser de la misma asignatura que la matrícula.
 
+Al cerrar un acta, los alumnos que entran en ella y no tienen nota reciben una calificación con `nota` nula (NP), que no consume convocatoria (ver 5.4).
+
 ---
 
 ## 5. Ciclos de vida y estados
@@ -364,12 +366,19 @@ Además:
 
 `ABIERTA` → `CERRADA`
 
-- La cierra el coordinador (`cierreAutomatico = 0`), o el sistema al pasar la `fechaFin` de la convocatoria (`cierreAutomatico = 1`).
+- **Cierre manual:** lo hace el coordinador desde la vista del profesor, con confirmación (`cierreAutomatico = 0`).
+- **Cierre automático:** lo hace el sistema al arrancar la aplicación (`MainController`) y al recargar la base de datos, con todas las actas ABIERTAS cuya convocatoria ya terminó (`Convocatoria.fechaFin` anterior a hoy). Quedan con `cierreAutomatico = 1`, y cada una es un aviso para secretaría.
+- **En los dos cierres**, los alumnos del acta que no tienen nota quedan como no presentados (NP), en la misma transacción. Así el acta cerrada no pierde alumnos.
 - Mientras está CERRADA no se pueden añadir ni modificar notas.
+- **Quién entra en un acta:** los matriculados en la asignatura ese año (PAGADA, ACTIVA o FINALIZADA) que no la han aprobado ya en una convocatoria anterior del mismo año. Por ejemplo, quien aprueba en enero no aparece en junio ni en julio. En un acta cerrada solo salen los que tienen calificación.
 
 ### 5.5 Propuesta de curso
 
-`PENDIENTE` → `ACEPTADA` o `RECHAZADA`. De momento solo se usa el estado PENDIENTE.
+`PENDIENTE` → `ACEPTADA` o `RECHAZADA`.
+
+- El profesor crea las propuestas como `PENDIENTE`, con la fecha actual (HU 35243).
+- Aceptarlas o rechazarlas queda para un sprint futuro (ver 11).
+- El nombre de una propuesta `RECHAZADA` se puede volver a proponer en el mismo grado.
 
 ---
 
@@ -419,6 +428,23 @@ Los hitos que ve el alumno son los dos mínimos de la permanencia:
 - Los asigna el **secretario**, después de la matrícula y solo a asignaturas PAGADAS o ACTIVAS.
 - No se puede superar `Grupo.capacidad`. Solo ocupan plaza las asignaturas PAGADAS o ACTIVAS del año en curso.
 
+### 6.8 Actas y notas (HU 35239)
+
+- El rol del profesor en una asignatura no se guarda: es **COORDINADOR** si es `Curso.coordinadorId` y **DOCENTE** si solo imparte algún grupo.
+- Solo el coordinador pone notas y cierra el acta, y solo si está ABIERTA. El docente solo consulta.
+- La nota es un número entre 0 y 10 (se admite coma o punto decimal), `NP` (calificación con nota nula) o vacía (sin calificar: se borra la calificación).
+- Se validan todas las notas antes de guardar y se guardan en una única transacción: si una no es válida, no se guarda ninguna.
+
+### 6.9 Propuestas de asignaturas (HU 35243)
+
+- El profesor solo ve y elige los grados en los que imparte docencia (algún grupo de una asignatura del grado). Salen también los no vigentes, con su estado, para poder explicar por qué se rechazan.
+- Solo se admiten grados **VIGENTES**.
+- Si se eligen varios grados se crea **una propuesta por grado**, y se guardan **todas o ninguna** (una transacción).
+- Datos obligatorios: nombre (como mucho 150 caracteres), año (entero de 1 a 6) y créditos (mayores que 0, menores que 1000 y con un decimal como mucho, por `DECIMAL(4,1)`). La descripción es opcional (como mucho 1000).
+- El nombre **no puede repetirse en el grado**, sin distinguir mayúsculas ni espacios de los extremos, ni como asignatura del grado ni como propuesta no rechazada.
+- El identificador es `PR` seguido del siguiente número (`PR031` después de `PR030`).
+- La vista valida los datos **antes** de pedir confirmación, y guarda después de confirmar.
+
 ---
 
 ## 7. Qué garantiza la base de datos y qué el modelo
@@ -448,7 +474,8 @@ Los hitos que ve el alumno son los dos mínimos de la permanencia:
 - No matricular en asignaturas INACTIVAS ni en grados EXTINTOS o EN_EXTINCION.
 - Solicitar solo dentro del periodo de matriculación.
 - Calificar solo en actas ABIERTAS, y que solo el coordinador suba notas y cierre el acta.
-- Que un profesor solo proponga asignaturas en grados donde imparte.
+- Al cerrar un acta (a mano o automáticamente), dejar como NP a los alumnos sin nota.
+- Que un profesor solo proponga asignaturas en grados donde imparte y que estén VIGENTES, sin repetir nombre en el grado, y que una propuesta en varios grados se guarde entera o no se guarde.
 - Pedir confirmación antes de "eliminar" un grado o una asignatura, y no hacerlo si deja datos inconsistentes.
 
 ---
@@ -604,73 +631,207 @@ WHERE m.alumnoId = 'AL002' AND ca.cursoId = 'C005'
 
 ### HU 35239 — Asignaciones docentes de un profesor, con su rol
 
+Una asignatura puede estar en varios grados: se muestran todos separados por comas (`ProfesorRepository`).
+
 ```sql
-SELECT i.cursoId, c.nombre, i.grupoCodigo, g.tipo,
+SELECT i.cursoId, c.nombre AS curso, GROUP_CONCAT(gr.nombre, ', ') AS grado, i.grupoCodigo, g.tipo,
        CASE WHEN c.coordinadorId = i.profesorId THEN 'COORDINADOR' ELSE 'DOCENTE' END AS rol
 FROM Imparte i
 JOIN Curso c ON c.cursoId = i.cursoId
 JOIN Grupo g ON g.cursoId = i.cursoId AND g.grupoCodigo = i.grupoCodigo
-WHERE i.profesorId = 'P003';
+LEFT JOIN GradoCurso gc ON gc.cursoId = i.cursoId
+LEFT JOIN Grado gr ON gr.gradoId = gc.gradoId
+WHERE i.profesorId = 'P001'
+GROUP BY i.cursoId, i.grupoCodigo
+ORDER BY i.cursoId, g.tipo, i.grupoCodigo;
+```
+
+### HU 35239 — Alumnos de un acta, con su nota
+
+Entran los matriculados ese año que no han aprobado la asignatura en una convocatoria anterior del mismo año; en un acta cerrada, solo los que tienen calificación (`ActaModel`). La nota sale vacía si no está calificado y `NP` si la calificación no tiene nota.
+
+```sql
+SELECT mc.matriculaId, al.alumnoId, al.nombre || ' ' || al.apellidos AS alumno, al.dni,
+       CASE WHEN ca.matriculaId IS NULL THEN '' WHEN ca.nota IS NULL THEN 'NP'
+            ELSE CAST(ca.nota AS TEXT) END AS nota
+FROM Acta a
+JOIN Matricula m ON m.anioAcademicoId = a.anioAcademicoId
+JOIN MatriculaCurso mc ON mc.matriculaId = m.matriculaId AND mc.cursoId = a.cursoId
+     AND mc.estado IN ('PAGADA', 'ACTIVA', 'FINALIZADA')
+     AND NOT EXISTS (SELECT 1 FROM Calificacion ap
+                     JOIN Convocatoria cvAp ON cvAp.anioAcademicoId = ap.anioAcademicoId
+                          AND cvAp.tipoConvocatoria = ap.tipoConvocatoria
+                     JOIN Convocatoria cvActa ON cvActa.anioAcademicoId = a.anioAcademicoId
+                          AND cvActa.tipoConvocatoria = a.tipoConvocatoria
+                     WHERE ap.matriculaId = mc.matriculaId AND ap.cursoId = mc.cursoId
+                       AND ap.anioAcademicoId = a.anioAcademicoId
+                       AND ap.nota >= 5 AND cvAp.fechaFin < cvActa.fechaFin)
+JOIN Alumno al ON al.alumnoId = m.alumnoId
+LEFT JOIN Calificacion ca ON ca.matriculaId = mc.matriculaId AND ca.cursoId = a.cursoId
+     AND ca.anioAcademicoId = a.anioAcademicoId AND ca.tipoConvocatoria = a.tipoConvocatoria
+WHERE a.cursoId = 'C001' AND a.anioAcademicoId = '2026-2027' AND a.tipoConvocatoria = 'ORDINARIA_ENERO'
+  AND (a.estado = 'ABIERTA' OR ca.matriculaId IS NOT NULL)
+ORDER BY al.apellidos, al.nombre;
+```
+
+### HU 35239 — Cierre de un acta: NP a los alumnos sin nota
+
+Se ejecuta en la misma transacción que el cierre, tanto manual como automático, con las mismas condiciones de "quién entra en el acta" que la consulta anterior.
+
+```sql
+INSERT INTO Calificacion (matriculaId, cursoId, anioAcademicoId, tipoConvocatoria, nota)
+SELECT mc.matriculaId, a.cursoId, a.anioAcademicoId, a.tipoConvocatoria, NULL
+FROM Acta a
+JOIN Matricula m ON m.anioAcademicoId = a.anioAcademicoId
+JOIN MatriculaCurso mc ON mc.matriculaId = m.matriculaId AND mc.cursoId = a.cursoId
+     AND mc.estado IN ('PAGADA', 'ACTIVA', 'FINALIZADA')
+     AND NOT EXISTS (SELECT 1 FROM Calificacion ap
+                     JOIN Convocatoria cvAp ON cvAp.anioAcademicoId = ap.anioAcademicoId
+                          AND cvAp.tipoConvocatoria = ap.tipoConvocatoria
+                     JOIN Convocatoria cvActa ON cvActa.anioAcademicoId = a.anioAcademicoId
+                          AND cvActa.tipoConvocatoria = a.tipoConvocatoria
+                     WHERE ap.matriculaId = mc.matriculaId AND ap.cursoId = mc.cursoId
+                       AND ap.anioAcademicoId = a.anioAcademicoId
+                       AND ap.nota >= 5 AND cvAp.fechaFin < cvActa.fechaFin)
+WHERE a.cursoId = 'C001' AND a.anioAcademicoId = '2025-2026' AND a.tipoConvocatoria = 'ORDINARIA_JUNIO'
+  AND NOT EXISTS (SELECT 1 FROM Calificacion ca
+                  WHERE ca.matriculaId = mc.matriculaId AND ca.cursoId = a.cursoId
+                    AND ca.anioAcademicoId = a.anioAcademicoId
+                    AND ca.tipoConvocatoria = a.tipoConvocatoria);
 ```
 
 ### HU 35239 — Cierre automático de actas vencidas y aviso a secretaría
 
+Lo ejecuta `MainController` al arrancar (y al recargar la base de datos), con la fecha actual. Antes de cerrar cada acta se pone NP a sus alumnos sin nota (consulta anterior).
+
 ```sql
 UPDATE Acta
-SET estado = 'CERRADA', fechaCierre = '2026-10-09', cierreAutomatico = 1
+SET estado = 'CERRADA', fechaCierre = '2026-10-19', cierreAutomatico = 1
 WHERE estado = 'ABIERTA'
   AND EXISTS (SELECT 1 FROM Convocatoria cv
               WHERE cv.anioAcademicoId = Acta.anioAcademicoId
                 AND cv.tipoConvocatoria = Acta.tipoConvocatoria
-                AND cv.fechaFin < '2026-10-09');
+                AND cv.fechaFin < '2026-10-19');
 
--- Lo que ve secretaría
-SELECT cursoId, anioAcademicoId, tipoConvocatoria, fechaCierre
-FROM Acta
-WHERE cierreAutomatico = 1;
+-- Lo que ve secretaría ("Actas cerradas por el sistema")
+SELECT a.cursoId, c.nombre, a.anioAcademicoId, a.tipoConvocatoria, a.fechaCierre,
+       COALESCE(p.nombre || ' ' || p.apellidos, '(sin coordinador)') AS coordinador
+FROM Acta a
+JOIN Curso c ON c.cursoId = a.cursoId
+LEFT JOIN Profesor p ON p.profesorId = c.coordinadorId
+WHERE a.cierreAutomatico = 1
+ORDER BY a.fechaCierre DESC, a.cursoId;
+```
+
+### HU 35243 — Grados en los que imparte el profesor
+
+Salen todos, con su estado; la propuesta solo se admite en los VIGENTES (`PropuestaModel`).
+
+```sql
+SELECT DISTINCT g.gradoId AS id, g.nombre, g.facultad, g.ramaConocimiento AS rama, g.estado
+FROM Imparte i
+JOIN GradoCurso gc ON gc.cursoId = i.cursoId
+JOIN Grado g ON g.gradoId = gc.gradoId
+WHERE i.profesorId = 'P001'
+ORDER BY g.nombre;
+```
+
+### HU 35243 — Nombre repetido en el grado
+
+Hay repetición si devuelve alguna fila: una asignatura del grado o una propuesta no rechazada con el mismo nombre (sin distinguir mayúsculas).
+
+```sql
+SELECT 1 FROM GradoCurso gc JOIN Curso c ON c.cursoId = gc.cursoId
+WHERE gc.gradoId = 'G001' AND LOWER(TRIM(c.nombre)) = LOWER('Calculo')
+UNION ALL
+SELECT 1 FROM PropuestaCurso p
+WHERE p.gradoId = 'G001' AND LOWER(TRIM(p.nombre)) = LOWER('Calculo') AND p.estado <> 'RECHAZADA';
+```
+
+### HU 35243 — Siguiente identificador de propuesta
+
+```sql
+SELECT MAX(CAST(SUBSTR(propuestaId, 3) AS INTEGER)) + 1
+FROM PropuestaCurso
+WHERE propuestaId LIKE 'PR%';
+```
+
+### HU 35243 — Mis propuestas
+
+```sql
+SELECT p.propuestaId, p.gradoId, g.nombre AS grado, p.nombre, p.anio,
+       CAST(p.creditos AS REAL) AS creditos, p.descripcion, p.fechaPropuesta, p.estado
+FROM PropuestaCurso p
+JOIN Grado g ON g.gradoId = p.gradoId
+WHERE p.profesorId = 'P001'
+ORDER BY p.fechaPropuesta DESC, p.propuestaId DESC;
 ```
 
 ---
 
 ## 9. Datos de prueba
 
-`data.sql` sitúa la aplicación en **octubre de 2026**: el año 2025-2026 está cerrado y el 2026-2027 acaba de empezar. Carga 229 registros pensados para probar cada regla.
+`data.sql` sitúa la aplicación en **octubre de 2026** (fecha de referencia 18 de octubre): el año 2026-2027 ya ha empezado y sus actas están abiertas y sin notas. Son datos generados que simulan la trayectoria de los alumnos durante cinco años y respetan las reglas del apartado 6:
+
+- La permanencia: 12 créditos por año, salvo en un año cancelado, y 90 al acabar el 3.er año en el grado.
+- Como mucho 6 convocatorias con nota por asignatura.
+- La capacidad de los grupos en cada año, y un grupo de cada tipo.
+- Estados coherentes entre Matricula y MatriculaCurso.
+- Los alumnos con impago no vuelven a matricularse.
+- `GradoCurso` con el estado que deja la desactivación automática al iniciar 2026-2027.
+
+Los `INSERT` van en lotes de varias filas para que la carga sea rápida.
+
+### Volumen
+
+| Tabla | Filas | Tabla | Filas |
+|---|---|---|---|
+| AnioAcademico | 5 | Imparte | 680 |
+| Grado | 9 | Convocatoria | 15 |
+| Curso | 208 | Acta | 1145 |
+| GradoCurso | 320 | Matricula | 2100 |
+| PropuestaCurso | 30 | MatriculaCurso | 21660 |
+| Profesor | 102 | MatriculaGrupo | 40099 |
+| Alumno | 805 | Calificacion | 20019 |
+| Grupo | 611 | | |
 
 ### Oferta
 
-| Grado | Estado | Para probar |
+- **Años académicos:** de 2022-2023 a 2026-2027, cada uno con sus 3 convocatorias (enero, junio y julio).
+- **Asignaturas:** 208. Hay 2 que no están en ningún grado y 1 sin coordinador.
+
+| Grado | Estado | Asignaturas |
 |---|---|---|
-| G001 Software | VIGENTE | El grado principal, con asignaturas de 1º a 4º y un itinerario. |
-| G002 Tecnologías de la Información | VIGENTE | Comparte Fundamentos (C005) con G001. |
-| G003 Matemáticas | EN_EXTINCION | Todas sus asignaturas están INACTIVAS, aunque Cálculo y Álgebra siguen activas en otros grados. |
-| G004 Ciencia de Datos | PENDIENTE_RENOVACION | |
-| G005 Química | EXTINTO | No tiene asignaturas. |
-| G006 Doble grado Software + Matemáticas | VIGENTE | Comparte C005, C006 y C009 con otros grados. |
+| G001 Ingeniería Informática del Software | VIGENTE | 40 |
+| G002 Ingeniería Informática en Tecnologías de la Información | VIGENTE | 40 |
+| G003 Matemáticas | EN_EXTINCION | 40 |
+| G004 Ciencia e Ingeniería de Datos | PENDIENTE_RENOVACION | 40 |
+| G005 Química | EXTINTO | 20 |
+| G006 Física | VIGENTE | 40 |
+| G007 Administración y Dirección de Empresas | VIGENTE | 40 |
+| G008 Doble grado Software + Matemáticas | VIGENTE | 36 |
+| G009 Doble grado Software + ADE | VIGENTE | 24 |
 
-También hay una asignatura sin grado ni coordinador (C012) y tres propuestas, una en cada estado.
+Los dobles grados comparten asignaturas con sus grados de origen.
 
-### Alumnos y escenarios
+### Personas y matrículas
 
-| Alumno | Escenario |
-|---|---|
-| AL001 Lucía | Supera 12 créditos en 2025-26 y cumple la permanencia. En 2026-27 se da de baja de una asignatura (C001, por INCOMPATIBILIDAD), que queda registrada como cancelada. |
-| AL002 Hugo | Supera 0 créditos en G001, así que **no puede volver a matricularse en G001** y se cambia a G002. Arrastra 2 convocatorias consumidas en Fundamentos (2ª matrícula). En Cálculo tiene un "no presentado", que no cuenta. |
-| AL003 Sara | Supera 18 créditos. Tiene una asignatura aprobada en la convocatoria extraordinaria. |
-| AL004 Mario | Alumno de G002 que comparte grupos de Fundamentos con alumnos de G001. |
-| AL005 Paula | Matrícula de 2025-26 cancelada por IMPAGO: ese año cuenta, pero no se le exigen los 12 créditos. |
-| AL006 Daniel | Ha pagado por transferencia y está pendiente de que lo valide el secretario. |
-| AL007 Laura | Una asignatura activa con solo el grupo TE asignado (le faltan PA y PL) y otra sin pagar, pendiente de revisión del secretario. |
-| AL008 Álvaro | Matriculado en un grado PENDIENTE_RENOVACION. |
-| AL009 Irene | Matrícula cancelada entera por FUERZA_MAYOR, después de pagar y sin devolución. |
-| AL010 Pablo | Matrícula cancelada al cancelar su única asignatura. |
-| AL011 Noelia | Ha pagado después de iniciarse el año: asignatura PAGADA, matrícula todavía SOLICITADA y sin grupos. |
-| AL012 Iván | Sin ninguna matrícula (perfil vacío). |
-| AL013 Marina | Alumna del doble grado; comparte grupos con alumnos de G001 y G002. |
+- **Profesores:** 102. Muchos imparten a la vez en grados vigentes y no vigentes (por ejemplo P001), lo que sirve para probar el rechazo de propuestas en grados no vigentes.
+- **Alumnos:** 805. De ellos, 790 tienen una trayectoria simulada (674 siguen estudiando, 80 abandonan, 19 se gradúan y 17 dejan de pagar) y 15 están registrados sin ninguna matrícula.
+- **Matrículas:** 2.100. Hay 21.660 asignaturas matriculadas: 14.252 FINALIZADA, 5.541 ACTIVA, 969 CANCELADA, 572 SOLICITADA y 326 PAGADA.
 
-### Actas
+### Actas y propuestas
 
-- **2025-26:** todas cerradas, y una cerrada automáticamente por el sistema (Cálculo, extraordinaria de julio).
-- **2026-27:** abiertas y todavía sin notas.
+- **Actas:** 1.145.
+  - Todas las de años anteriores a 2026-2027 están cerradas, 36 de ellas por el sistema.
+  - Las 314 de 2026-2027 están abiertas.
+  - **Acta de demostración (HU 35239):** la ordinaria de junio 2025-2026 de C001 (Cálculo) se carga ABIERTA aunque su convocatoria ya terminó. Es la que cierra el sistema al arrancar la aplicación, y desde ese momento aparece en "Actas cerradas por el sistema" de secretaría.
+- **Propuestas:** 30 (15 PENDIENTE, 8 ACEPTADA, 7 RECHAZADA). La última es `PR030`, así que la siguiente que cree un profesor será `PR031`.
+
+### Pruebas automáticas
+
+- Las pruebas de `model/acta` (`ActaModelTest`) y `model/propuesta` (`PropuestaModelTest`), y las que heredan de `BaseModelTest`, cargan **sus propios datos** antes de cada prueba, así que no dependen de `data.sql`.
+- `GestionMatriculaModelTest` todavía carga `data.sql` y espera los datos de prueba anteriores (matrículas `M007`, `M010`, `M015`…). Con estos datos falla en 31 de sus 32 pruebas: hay que pasarla a datos propios.
 
 ---
 
@@ -680,6 +841,13 @@ También hay una asignatura sin grado ni coordinador (C012) y tres propuestas, u
 2. Ejecutar `data.sql`, que vacía las tablas y carga los datos de prueba. Se puede relanzar sin volver a ejecutar `schema.sql`.
 
 Es el mismo orden que siguen `createDatabase` y `loadDatabase` en el proyecto de ejemplo. Los dos ficheros van en `src/main/resources`.
+
+**La base de datos es persistente** (`DemoDB.db`), para que se conserve lo que se hace en la aplicación:
+
+- `Database` solo ejecuta los scripts si la base de datos está vacía. Ejecuta `schema.sql` + `data.sql` si no existe la tabla `Grado`, y solo `data.sql` si `Grado`, `Alumno` o `MatriculaCurso` están vacías.
+- Para cargar un `data.sql` nuevo, se usa el botón **"Recargar base de datos"** de la pantalla de inicio, que pide confirmación, o se borra `DemoDB.db` con la aplicación cerrada. En los dos casos se pierden los cambios hechos en la aplicación.
+- Al arrancar (y al recargar), el sistema actualiza lo que depende de la fecha: el ciclo de vida de las matrículas (HU 35229) y el cierre automático de actas vencidas (HU 35239).
+- `mvn test` usa también `DemoDB.db` y lo deja con los datos de las pruebas.
 
 Para que se apliquen las claves foráneas, cada conexión tiene que ejecutar:
 

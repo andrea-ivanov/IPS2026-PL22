@@ -1,8 +1,10 @@
 package view.admin;
 
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.TitledBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.ArrayList;
@@ -12,6 +14,7 @@ import java.util.function.BiConsumer;
 import model.grado.GradoDisplayDTO;
 import model.curso.CursoDisplayDTO;
 import model.matriculacion.MatriculacionDisplayDTO;
+import view.comun.Estilo;
 
 public class AdminOfertaView {
     private JFrame frame;
@@ -66,88 +69,72 @@ public class AdminOfertaView {
 
     private void initialize() {
         frame = new JFrame("Panel de Administrador - Oferta Académica");
-        frame.setBounds(100, 100, 1000, 650);
-        frame.setLocationRelativeTo(null);
+        frame.setBounds(100, 100, 1200, 720);
+        frame.setMinimumSize(new Dimension(1000, 620));
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.getContentPane().setLayout(new BorderLayout());
+        JPanel contenido = Estilo.contenido(new BorderLayout(0, 12));
+        frame.setContentPane(contenido);
+        Estilo.maximizarCentrado(frame);
 
         // --- TOP PANEL ---
-        JPanel topContainer = new JPanel(new BorderLayout());
-
-        // Dates panel
-        JPanel datesPanel = new JPanel(new GridLayout(2, 1));
-        datesPanel.setBorder(new EmptyBorder(5, 10, 5, 10));
-        lblAnoAcademico = new JLabel("Año Académico: --/--/-- - --/--/--");
-        lblAnoAcademico.setFont(new Font("Tahoma", Font.BOLD, 12));
-        lblPeriodoMatriculacion = new JLabel("Matriculación: --/--/-- - --/--/--");
-        lblPeriodoMatriculacion.setFont(new Font("Tahoma", Font.BOLD, 12));
-        datesPanel.add(lblAnoAcademico);
-        datesPanel.add(lblPeriodoMatriculacion);
-
-        // Buttons panel (Left to right: Configurar Nuevo Año Académico y volver)
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnNuevoAnoAcademico = new JButton("Configurar Nuevo Año Académico");
-        btnVolver = new JButton("Volver");
+        btnNuevoAnoAcademico = Estilo.botonPrimario("Configurar Nuevo Año Académico");
+        btnVolver = Estilo.botonSecundario("‹  Volver");
         btnVolver.setEnabled(false);
-
-        buttonsPanel.add(btnNuevoAnoAcademico);
-        buttonsPanel.add(btnVolver);
-
-        btnVolverInicio = new JButton("Volver al inicio");
+        btnVolverInicio = Estilo.botonSecundario("Volver al inicio");
         btnVolverInicio.setToolTipText("Volver a la pantalla de selección de rol");
-        buttonsPanel.add(btnVolverInicio);
+        JPanel topContainer = Estilo.cabecera("PANEL DE ADMINISTRACIÓN", new JLabel("Oferta Académica"),
+                btnNuevoAnoAcademico, btnVolver, btnVolverInicio);
 
-        topContainer.add(datesPanel, BorderLayout.WEST);
-        topContainer.add(buttonsPanel, BorderLayout.EAST);
+        // Dates panel: año académico y periodo de matriculación en curso
+        JPanel datesPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        datesPanel.setOpaque(false);
+        datesPanel.setBorder(new EmptyBorder(8, 0, 0, 0));
+        lblAnoAcademico = etiquetaFecha("Año Académico: --/--/-- - --/--/--");
+        lblPeriodoMatriculacion = etiquetaFecha("Matriculación: --/--/-- - --/--/--");
+        datesPanel.add(lblAnoAcademico);
+        datesPanel.add(Box.createHorizontalStrut(10));
+        datesPanel.add(lblPeriodoMatriculacion);
+        topContainer.add(datesPanel, BorderLayout.SOUTH);
 
-        frame.getContentPane().add(topContainer, BorderLayout.NORTH);
+        contenido.add(topContainer, BorderLayout.NORTH);
 
         // --- CARDS PANEL ---
         cardLayout = new CardLayout();
         cardsPanel = new JPanel(cardLayout);
+        cardsPanel.setOpaque(false);
 
         cardsPanel.add(createGradosPanel(), "GRADOS");
         cardsPanel.add(createCursosPanel(), "CURSOS");
         cardsPanel.add(createMatriculacionPanel(), "MATRICULACION");
 
-        frame.getContentPane().add(cardsPanel, BorderLayout.CENTER);
+        contenido.add(cardsPanel, BorderLayout.CENTER);
 
         // Navigation actions
         btnVolver.addActionListener(e -> goBack());
     }
 
-    private JPanel createGradosPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
+    /** Etiqueta de fechas con aspecto de "píldora" informativa. */
+    private static JLabel etiquetaFecha(String texto) {
+        JLabel label = new JLabel(texto);
+        label.setFont(Estilo.ETIQUETA);
+        label.setForeground(Estilo.TEXTO);
+        label.setOpaque(true);
+        label.setBackground(Estilo.TARJETA);
+        label.setBorder(new CompoundBorder(new LineBorder(Estilo.BORDE, 1, true), new EmptyBorder(5, 10, 5, 10)));
+        return label;
+    }
 
+    private JPanel createGradosPanel() {
         JLabel lblTitle = new JLabel("Vista general grados - Administrador");
-        lblTitle.setFont(new Font("Tahoma", Font.BOLD, 14));
-        lblTitle.setBorder(new EmptyBorder(5, 10, 5, 10));
-        panel.add(lblTitle, BorderLayout.NORTH);
 
         // Filters
-        JPanel filterPanel = new JPanel();
-        filterPanel.setLayout(new BoxLayout(filterPanel, BoxLayout.Y_AXIS));
-        filterPanel.setBorder(new TitledBorder("Filtros"));
-        filterPanel.setPreferredSize(new Dimension(200, 0));
-
-        addFilterComponent(filterPanel, "Facultad");
+        JPanel filterPanel = Estilo.panelFiltros("Filtros");
         txtFiltroFacultadGrado = new JTextField();
-        txtFiltroFacultadGrado.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        filterPanel.add(txtFiltroFacultadGrado);
-
-        filterPanel.add(Box.createVerticalStrut(10));
-        addFilterComponent(filterPanel, "Rama de conocimiento");
+        Estilo.addFiltro(filterPanel, "Facultad", txtFiltroFacultadGrado);
         txtFiltroRamaGrado = new JTextField();
-        txtFiltroRamaGrado.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        filterPanel.add(txtFiltroRamaGrado);
-
-        filterPanel.add(Box.createVerticalStrut(10));
-        addFilterComponent(filterPanel, "Estado");
+        Estilo.addFiltro(filterPanel, "Rama de conocimiento", txtFiltroRamaGrado);
         cbEstadoGrado = new JComboBox<>(new String[] { "TODOS", "VIGENTE", "PENDIENTE_RENOVACION", "EN_EXTINCION" });
-        cbEstadoGrado.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        filterPanel.add(cbEstadoGrado);
-
-        panel.add(filterPanel, BorderLayout.WEST);
+        Estilo.addFiltro(filterPanel, "Estado", cbEstadoGrado);
 
         // Table
         String[] columnNames = { "Código", "Nombre", "Facultad", "Rama", "Estado", "Acciones" };
@@ -158,56 +145,30 @@ public class AdminOfertaView {
             }
         };
         tabGrados = new JTable(model);
+        Estilo.estilizarTabla(tabGrados);
+        anchos(tabGrados, 80, 300, 260, 200, 170, 100);
+        tabGrados.getColumnModel().getColumn(4).setMinWidth(150);
+        tabGrados.getColumnModel().getColumn(5).setMinWidth(90);
         actualizarTablaGrados(new ArrayList<>());
 
-        panel.add(new JScrollPane(tabGrados), BorderLayout.CENTER);
+        btnAnadirGrado = Estilo.botonPrimario("Añadir grado");
 
-        JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnAnadirGrado = new JButton("Añadir grado");
-        accionesPanel.add(btnAnadirGrado);
-        panel.add(accionesPanel, BorderLayout.SOUTH);
-
-        return panel;
+        return crearPanelListado(filterPanel, lblTitle, tabGrados, btnAnadirGrado);
     }
 
     private JPanel createCursosPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-
         lblTituloCursos = new JLabel("Vista grado NombreGrado - Administrador");
-        lblTituloCursos.setFont(new Font("Tahoma", Font.BOLD, 14));
-        lblTituloCursos.setBorder(new EmptyBorder(5, 10, 5, 10));
-        panel.add(lblTituloCursos, BorderLayout.NORTH);
 
         // Filters
-        JPanel filterPanel = new JPanel();
-        filterPanel.setLayout(new BoxLayout(filterPanel, BoxLayout.Y_AXIS));
-        filterPanel.setBorder(new TitledBorder("Filtros"));
-        filterPanel.setPreferredSize(new Dimension(200, 0));
-
-        addFilterComponent(filterPanel, "Año");
+        JPanel filterPanel = Estilo.panelFiltros("Filtros");
         txtFiltroAnoCurso = new JTextField();
-        txtFiltroAnoCurso.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        filterPanel.add(txtFiltroAnoCurso);
-
-        filterPanel.add(Box.createVerticalStrut(10));
-        addFilterComponent(filterPanel, "Itinerario");
+        Estilo.addFiltro(filterPanel, "Año", txtFiltroAnoCurso);
         txtFiltroItinerarioCurso = new JTextField();
-        txtFiltroItinerarioCurso.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        filterPanel.add(txtFiltroItinerarioCurso);
-
-        filterPanel.add(Box.createVerticalStrut(10));
-        addFilterComponent(filterPanel, "Profesor");
+        Estilo.addFiltro(filterPanel, "Itinerario", txtFiltroItinerarioCurso);
         txtFiltroProfesorCurso = new JTextField();
-        txtFiltroProfesorCurso.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        filterPanel.add(txtFiltroProfesorCurso);
-
-        filterPanel.add(Box.createVerticalStrut(10));
-        addFilterComponent(filterPanel, "Estado");
+        Estilo.addFiltro(filterPanel, "Profesor", txtFiltroProfesorCurso);
         cbFiltroEstadoCurso = new JComboBox<>(new String[] { "TODOS", "ACTIVO", "INACTIVO" });
-        cbFiltroEstadoCurso.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        filterPanel.add(cbFiltroEstadoCurso);
-
-        panel.add(filterPanel, BorderLayout.WEST);
+        Estilo.addFiltro(filterPanel, "Estado", cbFiltroEstadoCurso);
 
         // Table
         String[] columnNames = { "Código", "NombreCurso", "Año", "Itinerario", "Profesor", "Estado", "Acciones" };
@@ -218,42 +179,27 @@ public class AdminOfertaView {
             }
         };
         tabCursos = new JTable(model);
+        Estilo.estilizarTabla(tabCursos);
+        anchos(tabCursos, 80, 300, 60, 180, 240, 110, 100);
+        tabCursos.getColumnModel().getColumn(5).setMinWidth(100);
+        tabCursos.getColumnModel().getColumn(6).setMinWidth(90);
         actualizarTablaCursos(new ArrayList<>());
 
-        panel.add(new JScrollPane(tabCursos), BorderLayout.CENTER);
+        btnAnadirCurso = Estilo.botonPrimario("Añadir curso");
+        btnModificarGrado = Estilo.botonSecundario("Modificar grado");
+        btnEliminarGrado = Estilo.botonPeligro("Eliminar grado");
 
-        JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnAnadirCurso = new JButton("Añadir curso");
-        btnModificarGrado = new JButton("Modificar grado");
-        btnEliminarGrado = new JButton("Eliminar grado");
-        accionesPanel.add(btnAnadirCurso);
-        accionesPanel.add(btnModificarGrado);
-        accionesPanel.add(btnEliminarGrado);
-        panel.add(accionesPanel, BorderLayout.SOUTH);
-
-        return panel;
+        return crearPanelListado(filterPanel, lblTituloCursos, tabCursos, btnAnadirCurso, btnModificarGrado,
+                btnEliminarGrado);
     }
 
     private JPanel createMatriculacionPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-
         lblTituloMatriculas = new JLabel("Vista matriculacion curso NombreCurso - Administrador");
-        lblTituloMatriculas.setFont(new Font("Tahoma", Font.BOLD, 14));
-        lblTituloMatriculas.setBorder(new EmptyBorder(5, 10, 5, 10));
-        panel.add(lblTituloMatriculas, BorderLayout.NORTH);
 
         // Filters
-        JPanel filterPanel = new JPanel();
-        filterPanel.setLayout(new BoxLayout(filterPanel, BoxLayout.Y_AXIS));
-        filterPanel.setBorder(new TitledBorder("Filtros"));
-        filterPanel.setPreferredSize(new Dimension(200, 0));
-
-        addFilterComponent(filterPanel, "Alumno (Código/Nombre)");
+        JPanel filterPanel = Estilo.panelFiltros("Filtros");
         txtFiltroAlumno = new JTextField();
-        txtFiltroAlumno.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        filterPanel.add(txtFiltroAlumno);
-
-        panel.add(filterPanel, BorderLayout.WEST);
+        Estilo.addFiltro(filterPanel, "Alumno (Código/Nombre)", txtFiltroAlumno);
 
         // Table
         String[] columnNames = { "Código", "NombreAlumno" };
@@ -264,23 +210,38 @@ public class AdminOfertaView {
             }
         };
         tabMatriculacion = new JTable(model);
+        Estilo.estilizarTabla(tabMatriculacion);
+        anchos(tabMatriculacion, 120, 600);
 
-        panel.add(new JScrollPane(tabMatriculacion), BorderLayout.CENTER);
+        btnModificarCurso = Estilo.botonSecundario("Modificar curso");
+        btnEliminarCurso = Estilo.botonPeligro("Eliminar curso");
 
-        JPanel accionesPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnModificarCurso = new JButton("Modificar curso");
-        btnEliminarCurso = new JButton("Eliminar curso");
-        accionesPanel.add(btnModificarCurso);
-        accionesPanel.add(btnEliminarCurso);
-        panel.add(accionesPanel, BorderLayout.SOUTH);
+        return crearPanelListado(filterPanel, lblTituloMatriculas, tabMatriculacion, btnModificarCurso,
+                btnEliminarCurso);
+    }
 
+    /**
+     * Card de un listado: filtros a la izquierda y, a la derecha, una tarjeta con el título,
+     * la tabla y los botones de acción debajo.
+     */
+    private static JPanel crearPanelListado(JPanel filterPanel, JLabel titulo, JTable tabla, JButton... acciones) {
+        JPanel panel = new JPanel(new BorderLayout(12, 0));
+        panel.setOpaque(false);
+        panel.add(Estilo.envolverFiltros(filterPanel, 250), BorderLayout.WEST);
+
+        JPanel tablaCard = Estilo.tarjeta(new BorderLayout(0, 10));
+        Estilo.estilizarTituloTarjeta(titulo);
+        tablaCard.add(titulo, BorderLayout.NORTH);
+        tablaCard.add(Estilo.scrollTabla(tabla), BorderLayout.CENTER);
+        tablaCard.add(Estilo.barraAcciones(acciones), BorderLayout.SOUTH);
+        panel.add(tablaCard, BorderLayout.CENTER);
         return panel;
     }
 
-    private void addFilterComponent(JPanel panel, String labelText) {
-        JLabel label = new JLabel(labelText);
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(label);
+    private static void anchos(JTable tabla, int... anchos) {
+        for (int i = 0; i < anchos.length; i++) {
+            tabla.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
+        }
     }
 
     // --- Navigation Methods ---
@@ -321,15 +282,26 @@ public class AdminOfertaView {
         table.getColumnModel().getColumn(columnIdx).setCellEditor(new ButtonEditor(new JCheckBox(), viewType));
     }
 
+    /**
+     * Borde del botón "Ver": un margen del color de la fila alrededor del botón con borde azul,
+     * para que el botón ocupe toda la celda (cualquier clic en la celda lo pulsa).
+     */
+    private static void bordeBotonVer(JButton boton, Color fondoFila) {
+        boton.setBorder(new CompoundBorder(new MatteBorder(3, 10, 3, 10, fondoFila),
+                new LineBorder(Estilo.PRIMARIO, 1, true)));
+    }
+
     class ButtonRenderer extends JButton implements javax.swing.table.TableCellRenderer {
         public ButtonRenderer() {
             setOpaque(true);
+            Estilo.estilizarBotonFila(this);
         }
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
                 int row, int column) {
             setText("Ver");
+            bordeBotonVer(this, Estilo.fondoFila(row, isSelected));
             return this;
         }
     }
@@ -346,6 +318,9 @@ public class AdminOfertaView {
             this.viewType = viewType;
             button = new JButton();
             button.setOpaque(true);
+            Estilo.estilizarBotonFila(button);
+            button.setBackground(Estilo.SELECCION);
+            bordeBotonVer(button, Estilo.SELECCION);
             button.addActionListener(e -> fireEditingStopped());
         }
 
@@ -412,6 +387,7 @@ public class AdminOfertaView {
             }
         }
         setupTableVerButton(tabGrados, 5, "GRADOS");
+        tabGrados.getColumnModel().getColumn(4).setCellRenderer(new Estilo.RendererEstado());
     }
 
     public void actualizarTablaCursos(List<CursoDisplayDTO> cursos) {
@@ -431,6 +407,8 @@ public class AdminOfertaView {
             }
         }
         setupTableVerButton(tabCursos, 6, "CURSOS");
+        tabCursos.getColumnModel().getColumn(2).setCellRenderer(new Estilo.RendererNumero(false));
+        tabCursos.getColumnModel().getColumn(5).setCellRenderer(new Estilo.RendererEstado());
     }
 
     public void actualizarTablaMatriculacion(List<? extends MatriculacionDisplayDTO> matriculas) {
@@ -460,7 +438,7 @@ public class AdminOfertaView {
         return lblTituloCursos;
     }
 
-    public JButton getBtnVolverInicio() { 
+    public JButton getBtnVolverInicio() {
         return btnVolverInicio;
     }
 
