@@ -50,7 +50,8 @@ public class SecretarioView {
     private JScrollPane scrollAlumnosGrupo;
     private JLabel lblResultadosGrupos;
 
-    private JLabel lblDetalleId, lblDetalleAnio, lblDetalleEstudiante, lblDetalleEmail, lblDetalleGrado, lblDetalleCurso,
+    private JLabel lblDetalleId, lblDetalleAnio, lblDetalleEstudiante, lblDetalleEmail, lblDetalleGrado,
+            lblDetalleCurso,
             lblDetalleGrupos, lblDetalleEstado, lblDetalleEstadoMatricula, lblDetallePago, lblDetalleCancelacion;
     private JButton btnAceptarSolicitud;
     private JButton btnModificarMatricula;
@@ -59,7 +60,8 @@ public class SecretarioView {
 
     private String idMatriculaSeleccionada = "";
     private String cursoIdSeleccionado = "";
-    private Runnable onGestionar = () -> { };
+    private Runnable onGestionar = () -> {
+    };
 
     public SecretarioView() {
         initialize();
@@ -67,7 +69,8 @@ public class SecretarioView {
 
     private void initialize() {
         frame = new JFrame("Panel de Secretaría - Gestión de Matrículas");
-        frame.setBounds(100, 100, 1150, 680);
+        frame.setBounds(100, 100, 1050, 650);
+        frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout());
 
@@ -114,15 +117,15 @@ public class SecretarioView {
         addFilterField(filterPanel, txtFiltroEstudiante);
 
         addFilterComponent(filterPanel, "Año académico:");
-        cbFiltroAnio = new JComboBox<>(new String[]{"TODOS"});
+        cbFiltroAnio = new JComboBox<>(new String[] { "TODOS" });
         addFilterField(filterPanel, cbFiltroAnio);
 
         addFilterComponent(filterPanel, "Grado:");
-        cbFiltroGrado = new JComboBox<>(new String[]{"TODOS"});
+        cbFiltroGrado = new JComboBox<>(new String[] { "TODOS" });
         addFilterField(filterPanel, cbFiltroGrado);
 
         addFilterComponent(filterPanel, "Curso:");
-        cbFiltroCurso = new JComboBox<>(new String[]{"TODOS"});
+        cbFiltroCurso = new JComboBox<>(new String[] { "TODOS" });
         addFilterField(filterPanel, cbFiltroCurso);
 
         addFilterComponent(filterPanel, "Grupo (p. ej. PL1):");
@@ -130,12 +133,13 @@ public class SecretarioView {
         addFilterField(filterPanel, txtFiltroGrupo);
 
         addFilterComponent(filterPanel, "Estado:");
-        cbFiltroEstado = new JComboBox<>(new String[]{"TODOS", "SOLICITADA", "PAGADA", "ACTIVA", "FINALIZADA", "CANCELADA"});
+        cbFiltroEstado = new JComboBox<>(
+                new String[] { "TODOS", "SOLICITADA", "PAGADA", "ACTIVA", "FINALIZADA", "CANCELADA" });
         addFilterField(filterPanel, cbFiltroEstado);
 
         addFilterComponent(filterPanel, "Situación a revisar:");
-        cbFiltroSituacion = new JComboBox<>(new String[]{SITUACION_TODAS, SITUACION_PAGO_PENDIENTE,
-                SITUACION_SIN_PAGAR, SITUACION_FALTAN_GRUPOS});
+        cbFiltroSituacion = new JComboBox<>(new String[] { SITUACION_TODAS, SITUACION_PAGO_PENDIENTE,
+                SITUACION_SIN_PAGAR, SITUACION_FALTAN_GRUPOS });
         addFilterField(filterPanel, cbFiltroSituacion);
 
         btnCargarMatriculas = new JButton("Filtrar / Recargar");
@@ -147,7 +151,8 @@ public class SecretarioView {
         filterPanel.add(btnLimpiarFiltros);
         panel.add(filterPanel, BorderLayout.WEST);
 
-        String[] columnNames = {"Matrícula", "Cód. Curso", "Año", "DNI", "Estudiante", "Grado", "Curso", "Grupos", "Estado", "Acción"};
+        String[] columnNames = { "Matrícula", "Cód. Curso", "Año", "DNI", "Estudiante", "Grado", "Curso", "Grupos",
+                "Estado", "Acción" };
         DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -174,7 +179,10 @@ public class SecretarioView {
         return panel;
     }
 
-    /** HU 35226: consulta de los grupos (plazas, profesores) y de los alumnos de cada grupo en un año académico. */
+    /**
+     * HU 35226: consulta de los grupos (plazas, profesores) y de los alumnos de
+     * cada grupo en un año académico.
+     */
     private JPanel createGruposPanel() {
         JPanel panel = new JPanel(new BorderLayout());
 
@@ -188,11 +196,11 @@ public class SecretarioView {
         addFilterField(filterPanel, cbGruposAnio);
 
         addFilterComponent(filterPanel, "Grado:");
-        cbGruposGrado = new JComboBox<>(new String[]{"TODOS"});
+        cbGruposGrado = new JComboBox<>(new String[] { "TODOS" });
         addFilterField(filterPanel, cbGruposGrado);
 
         addFilterComponent(filterPanel, "Curso:");
-        cbGruposCurso = new JComboBox<>(new String[]{"TODOS"});
+        cbGruposCurso = new JComboBox<>(new String[] { "TODOS" });
         addFilterField(filterPanel, cbGruposCurso);
 
         btnCargarGrupos = new JButton("Filtrar / Recargar");
@@ -200,8 +208,8 @@ public class SecretarioView {
         filterPanel.add(btnCargarGrupos);
         panel.add(filterPanel, BorderLayout.WEST);
 
-        String[] columnasGrupos = {"Cód. Curso", "Curso", "Grupo", "Tipo", "Grados", "Profesores", "Capacidad",
-                "Ocupadas", "Libres"};
+        String[] columnasGrupos = { "Cód. Curso", "Curso", "Grupo", "Tipo", "Grados", "Profesores", "Capacidad",
+                "Ocupadas", "Libres" };
         tabGrupos = new JTable(new DefaultTableModel(columnasGrupos, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -216,7 +224,7 @@ public class SecretarioView {
         tabGrupos.getColumnModel().getColumn(COL_GRUPO_CURSO_ID).setMaxWidth(0);
         tabGrupos.getColumnModel().getColumn(COL_GRUPO_CURSO_ID).setWidth(0);
 
-        String[] columnasAlumnos = {"Matrícula", "DNI", "Estudiante", "Grado", "Estado"};
+        String[] columnasAlumnos = { "Matrícula", "DNI", "Estudiante", "Grado", "Estado" };
         tabAlumnosGrupo = new JTable(new DefaultTableModel(columnasAlumnos, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -266,17 +274,28 @@ public class SecretarioView {
         lblDetallePago = new JLabel("-");
         lblDetalleCancelacion = new JLabel("-");
 
-        infoPanel.add(new JLabel("Matrícula:")); infoPanel.add(lblDetalleId);
-        infoPanel.add(new JLabel("Año académico:")); infoPanel.add(lblDetalleAnio);
-        infoPanel.add(new JLabel("Estudiante:")); infoPanel.add(lblDetalleEstudiante);
-        infoPanel.add(new JLabel("Correo electrónico:")); infoPanel.add(lblDetalleEmail);
-        infoPanel.add(new JLabel("Grado:")); infoPanel.add(lblDetalleGrado);
-        infoPanel.add(new JLabel("Curso:")); infoPanel.add(lblDetalleCurso);
-        infoPanel.add(new JLabel("Grupos asignados:")); infoPanel.add(lblDetalleGrupos);
-        infoPanel.add(new JLabel("Estado del curso:")); infoPanel.add(lblDetalleEstado);
-        infoPanel.add(new JLabel("Estado de la matrícula:")); infoPanel.add(lblDetalleEstadoMatricula);
-        infoPanel.add(new JLabel("Pago:")); infoPanel.add(lblDetallePago);
-        infoPanel.add(new JLabel("Cancelación:")); infoPanel.add(lblDetalleCancelacion);
+        infoPanel.add(new JLabel("Matrícula:"));
+        infoPanel.add(lblDetalleId);
+        infoPanel.add(new JLabel("Año académico:"));
+        infoPanel.add(lblDetalleAnio);
+        infoPanel.add(new JLabel("Estudiante:"));
+        infoPanel.add(lblDetalleEstudiante);
+        infoPanel.add(new JLabel("Correo electrónico:"));
+        infoPanel.add(lblDetalleEmail);
+        infoPanel.add(new JLabel("Grado:"));
+        infoPanel.add(lblDetalleGrado);
+        infoPanel.add(new JLabel("Curso:"));
+        infoPanel.add(lblDetalleCurso);
+        infoPanel.add(new JLabel("Grupos asignados:"));
+        infoPanel.add(lblDetalleGrupos);
+        infoPanel.add(new JLabel("Estado del curso:"));
+        infoPanel.add(lblDetalleEstado);
+        infoPanel.add(new JLabel("Estado de la matrícula:"));
+        infoPanel.add(lblDetalleEstadoMatricula);
+        infoPanel.add(new JLabel("Pago:"));
+        infoPanel.add(lblDetallePago);
+        infoPanel.add(new JLabel("Cancelación:"));
+        infoPanel.add(lblDetalleCancelacion);
 
         panel.add(infoPanel, BorderLayout.NORTH);
 
@@ -321,7 +340,8 @@ public class SecretarioView {
     }
 
     /**
-     * Muestra el detalle de una matrícula. Los botones solo se habilitan en los estados en los que la acción es válida.
+     * Muestra el detalle de una matrícula. Los botones solo se habilitan en los
+     * estados en los que la acción es válida.
      */
     public void showDetalleView(String id, String anio, String estudiante, String email, String grado, String curso,
             String grupos, String estado, String estadoMatricula, String pago, String cancelacion) {
@@ -354,10 +374,15 @@ public class SecretarioView {
     }
 
     class ButtonRenderer extends JButton implements javax.swing.table.TableCellRenderer {
-        public ButtonRenderer() { setOpaque(true); }
+        public ButtonRenderer() {
+            setOpaque(true);
+        }
+
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-            setText("Ver / Gestionar"); return this;
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+                int row, int column) {
+            setText("Ver / Gestionar");
+            return this;
         }
     }
 
@@ -375,7 +400,8 @@ public class SecretarioView {
         }
 
         @Override
-        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row,
+                int column) {
             this.table = table;
             this.row = row;
             button.setText("Ver / Gestionar");
@@ -390,12 +416,14 @@ public class SecretarioView {
                 int fila = table.convertRowIndexToModel(row);
                 idMatriculaSeleccionada = table.getModel().getValueAt(fila, COL_MATRICULA).toString();
                 cursoIdSeleccionado = table.getModel().getValueAt(fila, COL_CURSO_ID).toString();
-                // Se ejecuta tras terminar la edicion para no modificar la tabla mientras se edita
+                // Se ejecuta tras terminar la edicion para no modificar la tabla mientras se
+                // edita
                 SwingUtilities.invokeLater(onGestionar);
             }
             isPushed = false;
             return "Ver / Gestionar";
         }
+
         @Override
         public boolean stopCellEditing() {
             isPushed = false;
@@ -403,34 +431,111 @@ public class SecretarioView {
         }
     }
 
-    public JFrame getFrame() { return frame; }
-    public JButton getBtnVolverInicio() { return btnVolverInicio; }
-    public JButton getBtnCargarMatriculas() { return btnCargarMatriculas; }
-    public JButton getBtnLimpiarFiltros() { return btnLimpiarFiltros; }
-    public JLabel getLblResultados() { return lblResultados; }
-    public JTable getTabMatriculas() { return tabMatriculas; }
-    public JComboBox<String> getCbFiltroEstado() { return cbFiltroEstado; }
-    public JComboBox<String> getCbFiltroSituacion() { return cbFiltroSituacion; }
-    public JButton getBtnAsignarGrupos() { return btnAsignarGrupos; }
-    public JComboBox<String> getCbFiltroAnio() { return cbFiltroAnio; }
-    public JComboBox<String> getCbFiltroGrado() { return cbFiltroGrado; }
-    public JComboBox<String> getCbFiltroCurso() { return cbFiltroCurso; }
-    public JTextField getTxtFiltroGrupo() { return txtFiltroGrupo; }
-    public JTextField getTxtFiltroEstudiante() { return txtFiltroEstudiante; }
+    public JFrame getFrame() {
+        return frame;
+    }
 
-    public JButton getBtnAceptarSolicitud() { return btnAceptarSolicitud; }
-    public JButton getBtnModificarMatricula() { return btnModificarMatricula; }
-    public JButton getBtnCancelarMatricula() { return btnCancelarMatricula; }
+    public JButton getBtnVolverInicio() {
+        return btnVolverInicio;
+    }
 
-    public JComboBox<String> getCbGruposAnio() { return cbGruposAnio; }
-    public JComboBox<String> getCbGruposGrado() { return cbGruposGrado; }
-    public JComboBox<String> getCbGruposCurso() { return cbGruposCurso; }
-    public JButton getBtnCargarGrupos() { return btnCargarGrupos; }
-    public JTable getTabGrupos() { return tabGrupos; }
-    public JTable getTabAlumnosGrupo() { return tabAlumnosGrupo; }
-    public JLabel getLblResultadosGrupos() { return lblResultadosGrupos; }
+    public JButton getBtnCargarMatriculas() {
+        return btnCargarMatriculas;
+    }
 
-    public String getIdMatriculaSeleccionada() { return idMatriculaSeleccionada; }
-    public String getCursoIdSeleccionado() { return cursoIdSeleccionado; }
-    public void setOnGestionar(Runnable onGestionar) { this.onGestionar = onGestionar; }
+    public JButton getBtnLimpiarFiltros() {
+        return btnLimpiarFiltros;
+    }
+
+    public JLabel getLblResultados() {
+        return lblResultados;
+    }
+
+    public JTable getTabMatriculas() {
+        return tabMatriculas;
+    }
+
+    public JComboBox<String> getCbFiltroEstado() {
+        return cbFiltroEstado;
+    }
+
+    public JComboBox<String> getCbFiltroSituacion() {
+        return cbFiltroSituacion;
+    }
+
+    public JButton getBtnAsignarGrupos() {
+        return btnAsignarGrupos;
+    }
+
+    public JComboBox<String> getCbFiltroAnio() {
+        return cbFiltroAnio;
+    }
+
+    public JComboBox<String> getCbFiltroGrado() {
+        return cbFiltroGrado;
+    }
+
+    public JComboBox<String> getCbFiltroCurso() {
+        return cbFiltroCurso;
+    }
+
+    public JTextField getTxtFiltroGrupo() {
+        return txtFiltroGrupo;
+    }
+
+    public JTextField getTxtFiltroEstudiante() {
+        return txtFiltroEstudiante;
+    }
+
+    public JButton getBtnAceptarSolicitud() {
+        return btnAceptarSolicitud;
+    }
+
+    public JButton getBtnModificarMatricula() {
+        return btnModificarMatricula;
+    }
+
+    public JButton getBtnCancelarMatricula() {
+        return btnCancelarMatricula;
+    }
+
+    public JComboBox<String> getCbGruposAnio() {
+        return cbGruposAnio;
+    }
+
+    public JComboBox<String> getCbGruposGrado() {
+        return cbGruposGrado;
+    }
+
+    public JComboBox<String> getCbGruposCurso() {
+        return cbGruposCurso;
+    }
+
+    public JButton getBtnCargarGrupos() {
+        return btnCargarGrupos;
+    }
+
+    public JTable getTabGrupos() {
+        return tabGrupos;
+    }
+
+    public JTable getTabAlumnosGrupo() {
+        return tabAlumnosGrupo;
+    }
+
+    public JLabel getLblResultadosGrupos() {
+        return lblResultadosGrupos;
+    }
+
+    public String getIdMatriculaSeleccionada() {
+        return idMatriculaSeleccionada;
+    }
+
+    public String getCursoIdSeleccionado() {
+        return cursoIdSeleccionado;
+    }
+
+    public void setOnGestionar(Runnable onGestionar) {
+        this.onGestionar = onGestionar;
+    }
 }

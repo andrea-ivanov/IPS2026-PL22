@@ -107,6 +107,16 @@ public class Database extends DbUtil {
 	}
 
 	/**
+	 * Constructor para permitir el uso de una URL de base de datos específica (por ejemplo para pruebas unitarias).
+	 */
+	public Database(String customUrl) {
+		this();
+		if (customUrl != null && !customUrl.trim().isEmpty()) {
+			this.url = customUrl.trim();
+		}
+	}
+
+	/**
 	 * Comprueba si la BD tiene las tablas creadas y datos cargados.
 	 * Si la tabla Grado no existe → ejecuta schema.sql + data.sql.
 	 * Si existe pero Grado, Alumno o MatriculaCurso están vacías → ejecuta solo data.sql.

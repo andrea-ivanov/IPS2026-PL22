@@ -16,6 +16,7 @@ public class ProfesorView {
     private void initialize() {
         frame = new JFrame("Panel de Profesor - Asignaciones Docentes");
         frame.setBounds(150, 150, 650, 400);
+        frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout());
 
