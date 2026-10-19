@@ -91,7 +91,7 @@ public class EstudianteView {
         JPanel cardConsulta = crearTarjetaOpcion(
                 "Consultar Mis Matrículas",
                 "<html>Acceda a su historial académico, consulte las asignaturas matriculadas, sus calificaciones en las convocatorias e indicadores del régimen de permanencia.</html>",
-                "Ver Expediente y Matrículas");
+                "Mi Expediente");
         btnMisMatriculas = (JButton) cardConsulta.getClientProperty("botonAccion");
         panelOpciones.add(cardConsulta);
 
@@ -99,7 +99,7 @@ public class EstudianteView {
         JPanel cardSolicitud = crearTarjetaOpcion(
                 "Solicitar Nueva Matrícula",
                 "<html>Explore la oferta académica disponible en grados y cursos activos, seleccione sus asignaturas con cálculo automático de créditos e importe, y confirme el método de pago.</html>",
-                "Iniciar Nueva Solicitud");
+                "Nueva Solicitud");
         btnSolicitarMatricula = (JButton) cardSolicitud.getClientProperty("botonAccion");
         panelOpciones.add(cardSolicitud);
 
@@ -110,7 +110,7 @@ public class EstudianteView {
         panelSur.setOpaque(false);
         btnVolverLogin = new JButton("Cerrar Sesión");
         btnVolverLogin.setPreferredSize(new Dimension(270, 36));
-        btnVolverLogin.setFont(new Font("Tahoma", Font.PLAIN, 13));
+        btnVolverLogin.setFont(new Font("Tahoma", Font.BOLD, 13));
         panelSur.add(btnVolverLogin);
         panel.add(panelSur, BorderLayout.SOUTH);
 
