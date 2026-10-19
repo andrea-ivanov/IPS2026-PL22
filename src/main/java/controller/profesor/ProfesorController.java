@@ -5,9 +5,12 @@ import model.acta.ActaModel;
 import model.acta.CalificacionActaDisplayDTO;
 import model.acta.EstadoActa;
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
+import model.grado.GradoDisplayDTO;
 import model.profesor.ProfesorDTO;
+import model.propuesta.PropuestaDisplayDTO;
 import repository.ActaRepository;
 import repository.ProfesorRepository;
+import repository.PropuestaRepository;
 import util.ComboBuscable;
 import util.SwingUtil;
 import util.exception.ValidationException;
@@ -34,6 +37,7 @@ public class ProfesorController {
     private ProfesorView view;
     private ProfesorRepository repository;
     private ActaRepository actaRepository;
+    private PropuestaRepository propuestaRepository;
     private String profesorId;
     // asignaciones del profesor seleccionado, sin filtrar: los filtros se aplican sobre esta lista
     private List<AsignacionDocenteDisplayDTO> asignaciones = new ArrayList<>();
@@ -49,6 +53,7 @@ public class ProfesorController {
         this.view = view;
         this.repository = new ProfesorRepository();
         this.actaRepository = new ActaRepository();
+        this.propuestaRepository = new PropuestaRepository();
         this.initView();
     }
 
@@ -80,6 +85,7 @@ public class ProfesorController {
         view.getCbActas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarNotas()));
         view.getBtnGuardarNotas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> guardarNotas()));
         view.getBtnCerrarActa().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cerrarActa()));
+        view.getBtnEnviarPropuesta().addActionListener(e -> SwingUtil.exceptionWrapper(() -> enviarPropuesta()));
     }
 
     private void cargarAsignaciones() {
@@ -93,6 +99,8 @@ public class ProfesorController {
         asignaciones = repository.getAsignacionesDocentes(profesorId);
         cargarCombosFiltro();
         aplicarFiltros();
+        view.getLblProfesorPropuesta().setText("Propuestas de " + seleccionado);
+        cargarPropuestas();
     }
 
     /** Rellena los combos de grado y curso solo con los valores de las asignaciones del profesor */
@@ -242,6 +250,68 @@ public class ProfesorController {
             cargarActas(); // recarga las actas para que el combo muestre el nuevo estado
             view.getCbActas().setSelectedIndex(indice);
         }
+    }
+
+    // =========================================================================
+    // HU 35243: propuestas de asignaturas
+    // =========================================================================
+
+    /** Grados en los que imparte el profesor (con su estado) y su listado "Mis propuestas" */
+    private void cargarPropuestas() {
+        List<GradoDisplayDTO> grados = propuestaRepository.getGradosProfesor(profesorId);
+        view.getListGradosPropuesta().setListData(grados.toArray(new GradoDisplayDTO[0]));
+
+        List<PropuestaDisplayDTO> propuestas = propuestaRepository.getPropuestas(profesorId);
+        TableModel tmodel = SwingUtil.getTableModelFromPojos(propuestas,
+                new String[] { "propuestaId", "grado", "nombre", "anio", "creditos", "fechaPropuesta", "estado" });
+        view.getTabPropuestas().setModel(tmodel);
+        SwingUtil.autoAdjustColumns(view.getTabPropuestas());
+        view.getBtnEnviarPropuesta().setEnabled(true);
+    }
+
+    /**
+     * Se validan los datos antes de pedir confirmación, para avisar de los errores sin preguntar;
+     * al confirmar se crea una propuesta PENDIENTE por grado elegido (o ninguna si alguna falla)
+     */
+    private void enviarPropuesta() {
+        if (profesorId == null)
+            throw new ValidationException("Carga primero un profesor");
+        List<GradoDisplayDTO> gradosSelec = view.getListGradosPropuesta().getSelectedValuesList();
+        List<String> gradoIds = new ArrayList<>();
+        for (GradoDisplayDTO g : gradosSelec)
+            gradoIds.add(g.getId());
+        String nombre = view.getTxtNombrePropuesta().getText();
+        String anio = view.getTxtAnioPropuesta().getText();
+        String creditos = view.getTxtCreditosPropuesta().getText();
+        String descripcion = view.getTxtDescripcionPropuesta().getText();
+
+        propuestaRepository.validarPropuestas(profesorId, gradoIds, nombre, anio, creditos, descripcion);
+
+        StringBuilder grados = new StringBuilder();
+        for (GradoDisplayDTO g : gradosSelec)
+            grados.append("\n- ").append(g.getNombre());
+        int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
+                "¿Quieres enviar la propuesta \"" + nombre.trim() + "\" (año " + anio.trim() + ", " + creditos.trim()
+                        + " créditos)?\nSe creará una propuesta PENDIENTE por cada grado:" + grados,
+                "Enviar propuesta", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION)
+            return;
+
+        List<String> creadas = propuestaRepository.crearPropuestas(profesorId, gradoIds, nombre, anio, creditos,
+                descripcion, LocalDate.now().toString());
+        JOptionPane.showMessageDialog(view.getFrame(),
+                "Propuesta enviada correctamente: " + String.join(", ", creadas) + " (PENDIENTE).", "Éxito",
+                JOptionPane.INFORMATION_MESSAGE);
+        limpiarFormularioPropuesta();
+        cargarPropuestas();
+    }
+
+    private void limpiarFormularioPropuesta() {
+        view.getTxtNombrePropuesta().setText("");
+        view.getTxtAnioPropuesta().setText("");
+        view.getTxtCreditosPropuesta().setText("");
+        view.getTxtDescripcionPropuesta().setText("");
+        view.getListGradosPropuesta().clearSelection();
     }
 
     private ActaDisplayDTO getActaSeleccionada() {

@@ -86,41 +86,13 @@ public class PropuestaModel {
 	 */
 	public List<String> crearPropuestas(String profesorId, List<String> gradoIds, String nombre, String anio,
 			String creditos, String descripcion, String fechaHoy) {
-		validarObligatorio(nombre, "El nombre de la asignatura es obligatorio");
-		validarObligatorio(anio, "El año es obligatorio");
-		validarObligatorio(creditos, "Los créditos son obligatorios");
-		if (gradoIds == null || gradoIds.isEmpty()) {
-			throw new ValidationException("Selecciona al menos un grado");
-		}
+		validarPropuestas(profesorId, gradoIds, nombre, anio, creditos, descripcion);
 		String nombreLimpio = nombre.trim();
-		if (nombreLimpio.length() > MAX_NOMBRE) {
-			throw new ValidationException("El nombre no puede superar los " + MAX_NOMBRE + " caracteres");
-		}
 		String descripcionLimpia = descripcion == null || descripcion.trim().isEmpty() ? null : descripcion.trim();
-		if (descripcionLimpia != null && descripcionLimpia.length() > MAX_DESCRIPCION) {
-			throw new ValidationException("La descripción no puede superar los " + MAX_DESCRIPCION + " caracteres");
-		}
 		int valorAnio = parsearAnio(anio);
 		double valorCreditos = parsearCreditos(creditos);
-
 		// el mismo grado elegido dos veces cuenta una sola vez
 		Set<String> grados = new LinkedHashSet<>(gradoIds);
-		Map<String, GradoDisplayDTO> gradosProfesor = getGradosProfesor(profesorId).stream()
-				.collect(Collectors.toMap(GradoDisplayDTO::getId, Function.identity()));
-		for (String gradoId : grados) {
-			GradoDisplayDTO grado = gradosProfesor.get(gradoId);
-			if (grado == null) {
-				throw new ValidationException("No impartes docencia en el grado " + gradoId);
-			}
-			if (!GRADO_VIGENTE.equals(grado.getEstado())) {
-				throw new ValidationException("El grado " + grado.getNombre() + " no está vigente (" + grado.getEstado()
-						+ "): no admite nuevas propuestas");
-			}
-			if (existeNombreEnGrado(gradoId, nombreLimpio)) {
-				throw new ValidationException("Ya existe una asignatura o propuesta llamada '" + nombreLimpio
-						+ "' en el grado " + grado.getNombre());
-			}
-		}
 
 		List<String> creadas = new ArrayList<>();
 		enTransaccion(conn -> {
@@ -137,6 +109,49 @@ public class PropuestaModel {
 			return filas;
 		});
 		return creadas;
+	}
+
+	/**
+	 * Comprueba los datos de una propuesta sin guardar nada (el controlador la usa antes de pedir confirmación):
+	 * campos obligatorios, año entre 1 y 6, créditos mayores que 0, y que cada grado sea del profesor,
+	 * esté vigente y no tenga ya una asignatura o propuesta con ese nombre.
+	 * @throws ValidationException con el primer problema encontrado
+	 */
+	public void validarPropuestas(String profesorId, List<String> gradoIds, String nombre, String anio,
+			String creditos, String descripcion) {
+		validarObligatorio(nombre, "El nombre de la asignatura es obligatorio");
+		validarObligatorio(anio, "El año es obligatorio");
+		validarObligatorio(creditos, "Los créditos son obligatorios");
+		if (gradoIds == null || gradoIds.isEmpty()) {
+			throw new ValidationException("Selecciona al menos un grado");
+		}
+		String nombreLimpio = nombre.trim();
+		if (nombreLimpio.length() > MAX_NOMBRE) {
+			throw new ValidationException("El nombre no puede superar los " + MAX_NOMBRE + " caracteres");
+		}
+		String descripcionLimpia = descripcion == null || descripcion.trim().isEmpty() ? null : descripcion.trim();
+		if (descripcionLimpia != null && descripcionLimpia.length() > MAX_DESCRIPCION) {
+			throw new ValidationException("La descripción no puede superar los " + MAX_DESCRIPCION + " caracteres");
+		}
+		parsearAnio(anio);
+		parsearCreditos(creditos);
+
+		Map<String, GradoDisplayDTO> gradosProfesor = getGradosProfesor(profesorId).stream()
+				.collect(Collectors.toMap(GradoDisplayDTO::getId, Function.identity()));
+		for (String gradoId : new LinkedHashSet<>(gradoIds)) {
+			GradoDisplayDTO grado = gradosProfesor.get(gradoId);
+			if (grado == null) {
+				throw new ValidationException("No impartes docencia en el grado " + gradoId);
+			}
+			if (!GRADO_VIGENTE.equals(grado.getEstado())) {
+				throw new ValidationException("El grado " + grado.getNombre() + " no está vigente (" + grado.getEstado()
+						+ "): no admite nuevas propuestas");
+			}
+			if (existeNombreEnGrado(gradoId, nombreLimpio)) {
+				throw new ValidationException("Ya existe una asignatura o propuesta llamada '" + nombreLimpio
+						+ "' en el grado " + grado.getNombre());
+			}
+		}
 	}
 
 	// =========================================================================

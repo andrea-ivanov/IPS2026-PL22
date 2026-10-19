@@ -29,6 +29,11 @@ public class PropuestaRepository {
 		return propuestaModel.getPropuestas(profesorId);
 	}
 
+	public void validarPropuestas(String profesorId, List<String> gradoIds, String nombre, String anio,
+			String creditos, String descripcion) {
+		propuestaModel.validarPropuestas(profesorId, gradoIds, nombre, anio, creditos, descripcion);
+	}
+
 	public List<String> crearPropuestas(String profesorId, List<String> gradoIds, String nombre, String anio,
 			String creditos, String descripcion, String fechaHoy) {
 		return propuestaModel.crearPropuestas(profesorId, gradoIds, nombre, anio, creditos, descripcion, fechaHoy);

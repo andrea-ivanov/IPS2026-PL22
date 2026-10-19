@@ -1,6 +1,7 @@
 package view.profesor;
 
 import model.asignaciondocente.RolDocente;
+import model.grado.GradoDisplayDTO;
 import model.grupo.TipoGrupo;
 import model.profesor.ProfesorDTO;
 
@@ -28,19 +29,26 @@ public class ProfesorView {
     private JTable tabNotas;
     private JButton btnGuardarNotas;
     private JButton btnCerrarActa;
+    // Pestaña de propuestas (HU 35243)
+    private JTextField txtNombrePropuesta;
+    private JTextField txtAnioPropuesta;
+    private JTextField txtCreditosPropuesta;
+    private JTextArea txtDescripcionPropuesta;
+    private JList<GradoDisplayDTO> listGradosPropuesta;
+    private JLabel lblProfesorPropuesta;
+    private JButton btnEnviarPropuesta;
+    private JTable tabPropuestas;
 
     public ProfesorView() {
         initialize();
     }
 
     private void initialize() {
-        frame = new JFrame("Panel de Profesor - Asignaciones Docentes");
-        frame.setBounds(150, 100, 900, 650);
+        frame = new JFrame("Panel de Profesor - Asignaciones Docentes y Propuestas");
+        frame.setBounds(150, 100, 980, 680);
         // la X cierra solo esta ventana; el controlador vuelve entonces a la pantalla de selección de rol
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout());
-
-        JPanel panelNorte = new JPanel(new GridLayout(2, 1));
 
         JPanel panelProfesor = new JPanel(new BorderLayout());
         JPanel panelSelecProfesor = new JPanel();
@@ -50,7 +58,8 @@ public class ProfesorView {
         cbProfesores.setPreferredSize(new Dimension(280, 26));
         panelSelecProfesor.add(cbProfesores);
 
-        btnCargarAsignaciones = new JButton("Ver Asignaciones");
+        // carga las dos pestañas (asignaciones y propuestas) del profesor elegido
+        btnCargarAsignaciones = new JButton("Cargar profesor");
         panelSelecProfesor.add(btnCargarAsignaciones);
         panelProfesor.add(panelSelecProfesor, BorderLayout.CENTER);
 
@@ -59,7 +68,17 @@ public class ProfesorView {
         btnVolverInicio.setToolTipText("Volver a la pantalla de selección de rol");
         panelVolver.add(btnVolverInicio);
         panelProfesor.add(panelVolver, BorderLayout.EAST);
-        panelNorte.add(panelProfesor);
+        frame.getContentPane().add(panelProfesor, BorderLayout.NORTH);
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Mis asignaciones", createAsignacionesPanel());
+        tabs.addTab("Proponer asignatura", createPropuestasPanel());
+        frame.getContentPane().add(tabs, BorderLayout.CENTER);
+    }
+
+    /** Pestaña de la HU 35239: asignaciones docentes con sus filtros, y actas y notas de la seleccionada */
+    private JPanel createAsignacionesPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
 
         // Filtros: grado y curso se rellenan con las asignaciones del profesor al cargarlas
         JPanel panelFiltros = new JPanel();
@@ -78,9 +97,7 @@ public class ProfesorView {
         panelFiltros.add(new JLabel("Rol:"));
         cbFiltroRol = new JComboBox<>(opcionesFiltro(RolDocente.values()));
         panelFiltros.add(cbFiltroRol);
-        panelNorte.add(panelFiltros);
-
-        frame.getContentPane().add(panelNorte, BorderLayout.NORTH);
+        panel.add(panelFiltros, BorderLayout.NORTH);
 
         tabAsignaciones = new JTable();
         tabAsignaciones.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -115,7 +132,84 @@ public class ProfesorView {
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, scrollPane, panelActa);
         splitPane.setResizeWeight(0.4);
-        frame.getContentPane().add(splitPane, BorderLayout.CENTER);
+        panel.add(splitPane, BorderLayout.CENTER);
+        return panel;
+    }
+
+    /**
+     * Pestaña de la HU 35243: formulario para proponer una asignatura en uno o varios de los grados
+     * en los que imparte el profesor, y listado "Mis propuestas"
+     */
+    private JPanel createPropuestasPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+
+        JPanel panelFormulario = new JPanel(new BorderLayout(10, 0));
+        panelFormulario.setBorder(new TitledBorder("Nueva propuesta"));
+
+        JPanel panelCampos = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(4, 4, 4, 4);
+        c.anchor = GridBagConstraints.WEST;
+        txtNombrePropuesta = new JTextField(28);
+        txtAnioPropuesta = new JTextField(4);
+        txtCreditosPropuesta = new JTextField(4);
+        txtDescripcionPropuesta = new JTextArea(4, 28);
+        txtDescripcionPropuesta.setLineWrap(true);
+        txtDescripcionPropuesta.setWrapStyleWord(true);
+        addCampo(panelCampos, c, 0, "Nombre:", txtNombrePropuesta);
+        addCampo(panelCampos, c, 1, "Año del grado (1-6):", txtAnioPropuesta);
+        addCampo(panelCampos, c, 2, "Créditos:", txtCreditosPropuesta);
+        addCampo(panelCampos, c, 3, "Descripción (opcional):", new JScrollPane(txtDescripcionPropuesta));
+        panelFormulario.add(panelCampos, BorderLayout.CENTER);
+
+        // grados en los que imparte el profesor, con su estado; se pueden elegir varios (Ctrl/Mayús + clic)
+        JPanel panelGrados = new JPanel(new BorderLayout());
+        panelGrados.add(new JLabel("Grados (puedes elegir varios):"), BorderLayout.NORTH);
+        listGradosPropuesta = new JList<>();
+        listGradosPropuesta.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        listGradosPropuesta.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
+                    boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof GradoDisplayDTO) {
+                    GradoDisplayDTO g = (GradoDisplayDTO) value;
+                    setText(g.getNombre() + " (" + g.getEstado() + ")");
+                }
+                return this;
+            }
+        });
+        JScrollPane scrollGrados = new JScrollPane(listGradosPropuesta);
+        scrollGrados.setPreferredSize(new Dimension(380, 120));
+        panelGrados.add(scrollGrados, BorderLayout.CENTER);
+        panelFormulario.add(panelGrados, BorderLayout.EAST);
+
+        JPanel panelBotonesPropuesta = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        lblProfesorPropuesta = new JLabel("Carga un profesor para proponer asignaturas");
+        panelBotonesPropuesta.add(lblProfesorPropuesta);
+        btnEnviarPropuesta = new JButton("Enviar propuesta");
+        btnEnviarPropuesta.setEnabled(false);
+        panelBotonesPropuesta.add(btnEnviarPropuesta);
+        panelFormulario.add(panelBotonesPropuesta, BorderLayout.SOUTH);
+        panel.add(panelFormulario, BorderLayout.NORTH);
+
+        JPanel panelMisPropuestas = new JPanel(new BorderLayout());
+        panelMisPropuestas.setBorder(new TitledBorder("Mis propuestas"));
+        tabPropuestas = new JTable();
+        tabPropuestas.setDefaultEditor(Object.class, null);
+        panelMisPropuestas.add(new JScrollPane(tabPropuestas), BorderLayout.CENTER);
+        panel.add(panelMisPropuestas, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private static void addCampo(JPanel panel, GridBagConstraints c, int fila, String etiqueta, JComponent campo) {
+        c.gridx = 0;
+        c.gridy = fila;
+        c.fill = GridBagConstraints.NONE;
+        panel.add(new JLabel(etiqueta), c);
+        c.gridx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(campo, c);
     }
 
     /** TODOS seguido de los valores del enum */
@@ -177,5 +271,37 @@ public class ProfesorView {
 
     public JButton getBtnCerrarActa() {
         return btnCerrarActa;
+    }
+
+    public JTextField getTxtNombrePropuesta() {
+        return txtNombrePropuesta;
+    }
+
+    public JTextField getTxtAnioPropuesta() {
+        return txtAnioPropuesta;
+    }
+
+    public JTextField getTxtCreditosPropuesta() {
+        return txtCreditosPropuesta;
+    }
+
+    public JTextArea getTxtDescripcionPropuesta() {
+        return txtDescripcionPropuesta;
+    }
+
+    public JList<GradoDisplayDTO> getListGradosPropuesta() {
+        return listGradosPropuesta;
+    }
+
+    public JLabel getLblProfesorPropuesta() {
+        return lblProfesorPropuesta;
+    }
+
+    public JButton getBtnEnviarPropuesta() {
+        return btnEnviarPropuesta;
+    }
+
+    public JTable getTabPropuestas() {
+        return tabPropuestas;
     }
 }
