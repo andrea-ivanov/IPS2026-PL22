@@ -9,6 +9,7 @@ public class MainView {
     private JPanel panelAlumno;
     private JComboBox<Object> cbAlumnos;
     private JButton btnAcceder;
+    private JButton btnRecargarBD;
 
     public MainView() {
         initialize();
@@ -45,6 +46,9 @@ public class MainView {
         JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         btnAcceder = new JButton("Acceder");
         panelBoton.add(btnAcceder);
+        btnRecargarBD = new JButton("Recargar base de datos");
+        btnRecargarBD.setToolTipText("Borra la base de datos y la vuelve a cargarla desde el archivo SQL");
+        panelBoton.add(btnRecargarBD);
         panelCentral.add(panelBoton);
 
         frame.getContentPane().add(panelCentral, BorderLayout.CENTER);
@@ -68,5 +72,9 @@ public class MainView {
 
     public JButton getBtnAcceder() {
         return btnAcceder;
+    }
+
+    public JButton getBtnRecargarBD() {
+        return btnRecargarBD;
     }
 }

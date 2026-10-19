@@ -4,6 +4,7 @@ import model.matriculacion.GestionMatriculaModel;
 import model.matriculacion.GrupoConsultaDTO;
 import model.matriculacion.GrupoPlazasDTO;
 import model.matriculacion.MatriculaSecretariaDTO;
+import repository.ActaRepository;
 import repository.MatriculacionRepository;
 import view.secretario.SecretarioView;
 import util.Database;
@@ -25,12 +26,14 @@ import java.util.TreeSet;
  * HU 35226: consulta de matriculaciones filtrando por estudiante, año, grado, curso, grupo y estado.
  * HU 35229: ciclo de vida de las matrículas y grupos (aceptar solicitudes, modificar, asignar grupos,
  * cancelar, activar al inicio del año y finalizar al terminarlo).
+ * HU 35239: consulta de las actas cerradas por el sistema (notificaciones a secretaría).
  */
 public class SecretarioController {
     private static final String TODOS = "TODOS";
 
     private SecretarioView view;
     private MatriculacionRepository repository;
+    private ActaRepository actaRepository = new ActaRepository();
     // Evita recargar la tabla mientras se rellenan los desplegables de filtros
     private boolean cargandoFiltros = false;
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
@@ -52,6 +55,7 @@ public class SecretarioController {
 
     public void initController() {
         view.getBtnVolverInicio().addActionListener(e -> volverInicio());
+        view.getBtnActasCerradas().addActionListener(e -> SwingUtil.exceptionWrapper(this::mostrarActasCerradas));
         view.getBtnCargarMatriculas().addActionListener(e -> SwingUtil.exceptionWrapper(this::cargarMatriculasFiltradas));
         view.getBtnLimpiarFiltros().addActionListener(e -> SwingUtil.exceptionWrapper(this::limpiarFiltros));
         view.getCbFiltroEstado().addActionListener(e -> filtrarSiProcede());
@@ -475,6 +479,33 @@ public class SecretarioController {
         cargarMatriculasFiltradas();
         cargarGrupos();
         mostrarDetalle();
+    }
+
+    // =========================================================================
+    // HU 35239: avisos de actas cerradas por el sistema
+    // =========================================================================
+
+    /**
+     * Cada acta que el sistema cerro al terminar la convocatoria sin que la cerrase el coordinador
+     * es una notificacion para secretaria (Acta.cierreAutomatico = 1). El cierre lo hace MainController al arrancar
+     */
+    private void mostrarActasCerradas() {
+        List<Object[]> actas = actaRepository.getActasCerradasAutomaticamente();
+        if (actas.isEmpty()) {
+            JOptionPane.showMessageDialog(view.getFrame(), "No hay actas cerradas por el sistema.",
+                    "Actas cerradas por el sistema", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        DefaultTableModel model = new DefaultTableModel(new String[] { "Curso", "Asignatura", "Año", "Convocatoria",
+                "Fecha cierre", "Coordinador" }, 0);
+        for (Object[] a : actas)
+            model.addRow(a);
+        JTable tabla = new JTable(model);
+        tabla.setDefaultEditor(Object.class, null);
+        JScrollPane scroll = new JScrollPane(tabla);
+        scroll.setPreferredSize(new java.awt.Dimension(750, 200));
+        JOptionPane.showMessageDialog(view.getFrame(), scroll,
+                "Actas cerradas por el sistema (" + actas.size() + ")", JOptionPane.WARNING_MESSAGE);
     }
 
     // =========================================================================

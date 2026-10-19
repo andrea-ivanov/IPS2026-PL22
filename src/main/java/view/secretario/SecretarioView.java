@@ -24,6 +24,7 @@ public class SecretarioView {
     private JLabel lblTituloCabecera;
     private JButton btnVolver;
     private JButton btnVolverInicio;
+    private JButton btnActasCerradas;
     private JButton btnCargarMatriculas;
     private JButton btnLimpiarFiltros;
     private JLabel lblResultados;
@@ -81,6 +82,9 @@ public class SecretarioView {
         lblTituloCabecera.setFont(new Font("Tahoma", Font.BOLD, 16));
 
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnActasCerradas = new JButton("Actas cerradas por el sistema");
+        btnActasCerradas.setToolTipText("Actas que el sistema cerró al terminar la convocatoria (HU 35239)");
+        buttonsPanel.add(btnActasCerradas);
         btnVolver = new JButton("Volver al Listado");
         btnVolver.setEnabled(false);
         buttonsPanel.add(btnVolver);
@@ -433,6 +437,10 @@ public class SecretarioView {
 
     public JFrame getFrame() {
         return frame;
+    }
+
+    public JButton getBtnActasCerradas() {
+        return btnActasCerradas;
     }
 
     public JButton getBtnVolverInicio() {

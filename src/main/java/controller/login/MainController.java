@@ -6,12 +6,14 @@ import view.estudiante.EstudianteView;
 import view.secretario.SecretarioView; // Tu vista de secretario
 import view.profesor.ProfesorView;
 import java.awt.EventQueue;
+import javax.swing.JOptionPane;
 import java.time.LocalDate;
 
 import controller.admin.AdminOfertaController;
 import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
+import repository.ActaRepository;
 import repository.AlumnoRepository;
 import repository.MatriculacionRepository;
 import util.Database;
@@ -26,16 +28,46 @@ public class MainController {
     }
 
     public void initController() {
-        // HU 35229: el sistema mantiene al día el estado de las matrículas en cada arranque,
-        // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA -> FINALIZADA al terminarlo)
-        SwingUtil.exceptionWrapper(() -> new MatriculacionRepository(new Database())
-                .actualizarCicloVida(LocalDate.now().toString()));
+        actualizarEstadosPorFecha();
         cargarAlumnos();
 
         view.getCbRoles().addActionListener(e -> actualizarVisibilidadAlumno());
         actualizarVisibilidadAlumno();
 
         view.getBtnAcceder().addActionListener(e -> gestionarAcceso());
+        view.getBtnRecargarBD().addActionListener(e -> SwingUtil.exceptionWrapper(this::recargarBaseDatos));
+    }
+
+    /** Lo que el sistema actualiza solo segun la fecha actual: se hace al arrancar y al recargar la BD */
+    private void actualizarEstadosPorFecha() {
+        // HU 35229: el sistema mantiene al día el estado de las matrículas en cada arranque,
+        // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA -> FINALIZADA al terminarlo)
+        SwingUtil.exceptionWrapper(() -> new MatriculacionRepository(new Database())
+                .actualizarCicloVida(LocalDate.now().toString()));
+        // HU 35239: las actas abiertas cuya convocatoria ya ha terminado las cierra el sistema
+        // (cierreAutomatico = 1); secretaria las consulta como avisos en su vista
+        SwingUtil.exceptionWrapper(() -> new ActaRepository().cerrarActasVencidas(LocalDate.now().toString()));
+    }
+
+    /**
+     * La BD es persistente: data.sql solo se carga sola si la BD esta vacia.
+     * Este boton la borra y la vuelve a cargar desde schema.sql y data.sql (se pierden los cambios hechos en la aplicacion)
+     */
+    private void recargarBaseDatos() {
+        int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
+                "¿Seguro que quieres recargar la base de datos desde schema.sql y data.sql?\n"
+                        + "Se perderán todos los cambios hechos en la aplicación.",
+                "Recargar base de datos", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION)
+            return;
+
+        Database db = new Database();
+        db.createDatabase(false);
+        db.loadDatabase();
+        actualizarEstadosPorFecha();
+        cargarAlumnos();
+        JOptionPane.showMessageDialog(view.getFrame(), "Base de datos recargada correctamente.", "Éxito",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void cargarAlumnos() {
@@ -113,6 +145,7 @@ public class MainController {
     private void abrirVistaProfesor() {
         ProfesorView profView = new ProfesorView();
         ProfesorController profController = new ProfesorController(profView);
+        profController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         profController.initController();
         view.getFrame().setVisible(false);
     }
