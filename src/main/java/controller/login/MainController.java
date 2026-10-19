@@ -16,6 +16,7 @@ import controller.profesor.ProfesorController;
 import repository.ActaRepository;
 import repository.AlumnoRepository;
 import repository.MatriculacionRepository;
+import util.ComboBuscable;
 import util.Database;
 import util.SwingUtil;
 
@@ -73,6 +74,8 @@ public class MainController {
     private void cargarAlumnos() {
         AlumnoRepository repo = new AlumnoRepository();
         view.getCbAlumnos().setModel(SwingUtil.getComboModelFromList(repo.getListaAlumnos()));
+        // se puede escribir parte del nombre, apellidos o UO para buscar el alumno (como el combo de profesores)
+        ComboBuscable.hacerBuscable(view.getCbAlumnos());
     }
 
     private void actualizarVisibilidadAlumno() {
@@ -104,7 +107,14 @@ public class MainController {
     }
 
     private void abrirVistaEstudiante() {
-        Object itemSeleccionado = view.getCbAlumnos().getSelectedItem();
+        // lo escrito tiene que corresponder a un único alumno de la lista
+        Object itemSeleccionado = ComboBuscable.getSeleccion(view.getCbAlumnos());
+        if (itemSeleccionado == null) {
+            JOptionPane.showMessageDialog(view.getFrame(),
+                    "Escriba o seleccione un alumno de la lista (si hay varios que coinciden, elija uno).",
+                    "Seleccione un alumno", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         String uo = null;
         String nombre = null;
         if (itemSeleccionado != null) {

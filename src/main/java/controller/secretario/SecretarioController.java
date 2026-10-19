@@ -1,25 +1,26 @@
 package controller.secretario;
 
+import model.matriculacion.FiltroMatriculasSecretaria;
 import model.matriculacion.GestionMatriculaModel;
 import model.matriculacion.GrupoConsultaDTO;
 import model.matriculacion.GrupoPlazasDTO;
 import model.matriculacion.MatriculaSecretariaDTO;
+import model.matriculacion.SituacionSecretaria;
 import repository.ActaRepository;
 import repository.MatriculacionRepository;
 import view.secretario.SecretarioView;
 import util.Database;
+import util.Paginacion;
 import util.SwingUtil;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.GridLayout;
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.TreeSet;
 
 /**
  * Controlador de la vista de Secretaría.
@@ -30,8 +31,12 @@ import java.util.TreeSet;
  */
 public class SecretarioController {
     private static final String TODOS = "TODOS";
+    // Con una base de datos grande solo se lee de la BD la página que se muestra
+    private static final int FILAS_POR_PAGINA = 25;
 
     private SecretarioView view;
+    private final Paginacion paginacionMatriculas = new Paginacion(FILAS_POR_PAGINA);
+    private final Paginacion paginacionGrupos = new Paginacion(FILAS_POR_PAGINA);
     private MatriculacionRepository repository;
     private ActaRepository actaRepository = new ActaRepository();
     // Evita recargar la tabla mientras se rellenan los desplegables de filtros
@@ -57,6 +62,10 @@ public class SecretarioController {
         view.getBtnVolverInicio().addActionListener(e -> volverInicio());
         view.getBtnActasCerradas().addActionListener(e -> SwingUtil.exceptionWrapper(this::mostrarActasCerradas));
         view.getBtnCargarMatriculas().addActionListener(e -> SwingUtil.exceptionWrapper(this::cargarMatriculasFiltradas));
+        view.getPaginacionMatriculas().conectar(paginacionMatriculas,
+                () -> SwingUtil.exceptionWrapper(this::cargarPaginaMatriculas));
+        view.getPaginacionGrupos().conectar(paginacionGrupos,
+                () -> SwingUtil.exceptionWrapper(this::cargarPaginaGrupos));
         view.getBtnLimpiarFiltros().addActionListener(e -> SwingUtil.exceptionWrapper(this::limpiarFiltros));
         view.getCbFiltroEstado().addActionListener(e -> filtrarSiProcede());
         view.getCbFiltroAnio().addActionListener(e -> filtrarSiProcede());
@@ -111,19 +120,11 @@ public class SecretarioController {
 
     /** Rellena los desplegables de año, grado y curso con los valores existentes en las matrículas. */
     private void cargarOpcionesFiltros() {
-        TreeSet<String> anios = new TreeSet<>();
-        TreeSet<String> grados = new TreeSet<>();
-        TreeSet<String> cursos = new TreeSet<>();
-        for (MatriculaSecretariaDTO m : repository.getMatriculasSecretaria()) {
-            anios.add(m.getAnioAcademicoId());
-            grados.add(m.getGrado());
-            cursos.add(m.getCurso());
-        }
         cargandoFiltros = true;
         try {
-            rellenarCombo(view.getCbFiltroAnio(), anios.descendingSet());
-            rellenarCombo(view.getCbFiltroGrado(), grados);
-            rellenarCombo(view.getCbFiltroCurso(), cursos);
+            rellenarCombo(view.getCbFiltroAnio(), repository.getAniosConMatriculas());
+            rellenarCombo(view.getCbFiltroGrado(), repository.getGradosConMatriculas());
+            rellenarCombo(view.getCbFiltroCurso(), repository.getCursosConMatriculas());
         } finally {
             cargandoFiltros = false;
         }
@@ -156,44 +157,47 @@ public class SecretarioController {
         cargarMatriculasFiltradas();
     }
 
+    /** Aplica los filtros: el listado vuelve a la primera página. */
     private void cargarMatriculasFiltradas() {
-        String estado = (String) view.getCbFiltroEstado().getSelectedItem();
-        String anio = (String) view.getCbFiltroAnio().getSelectedItem();
-        String grado = (String) view.getCbFiltroGrado().getSelectedItem();
-        String curso = (String) view.getCbFiltroCurso().getSelectedItem();
-        String estudiante = normalizar(view.getTxtFiltroEstudiante().getText());
-        String grupo = normalizar(view.getTxtFiltroGrupo().getText());
-        String situacion = (String) view.getCbFiltroSituacion().getSelectedItem();
-        String hoy = hoy();
+        paginacionMatriculas.primera();
+        cargarPaginaMatriculas();
+    }
 
-        List<MatriculaSecretariaDTO> lista = repository.getMatriculasSecretaria();
+    /** Carga la página actual del listado con los filtros (filtrado y paginación se hacen en la consulta SQL). */
+    private void cargarPaginaMatriculas() {
+        FiltroMatriculasSecretaria filtro = new FiltroMatriculasSecretaria()
+                .setEstado(valorFiltro(view.getCbFiltroEstado()))
+                .setAnioAcademicoId(valorFiltro(view.getCbFiltroAnio()))
+                .setGrado(valorFiltro(view.getCbFiltroGrado()))
+                .setCurso(valorFiltro(view.getCbFiltroCurso()))
+                .setEstudiante(view.getTxtFiltroEstudiante().getText())
+                .setGrupo(view.getTxtFiltroGrupo().getText())
+                .setSituacion(situacion((String) view.getCbFiltroSituacion().getSelectedItem()))
+                .setFechaHoy(hoy());
+
+        // Primero el total, que puede recolocar la página si tras un cambio hay menos filas
+        paginacionMatriculas.setTotalFilas(repository.contarMatriculasSecretaria(filtro));
+        List<MatriculaSecretariaDTO> pagina = repository.getMatriculasSecretaria(filtro,
+                paginacionMatriculas.getOffset(), paginacionMatriculas.getFilasPorPagina());
+
         DefaultTableModel model = (DefaultTableModel) view.getTabMatriculas().getModel();
         model.setRowCount(0);
-
-        for (MatriculaSecretariaDTO m : lista) {
-            boolean coincide = coincideExacto(estado, m.getEstado())
-                    && coincideExacto(anio, m.getAnioAcademicoId())
-                    && coincideExacto(grado, m.getGrado())
-                    && coincideExacto(curso, m.getCurso())
-                    && (estudiante.isEmpty() || contiene(m.getEstudiante(), estudiante) || contiene(m.getDni(), estudiante))
-                    && (grupo.isEmpty() || tieneGrupo(m.getGrupo(), grupo))
-                    && coincideSituacion(situacion, m, hoy);
-            if (coincide) {
-                model.addRow(new Object[] {
-                    m.getMatriculaId(),
-                    m.getCursoId(),
-                    m.getAnioAcademicoId(),
-                    m.getDni(),
-                    m.getEstudiante(),
-                    m.getGrado(),
-                    m.getCurso(),
-                    m.getGrupo(),
-                    m.getEstado(),
-                    "Ver / Gestionar"
-                });
-            }
+        for (MatriculaSecretariaDTO m : pagina) {
+            model.addRow(new Object[] {
+                m.getMatriculaId(),
+                m.getCursoId(),
+                m.getAnioAcademicoId(),
+                m.getDni(),
+                m.getEstudiante(),
+                m.getGrado(),
+                m.getCurso(),
+                m.getGrupo(),
+                m.getEstado(),
+                "Ver / Gestionar"
+            });
         }
-        view.getLblResultados().setText(model.getRowCount() + " de " + lista.size() + " matrículas mostradas");
+        view.getLblResultados().setText(textoResultados(paginacionMatriculas, "matrícula", "matrículas"));
+        view.getPaginacionMatriculas().actualizar(paginacionMatriculas);
     }
 
     // =========================================================================
@@ -208,17 +212,7 @@ public class SecretarioController {
 
     /** Rellena los años académicos (seleccionando el año en curso) y los grados y cursos que tienen grupos. */
     private void cargarOpcionesGrupos() {
-        TreeSet<String> grados = new TreeSet<>();
-        TreeSet<String> cursos = new TreeSet<>();
         String anioActual = repository.getAnioAcademicoActual(hoy());
-        for (GrupoConsultaDTO g : repository.getGruposConsulta(anioActual)) {
-            cursos.add(g.getCurso());
-            for (String grado : g.getGrados().split("; ")) {
-                if (!"-".equals(grado)) {
-                    grados.add(grado);
-                }
-            }
-        }
         cargandoFiltros = true;
         try {
             Object anioSeleccionado = view.getCbGruposAnio().getSelectedItem();
@@ -228,45 +222,51 @@ public class SecretarioController {
             }
             view.getCbGruposAnio().setModel(anios);
             view.getCbGruposAnio().setSelectedItem(anioSeleccionado != null ? anioSeleccionado : anioActual);
-            rellenarCombo(view.getCbGruposGrado(), grados);
-            rellenarCombo(view.getCbGruposCurso(), cursos);
+            rellenarCombo(view.getCbGruposGrado(), repository.getGradosConGrupos());
+            rellenarCombo(view.getCbGruposCurso(), repository.getCursosConGrupos());
         } finally {
             cargandoFiltros = false;
         }
     }
 
+    /** Aplica los filtros de grupos: la consulta vuelve a la primera página. */
     private void cargarGrupos() {
+        paginacionGrupos.primera();
+        cargarPaginaGrupos();
+    }
+
+    /** Carga la página actual de grupos con su ocupación en el año seleccionado. */
+    private void cargarPaginaGrupos() {
         String anio = (String) view.getCbGruposAnio().getSelectedItem();
-        String grado = (String) view.getCbGruposGrado().getSelectedItem();
-        String curso = (String) view.getCbGruposCurso().getSelectedItem();
+        String grado = valorFiltro(view.getCbGruposGrado());
+        String curso = valorFiltro(view.getCbGruposCurso());
 
         DefaultTableModel model = (DefaultTableModel) view.getTabGrupos().getModel();
         model.setRowCount(0);
         limpiarAlumnosGrupo();
         if (anio == null) {
+            paginacionGrupos.setTotalFilas(0);
+            view.getPaginacionGrupos().actualizar(paginacionGrupos);
             view.getLblResultadosGrupos().setText("No hay años académicos definidos");
             return;
         }
-        List<GrupoConsultaDTO> grupos = repository.getGruposConsulta(anio);
-        for (GrupoConsultaDTO g : grupos) {
-            boolean coincide = coincideExacto(curso, g.getCurso())
-                    && (grado == null || TODOS.equals(grado) || Arrays.asList(g.getGrados().split("; ")).contains(grado));
-            if (coincide) {
-                model.addRow(new Object[] {
-                    g.getCursoId(),
-                    g.getCurso(),
-                    g.getGrupoCodigo(),
-                    nombreTipoGrupo(g.getTipo()),
-                    g.getGrados(),
-                    g.getProfesores(),
-                    g.getCapacidad(),
-                    g.getOcupadas(),
-                    g.getPlazasLibres()
-                });
-            }
+        paginacionGrupos.setTotalFilas(repository.contarGruposConsulta(grado, curso));
+        for (GrupoConsultaDTO g : repository.getGruposConsulta(anio, grado, curso, paginacionGrupos.getOffset(),
+                paginacionGrupos.getFilasPorPagina())) {
+            model.addRow(new Object[] {
+                g.getCursoId(),
+                g.getCurso(),
+                g.getGrupoCodigo(),
+                nombreTipoGrupo(g.getTipo()),
+                g.getGrados(),
+                g.getProfesores(),
+                g.getCapacidad(),
+                g.getOcupadas(),
+                g.getPlazasLibres()
+            });
         }
-        view.getLblResultadosGrupos().setText(model.getRowCount() + " de " + grupos.size() + " grupos mostrados en "
-                + anio + "  —  Ocupadas: cursos PAGADOS o ACTIVOS del año");
+        view.getLblResultadosGrupos().setText(textoResultados(paginacionGrupos, "grupo", "grupos") + " en " + anio);
+        view.getPaginacionGrupos().actualizar(paginacionGrupos);
     }
 
     /** Muestra los alumnos del grupo seleccionado en el año académico elegido. */
@@ -340,11 +340,12 @@ public class SecretarioController {
         }
 
         String estadoFinal = repository.aceptarSolicitud(matriculaId, cursoId, metodoPago, hoy());
+        // Se refresca antes del aviso para que detrás ya se vea el nuevo estado guardado en la BD
+        refrescar();
         String mensaje = "ACTIVA".equals(estadoFinal)
                 ? "Solicitud aceptada. Como el año académico " + m.getAnioAcademicoId() + " ya ha comenzado, la matrícula queda ACTIVA."
                 : "Solicitud aceptada. La matrícula queda PAGADA y pasará a ACTIVA al iniciar el curso.";
         JOptionPane.showMessageDialog(view.getFrame(), mensaje, "Éxito", JOptionPane.INFORMATION_MESSAGE);
-        refrescar();
     }
 
     private void modificarMatricula() {
@@ -382,9 +383,9 @@ public class SecretarioController {
         String metodoPago = GestionMatriculaModel.METODOS_PAGO.contains(metodo) ? (String) metodo : null;
 
         repository.modificarMatricula(matriculaId, cursoId, metodoPago, txtEmail.getText(), hoy());
+        refrescar();
         JOptionPane.showMessageDialog(view.getFrame(), "Información de la matrícula actualizada correctamente.",
                 "Modificación Exitosa", JOptionPane.INFORMATION_MESSAGE);
-        refrescar();
     }
 
     /** Asigna o cambia los grupos del curso: uno de cada tipo, mostrando las plazas libres de cada grupo. */
@@ -427,9 +428,9 @@ public class SecretarioController {
             grupoPorTipo.put(e.getKey(), ((GrupoPlazasDTO) e.getValue().getSelectedItem()).getGrupoCodigo());
         }
         repository.asignarGrupos(matriculaId, cursoId, grupoPorTipo);
+        refrescar();
         JOptionPane.showMessageDialog(view.getFrame(), "Grupos asignados correctamente: " + grupoPorTipo.values(),
                 "Grupos asignados", JOptionPane.INFORMATION_MESSAGE);
-        refrescar();
     }
 
     private static String nombreTipoGrupo(String tipo) {
@@ -466,18 +467,21 @@ public class SecretarioController {
         }
         String motivo = (String) cbMotivo.getSelectedItem();
         repository.cancelarMatricula(matriculaId, cursoId, motivo, hoy(), rbTodo.isSelected());
+        refrescar();
         JOptionPane.showMessageDialog(view.getFrame(),
                 "Cancelación registrada correctamente.\nMotivo: " + motivo
                         + "\nLa matrícula se conserva en el sistema con estado CANCELADA.",
                 "Cancelada", JOptionPane.INFORMATION_MESSAGE);
-        refrescar();
     }
 
-    /** Recarga el listado y el detalle para que se vea el estado actualizado tras una operación. */
+    /**
+     * Recarga el listado y el detalle para que se vea el estado actualizado tras una operación,
+     * manteniendo la página en la que estaba el secretario.
+     */
     private void refrescar() {
         cargarOpcionesFiltros();
-        cargarMatriculasFiltradas();
-        cargarGrupos();
+        cargarPaginaMatriculas();
+        cargarPaginaGrupos();
         mostrarDetalle();
     }
 
@@ -516,42 +520,34 @@ public class SecretarioController {
         return LocalDate.now().toString();
     }
 
-    private static String normalizar(String texto) {
-        return texto == null ? "" : texto.toLowerCase().trim();
+    /** Valor seleccionado en un desplegable de filtro, o nulo si es "TODOS" (no filtra). */
+    private static String valorFiltro(JComboBox<String> combo) {
+        String valor = (String) combo.getSelectedItem();
+        return valor == null || TODOS.equals(valor) ? null : valor;
     }
 
-    private static boolean coincideExacto(String filtro, String valor) {
-        return filtro == null || TODOS.equals(filtro) || filtro.equalsIgnoreCase(valor);
+    /** Situación del modelo que corresponde a la opción elegida en la vista. */
+    private static SituacionSecretaria situacion(String opcion) {
+        if (SecretarioView.SITUACION_PAGO_PENDIENTE.equals(opcion)) {
+            return SituacionSecretaria.PAGO_PENDIENTE;
+        }
+        if (SecretarioView.SITUACION_SIN_PAGAR.equals(opcion)) {
+            return SituacionSecretaria.SIN_PAGAR;
+        }
+        if (SecretarioView.SITUACION_FALTAN_GRUPOS.equals(opcion)) {
+            return SituacionSecretaria.FALTAN_GRUPOS;
+        }
+        return SituacionSecretaria.TODAS;
     }
 
-    private static boolean contiene(String valor, String filtro) {
-        return valor != null && valor.toLowerCase().contains(filtro);
-    }
-
-    /** El filtro de grupo compara cada grupo asignado completo ("PL1" no coincide con "PL10"). */
-    private static boolean tieneGrupo(String grupos, String filtro) {
-        if (grupos == null) {
-            return false;
+    /** Texto del pie de un listado paginado, p. ej. "Mostrando 26 - 50 de 21.660 matrículas". */
+    private static String textoResultados(Paginacion p, String singular, String plural) {
+        if (p.getTotalFilas() == 0) {
+            return "No hay " + plural + " con estos filtros";
         }
-        for (String g : grupos.split(",")) {
-            if (g.trim().equalsIgnoreCase(filtro)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean coincideSituacion(String situacion, MatriculaSecretariaDTO m, String hoy) {
-        if (SecretarioView.SITUACION_PAGO_PENDIENTE.equals(situacion)) {
-            return m.isPagoPendienteValidar();
-        }
-        if (SecretarioView.SITUACION_SIN_PAGAR.equals(situacion)) {
-            return m.isSinPagarAnioIniciado(hoy);
-        }
-        if (SecretarioView.SITUACION_FALTAN_GRUPOS.equals(situacion)) {
-            return m.isFaltanGrupos();
-        }
-        return true;
+        Locale es = new Locale("es", "ES");
+        return String.format(es, "Mostrando %,d - %,d de %,d %s", p.getDesde(), p.getHasta(), p.getTotalFilas(),
+                p.getTotalFilas() == 1 ? singular : plural);
     }
 
     private void initView() {

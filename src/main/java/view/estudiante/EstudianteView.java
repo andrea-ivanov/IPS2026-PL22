@@ -6,6 +6,8 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
 
+import view.comun.Estilo;
+
 /**
  * Vista principal del estudiante.
  * Gestiona de forma unificada en una sola ventana (mediante CardLayout):
@@ -41,7 +43,7 @@ public class EstudianteView {
     private void initialize() {
         frame = new JFrame("Vista Estudiante");
         frame.setBounds(100, 80, 920, 650);
-        frame.setLocationRelativeTo(null);
+        Estilo.maximizarCentrado(frame);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout());
 
@@ -91,7 +93,7 @@ public class EstudianteView {
         JPanel cardConsulta = crearTarjetaOpcion(
                 "Consultar Mis Matrículas",
                 "<html>Acceda a su historial académico, consulte las asignaturas matriculadas, sus calificaciones en las convocatorias e indicadores del régimen de permanencia.</html>",
-                "Ver Expediente y Matrículas");
+                "Mi Expediente");
         btnMisMatriculas = (JButton) cardConsulta.getClientProperty("botonAccion");
         panelOpciones.add(cardConsulta);
 
@@ -99,7 +101,7 @@ public class EstudianteView {
         JPanel cardSolicitud = crearTarjetaOpcion(
                 "Solicitar Nueva Matrícula",
                 "<html>Explore la oferta académica disponible en grados y cursos activos, seleccione sus asignaturas con cálculo automático de créditos e importe, y confirme el método de pago.</html>",
-                "Iniciar Nueva Solicitud");
+                "Nueva Solicitud");
         btnSolicitarMatricula = (JButton) cardSolicitud.getClientProperty("botonAccion");
         panelOpciones.add(cardSolicitud);
 
@@ -108,9 +110,9 @@ public class EstudianteView {
         // --- Panel Sur con Botón para Volver al Login ---
         JPanel panelSur = new JPanel(new FlowLayout(FlowLayout.CENTER));
         panelSur.setOpaque(false);
-        btnVolverLogin = new JButton("Cerrar Sesión");
+        btnVolverLogin = Estilo.estilizarSecundario(new JButton("Cerrar Sesión"));
         btnVolverLogin.setPreferredSize(new Dimension(270, 36));
-        btnVolverLogin.setFont(new Font("Tahoma", Font.PLAIN, 13));
+        btnVolverLogin.setFont(new Font("Tahoma", Font.BOLD, 13));
         panelSur.add(btnVolverLogin);
         panel.add(panelSur, BorderLayout.SOUTH);
 
@@ -138,7 +140,7 @@ public class EstudianteView {
         card.add(lblDesc, BorderLayout.CENTER);
 
         // Botón de acción
-        JButton btn = new JButton(textoBoton);
+        JButton btn = Estilo.estilizarPrimario(new JButton(textoBoton));
         btn.setFont(new Font("Tahoma", Font.BOLD, 13));
         btn.setPreferredSize(new Dimension(200, 38));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));

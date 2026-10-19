@@ -3,6 +3,8 @@ package repository;
 import java.util.List;
 
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
+import model.asignaciondocente.RolDocente;
+import model.profesor.ProfesorDTO;
 import util.Database;
 
 /**
@@ -11,10 +13,10 @@ import util.Database;
 public class ProfesorRepository {
     private Database db = new Database();
 
-    /** Lista de profesores para el combo, con formato "P001 - Nombre Apellidos" */
-    public List<Object[]> getListaProfesores() {
-        String sql = "SELECT profesorId || ' - ' || nombre || ' ' || apellidos FROM Profesor ORDER BY profesorId";
-        return db.executeQueryArray(sql);
+    /** Profesores para los combos, ordenados por id (el combo muestra "P001 - Nombre Apellidos") */
+    public List<ProfesorDTO> getProfesores() {
+        String sql = "SELECT profesorId, nombre, apellidos FROM Profesor ORDER BY profesorId";
+        return db.executeQueryPojo(ProfesorDTO.class, sql);
     }
 
     /**
@@ -24,7 +26,7 @@ public class ProfesorRepository {
      */
     public List<AsignacionDocenteDisplayDTO> getAsignacionesDocentes(String profesorId) {
         String sql = "SELECT i.cursoId, c.nombre AS curso, GROUP_CONCAT(gr.nombre, ', ') AS grado, i.grupoCodigo, g.tipo,"
-                + " CASE WHEN c.coordinadorId = i.profesorId THEN 'COORDINADOR' ELSE 'DOCENTE' END AS rol"
+                + " CASE WHEN c.coordinadorId = i.profesorId THEN ? ELSE ? END AS rol"
                 + " FROM Imparte i"
                 + " JOIN Curso c ON c.cursoId = i.cursoId"
                 + " JOIN Grupo g ON g.cursoId = i.cursoId AND g.grupoCodigo = i.grupoCodigo"
@@ -33,6 +35,7 @@ public class ProfesorRepository {
                 + " WHERE i.profesorId = ?"
                 + " GROUP BY i.cursoId, i.grupoCodigo"
                 + " ORDER BY i.cursoId, g.tipo, i.grupoCodigo";
-        return db.executeQueryPojo(AsignacionDocenteDisplayDTO.class, sql, profesorId);
+        return db.executeQueryPojo(AsignacionDocenteDisplayDTO.class, sql,
+                RolDocente.COORDINADOR.name(), RolDocente.DOCENTE.name(), profesorId);
     }
 }

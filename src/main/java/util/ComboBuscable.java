@@ -19,11 +19,16 @@ import javax.swing.JTextField;
  */
 public final class ComboBuscable {
 	private static final String OPCIONES = "ComboBuscable.opciones";
+	private static final String CLAVES = "ComboBuscable.claves";
 
 	private ComboBuscable() {
 	}
 
-	/** Hace el combo editable y filtra sus opciones al escribir; las opciones son las que tiene en este momento */
+	/**
+	 * Hace el combo editable y filtra sus opciones al escribir; las opciones son las que tiene en este momento.
+	 * Si el combo ya era buscable (p. ej. tras volver a cargar sus opciones), solo se actualizan las opciones
+	 * de la búsqueda, sin añadir otro buscador.
+	 */
 	public static <E> void hacerBuscable(JComboBox<E> combo) {
 		List<E> opciones = new ArrayList<>();
 		// texto de cada opción en minúsculas, calculado una sola vez y no en cada tecla
@@ -34,7 +39,20 @@ public final class ComboBuscable {
 			opciones.add(o);
 			claves.add(o == null ? "" : o.toString().toLowerCase());
 		}
+		@SuppressWarnings("unchecked")
+		List<E> opcionesActuales = (List<E>) combo.getClientProperty(OPCIONES);
+		@SuppressWarnings("unchecked")
+		List<String> clavesActuales = (List<String>) combo.getClientProperty(CLAVES);
+		if (opcionesActuales != null && clavesActuales != null) {
+			// el buscador ya está instalado y usa estas mismas listas: basta con cambiar su contenido
+			opcionesActuales.clear();
+			opcionesActuales.addAll(opciones);
+			clavesActuales.clear();
+			clavesActuales.addAll(claves);
+			return;
+		}
 		combo.putClientProperty(OPCIONES, opciones);
+		combo.putClientProperty(CLAVES, claves);
 		combo.setEditable(true);
 
 		JTextField editor = (JTextField) combo.getEditor().getEditorComponent();

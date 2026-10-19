@@ -3,9 +3,14 @@ package controller.profesor;
 import model.acta.ActaDisplayDTO;
 import model.acta.ActaModel;
 import model.acta.CalificacionActaDisplayDTO;
+import model.acta.EstadoActa;
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
+import model.grado.GradoDisplayDTO;
+import model.profesor.ProfesorDTO;
+import model.propuesta.PropuestaDisplayDTO;
 import repository.ActaRepository;
 import repository.ProfesorRepository;
+import repository.PropuestaRepository;
 import util.ComboBuscable;
 import util.SwingUtil;
 import util.exception.ValidationException;
@@ -16,6 +21,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +37,7 @@ public class ProfesorController {
     private ProfesorView view;
     private ProfesorRepository repository;
     private ActaRepository actaRepository;
+    private PropuestaRepository propuestaRepository;
     private String profesorId;
     // asignaciones del profesor seleccionado, sin filtrar: los filtros se aplican sobre esta lista
     private List<AsignacionDocenteDisplayDTO> asignaciones = new ArrayList<>();
@@ -45,6 +53,7 @@ public class ProfesorController {
         this.view = view;
         this.repository = new ProfesorRepository();
         this.actaRepository = new ActaRepository();
+        this.propuestaRepository = new PropuestaRepository();
         this.initView();
     }
 
@@ -53,7 +62,14 @@ public class ProfesorController {
     }
 
     public void initController() {
-        view.getBtnVolverInicio().addActionListener(e -> volverInicio());
+        view.getBtnVolverInicio().addActionListener(e -> view.getFrame().dispose());
+        // tanto el boton como la X de la ventana la cierran: al cerrarse se vuelve a la seleccion de rol
+        view.getFrame().addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                onVolverInicio.run();
+            }
+        });
         view.getBtnCargarAsignaciones().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarAsignaciones()));
         // Enter en el combo de profesores (despues de escribir o elegir) tambien carga sus asignaciones
         ((JTextField) view.getCbProfesores().getEditor().getEditorComponent())
@@ -69,26 +85,22 @@ public class ProfesorController {
         view.getCbActas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarNotas()));
         view.getBtnGuardarNotas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> guardarNotas()));
         view.getBtnCerrarActa().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cerrarActa()));
-    }
-
-    /** Cierra la ventana del profesor y vuelve a la pantalla de selección de rol. */
-    private void volverInicio() {
-        view.getFrame().dispose();
-        onVolverInicio.run();
+        view.getBtnEnviarPropuesta().addActionListener(e -> SwingUtil.exceptionWrapper(() -> enviarPropuesta()));
     }
 
     private void cargarAsignaciones() {
         // en el combo se puede escribir: solo vale si el texto corresponde a un profesor de la lista
-        Object seleccionado = ComboBuscable.getSeleccion(view.getCbProfesores());
+        ProfesorDTO seleccionado = ComboBuscable.getSeleccion(view.getCbProfesores());
         if (seleccionado == null)
             throw new ValidationException("Selecciona un profesor de la lista");
         view.getCbProfesores().setSelectedItem(seleccionado);
-        // el item del combo es "P001 - Nombre Apellidos": el id es lo que va antes del separador
-        profesorId = seleccionado.toString().split(" - ")[0];
+        profesorId = seleccionado.getProfesorId();
 
         asignaciones = repository.getAsignacionesDocentes(profesorId);
         cargarCombosFiltro();
         aplicarFiltros();
+        view.getLblProfesorPropuesta().setText("Propuestas de " + seleccionado);
+        cargarPropuestas();
     }
 
     /** Rellena los combos de grado y curso solo con los valores de las asignaciones del profesor */
@@ -99,9 +111,9 @@ public class ProfesorController {
             grados.addAll(getGrados(a));
             cursos.add(a.getCurso());
         }
-        List<String> opcionesGrado = new ArrayList<>(List.of("TODOS"));
+        List<String> opcionesGrado = new ArrayList<>(List.of(ProfesorView.FILTRO_TODOS));
         opcionesGrado.addAll(grados);
-        List<String> opcionesCurso = new ArrayList<>(List.of("TODOS"));
+        List<String> opcionesCurso = new ArrayList<>(List.of(ProfesorView.FILTRO_TODOS));
         opcionesCurso.addAll(cursos);
         view.getCbFiltroGrado().setModel(new DefaultComboBoxModel<>(opcionesGrado.toArray(new String[0])));
         view.getCbFiltroCurso().setModel(new DefaultComboBoxModel<>(opcionesCurso.toArray(new String[0])));
@@ -115,10 +127,10 @@ public class ProfesorController {
 
         List<AsignacionDocenteDisplayDTO> filtradas = new ArrayList<>();
         for (AsignacionDocenteDisplayDTO a : asignaciones) {
-            boolean coincideGrado = "TODOS".equals(gradoSelec) || getGrados(a).contains(gradoSelec);
-            boolean coincideCurso = "TODOS".equals(cursoSelec) || a.getCurso().equals(cursoSelec);
-            boolean coincideTipo = "TODOS".equals(tipoSelec) || a.getTipo().equals(tipoSelec);
-            boolean coincideRol = "TODOS".equals(rolSelec) || a.getRol().equals(rolSelec);
+            boolean coincideGrado = ProfesorView.FILTRO_TODOS.equals(gradoSelec) || getGrados(a).contains(gradoSelec);
+            boolean coincideCurso = ProfesorView.FILTRO_TODOS.equals(cursoSelec) || a.getCurso().equals(cursoSelec);
+            boolean coincideTipo = ProfesorView.FILTRO_TODOS.equals(tipoSelec) || a.getTipo().equals(tipoSelec);
+            boolean coincideRol = ProfesorView.FILTRO_TODOS.equals(rolSelec) || a.getRol().equals(rolSelec);
 
             if (coincideGrado && coincideCurso && coincideTipo && coincideRol)
                 filtradas.add(a);
@@ -170,7 +182,7 @@ public class ProfesorController {
             return;
         }
 
-        boolean editable = ActaModel.puedeEditarNotas(asignacionSelec.getRol(), acta.getEstado());
+        boolean editable = ActaModel.puedeEditarNotas(asignacionSelec.getRolDocente(), acta.getEstadoActa());
         List<CalificacionActaDisplayDTO> notas = actaRepository.getCalificaciones(acta.getCursoId(),
                 acta.getAnioAcademicoId(), acta.getTipoConvocatoria());
 
@@ -187,7 +199,7 @@ public class ProfesorController {
 
         if (editable)
             view.getLblEstadoActa().setText("Acta ABIERTA: escribe la nota (0 a 10), NP o dejala vacia");
-        else if (ActaModel.ESTADO_ABIERTA.equals(acta.getEstado()))
+        else if (acta.getEstadoActa() == EstadoActa.ABIERTA)
             view.getLblEstadoActa().setText("Rol DOCENTE: solo consulta");
         else
             view.getLblEstadoActa().setText("Acta CERRADA: solo lectura");
@@ -224,6 +236,7 @@ public class ProfesorController {
         int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
                 "¿Estás seguro de que deseas cerrar el acta de " + asignacionSelec.getCurso() + " ("
                         + acta.getAnioAcademicoId() + " - " + acta.getTipoConvocatoria() + ")?\n"
+                        + "Los alumnos sin nota quedarán como NP (no presentado).\n"
                         + "Una vez cerrada, las notas no se podrán modificar.",
                 "Cerrar Acta", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
@@ -239,6 +252,68 @@ public class ProfesorController {
         }
     }
 
+    // =========================================================================
+    // HU 35243: propuestas de asignaturas
+    // =========================================================================
+
+    /** Grados en los que imparte el profesor (con su estado) y su listado "Mis propuestas" */
+    private void cargarPropuestas() {
+        List<GradoDisplayDTO> grados = propuestaRepository.getGradosProfesor(profesorId);
+        view.getListGradosPropuesta().setListData(grados.toArray(new GradoDisplayDTO[0]));
+
+        List<PropuestaDisplayDTO> propuestas = propuestaRepository.getPropuestas(profesorId);
+        TableModel tmodel = SwingUtil.getTableModelFromPojos(propuestas,
+                new String[] { "propuestaId", "grado", "nombre", "anio", "creditos", "fechaPropuesta", "estado" });
+        view.getTabPropuestas().setModel(tmodel);
+        SwingUtil.autoAdjustColumns(view.getTabPropuestas());
+        view.getBtnEnviarPropuesta().setEnabled(true);
+    }
+
+    /**
+     * Se validan los datos antes de pedir confirmación, para avisar de los errores sin preguntar;
+     * al confirmar se crea una propuesta PENDIENTE por grado elegido (o ninguna si alguna falla)
+     */
+    private void enviarPropuesta() {
+        if (profesorId == null)
+            throw new ValidationException("Carga primero un profesor");
+        List<GradoDisplayDTO> gradosSelec = view.getListGradosPropuesta().getSelectedValuesList();
+        List<String> gradoIds = new ArrayList<>();
+        for (GradoDisplayDTO g : gradosSelec)
+            gradoIds.add(g.getId());
+        String nombre = view.getTxtNombrePropuesta().getText();
+        String anio = view.getTxtAnioPropuesta().getText();
+        String creditos = view.getTxtCreditosPropuesta().getText();
+        String descripcion = view.getTxtDescripcionPropuesta().getText();
+
+        propuestaRepository.validarPropuestas(profesorId, gradoIds, nombre, anio, creditos, descripcion);
+
+        StringBuilder grados = new StringBuilder();
+        for (GradoDisplayDTO g : gradosSelec)
+            grados.append("\n- ").append(g.getNombre());
+        int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
+                "¿Quieres enviar la propuesta \"" + nombre.trim() + "\" (año " + anio.trim() + ", " + creditos.trim()
+                        + " créditos)?\nSe creará una propuesta PENDIENTE por cada grado:" + grados,
+                "Enviar propuesta", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION)
+            return;
+
+        List<String> creadas = propuestaRepository.crearPropuestas(profesorId, gradoIds, nombre, anio, creditos,
+                descripcion, LocalDate.now().toString());
+        JOptionPane.showMessageDialog(view.getFrame(),
+                "Propuesta enviada correctamente: " + String.join(", ", creadas) + " (PENDIENTE).", "Éxito",
+                JOptionPane.INFORMATION_MESSAGE);
+        limpiarFormularioPropuesta();
+        cargarPropuestas();
+    }
+
+    private void limpiarFormularioPropuesta() {
+        view.getTxtNombrePropuesta().setText("");
+        view.getTxtAnioPropuesta().setText("");
+        view.getTxtCreditosPropuesta().setText("");
+        view.getTxtDescripcionPropuesta().setText("");
+        view.getListGradosPropuesta().clearSelection();
+    }
+
     private ActaDisplayDTO getActaSeleccionada() {
         int indice = view.getCbActas().getSelectedIndex();
         if (asignacionSelec == null || indice < 0 || indice >= actas.size())
@@ -247,7 +322,7 @@ public class ProfesorController {
     }
 
     private void initView() {
-        view.getCbProfesores().setModel(SwingUtil.getComboModelFromList(repository.getListaProfesores()));
+        view.getCbProfesores().setModel(new DefaultComboBoxModel<>(repository.getProfesores().toArray(new ProfesorDTO[0])));
         ComboBuscable.hacerBuscable(view.getCbProfesores());
         view.getFrame().setVisible(true);
     }

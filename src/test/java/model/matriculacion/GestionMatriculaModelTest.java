@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -403,6 +404,139 @@ class GestionMatriculaModelTest {
 		assertEquals(3, model.getMatriculasGrupo("C005", "TE1", "2025-2026").size());
 		assertTrue(model.getMatriculasGrupo("C005", "PL2", "2025-2026").stream()
 				.allMatch(m -> "2025-2026".equals(m.getAnioAcademicoId())));
+	}
+
+	// =========================================================================
+	// HU 35226: listados paginados (se filtra y pagina en la consulta SQL)
+	// =========================================================================
+
+	private static List<String> claves(List<MatriculaSecretariaDTO> lista) {
+		List<String> claves = new ArrayList<>();
+		for (MatriculaSecretariaDTO m : lista) {
+			claves.add(m.getMatriculaId() + "/" + m.getCursoId());
+		}
+		return claves;
+	}
+
+	private List<String> todas(FiltroMatriculasSecretaria filtro) {
+		return claves(model.getMatriculas(filtro, 0, 1000));
+	}
+
+	@Test
+	void paginasDelListadoSinFiltrosRecorrenTodoEnOrden() {
+		FiltroMatriculasSecretaria sinFiltros = new FiltroMatriculasSecretaria();
+		List<MatriculaSecretariaDTO> completo = model.getMatriculas();
+		assertEquals(completo.size(), model.contarMatriculas(sinFiltros));
+
+		List<String> paginas = new ArrayList<>();
+		for (int offset = 0; offset < completo.size(); offset += 5) {
+			List<MatriculaSecretariaDTO> pagina = model.getMatriculas(sinFiltros, offset, 5);
+			assertTrue(pagina.size() <= 5);
+			paginas.addAll(claves(pagina));
+		}
+		assertEquals(claves(completo), paginas);
+		// Más allá del final no hay filas
+		assertTrue(model.getMatriculas(sinFiltros, completo.size(), 5).isEmpty());
+		// Cada fila de la página trae los mismos datos que el detalle
+		MatriculaSecretariaDTO m = model.getMatriculas(new FiltroMatriculasSecretaria().setEstudiante("20000002B")
+				.setCurso("Fundamentos de Informatica").setAnioAcademicoId("2026-2027"), 0, 25).get(0);
+		assertEquals("M007", m.getMatriculaId());
+		assertTrue(m.getGrupo().contains("PL1"));
+		assertEquals(0, m.getGruposPendientes());
+	}
+
+	@Test
+	void filtraPorEstudianteSinDistinguirMayusculasNiPorDni() {
+		// Lucia Rodriguez Garcia (M001 y M006, 2 cursos cada una) y Noelia Castro Rodriguez (M015)
+		assertEquals(List.of("M006/C001", "M006/C013", "M015/C005", "M001/C005", "M001/C006"),
+				todas(new FiltroMatriculasSecretaria().setEstudiante("RODRIGUEZ")));
+		assertEquals(4, model.contarMatriculas(new FiltroMatriculasSecretaria().setEstudiante("20000002b")));
+		assertEquals(0, model.contarMatriculas(new FiltroMatriculasSecretaria().setEstudiante("no existe")));
+	}
+
+	@Test
+	void filtraPorAnioGradoCursoYEstadoALaVez() {
+		assertEquals(List.of("M006/C013", "M008/C004", "M011/C005"),
+				todas(new FiltroMatriculasSecretaria().setAnioAcademicoId("2026-2027")
+						.setGrado("Ingenieria Informatica del Software").setEstado("ACTIVA")));
+		assertEquals(List.of("M001/C006", "M002/C006"),
+				todas(new FiltroMatriculasSecretaria().setAnioAcademicoId("2025-2026").setCurso("Calculo")));
+	}
+
+	@Test
+	void filtraPorGrupoCompleto() {
+		assertEquals(List.of("M016/C005", "M002/C005", "M004/C005"),
+				todas(new FiltroMatriculasSecretaria().setGrupo("pl2")));
+		// "PL" no coincide con PL1 ni PL2
+		assertEquals(0, model.contarMatriculas(new FiltroMatriculasSecretaria().setGrupo("PL")));
+	}
+
+	@Test
+	void filtraPorSituacionIgualQueLasComprobacionesDelDto() {
+		List<MatriculaSecretariaDTO> completo = model.getMatriculas();
+		List<MatriculaSecretariaDTO> pagoPendiente = new ArrayList<>();
+		List<MatriculaSecretariaDTO> sinPagar = new ArrayList<>();
+		List<MatriculaSecretariaDTO> faltanGrupos = new ArrayList<>();
+		for (MatriculaSecretariaDTO m : completo) {
+			if (m.isPagoPendienteValidar()) pagoPendiente.add(m);
+			if (m.isSinPagarAnioIniciado(CURSO_INICIADO)) sinPagar.add(m);
+			if (m.isFaltanGrupos()) faltanGrupos.add(m);
+		}
+		assertEquals(List.of("M010/C005", "M010/C006"), claves(pagoPendiente));
+		assertEquals(List.of("M011/C006"), claves(sinPagar));
+
+		assertEquals(claves(pagoPendiente), todas(new FiltroMatriculasSecretaria()
+				.setSituacion(SituacionSecretaria.PAGO_PENDIENTE)));
+		assertEquals(claves(sinPagar), todas(new FiltroMatriculasSecretaria()
+				.setSituacion(SituacionSecretaria.SIN_PAGAR).setFechaHoy(CURSO_INICIADO)));
+		assertEquals(0, model.contarMatriculas(new FiltroMatriculasSecretaria()
+				.setSituacion(SituacionSecretaria.SIN_PAGAR).setFechaHoy(ANTES_INICIO)));
+		assertEquals(claves(faltanGrupos), todas(new FiltroMatriculasSecretaria()
+				.setSituacion(SituacionSecretaria.FALTAN_GRUPOS)));
+		assertTrue(claves(faltanGrupos).contains("M011/C005"));
+		assertEquals(faltanGrupos.size(), model.contarMatriculas(new FiltroMatriculasSecretaria()
+				.setSituacion(SituacionSecretaria.FALTAN_GRUPOS)));
+	}
+
+	@Test
+	void opcionesDeLosFiltrosSalenDeLasMatriculas() {
+		assertEquals(List.of("2026-2027", "2025-2026"), model.getAniosConMatriculas());
+		// Matematicas no tiene matrículas
+		assertTrue(!model.getGradosConMatriculas().contains("Matematicas"));
+		assertTrue(model.getGradosConMatriculas()
+				.contains("Doble Grado en Ingenieria Informatica del Software y Matematicas"));
+		assertTrue(model.getCursosConMatriculas().contains("Fundamentos de Informatica"));
+		assertTrue(!model.getCursosConMatriculas().contains("Topologia"));
+	}
+
+	@Test
+	void paginasDeGruposRecorrenTodoEnOrdenYFiltran() {
+		List<GrupoConsultaDTO> completo = model.getGruposConsulta("2026-2027");
+		assertEquals(completo.size(), model.contarGruposConsulta(null, null));
+		List<String> paginas = new ArrayList<>();
+		for (int offset = 0; offset < completo.size(); offset += 4) {
+			for (GrupoConsultaDTO g : model.getGruposConsulta("2026-2027", null, null, offset, 4)) {
+				paginas.add(g.getCursoId() + "/" + g.getGrupoCodigo());
+			}
+		}
+		List<String> esperado = new ArrayList<>();
+		for (GrupoConsultaDTO g : completo) {
+			esperado.add(g.getCursoId() + "/" + g.getGrupoCodigo());
+		}
+		assertEquals(esperado, paginas);
+
+		// Matematicas: Calculo (TE1, PA1) y Algebra Lineal (TE1); Topologia no tiene grupos
+		assertEquals(3, model.contarGruposConsulta("Matematicas", null));
+		assertEquals(2, model.contarGruposConsulta(null, "Calculo"));
+		List<GrupoConsultaDTO> fundamentos = model.getGruposConsulta("2026-2027",
+				"Ingenieria Informatica en Tecnologias de la Informacion", "Fundamentos de Informatica", 0, 25);
+		assertEquals(4, fundamentos.size());
+		// La ocupación es la del año pedido: en TE1 ocupan plaza M007, M011 y M016
+		assertEquals(3, fundamentos.stream().filter(g -> "TE1".equals(g.getGrupoCodigo())).findFirst().get()
+				.getOcupadas());
+		assertTrue(model.getCursosConGrupos().contains("Calculo"));
+		assertTrue(!model.getCursosConGrupos().contains("Topologia"));
+		assertTrue(model.getGradosConGrupos().contains("Matematicas"));
 	}
 
 	// =========================================================================

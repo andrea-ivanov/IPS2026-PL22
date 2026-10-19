@@ -1,6 +1,7 @@
 package view.admin;
 
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.GridLayout;
 
@@ -11,6 +12,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
+
+import view.comun.Estilo;
 
 /**
  * Formulario modal para añadir o modificar un curso de un grado (HU 35223).
@@ -58,12 +61,14 @@ public class CursoFormDialog {
         formPanel.add(txtAnio);
 
         lblAvisoCreditos = new JLabel("Este curso está en varios grados: los créditos cambiarán en todos ellos.");
-        lblAvisoCreditos.setBorder(new EmptyBorder(0, 15, 0, 15));
+        lblAvisoCreditos.setBorder(new EmptyBorder(8, 4, 0, 4));
+        lblAvisoCreditos.setFont(Estilo.ETIQUETA);
+        lblAvisoCreditos.setForeground(Estilo.AVISO);
         lblAvisoCreditos.setVisible(false);
 
-        JPanel btnPanel = new JPanel();
-        btnGuardar = new JButton("Guardar");
-        btnCancelar = new JButton("Cancelar");
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 10));
+        btnGuardar = Estilo.botonPrimario("Guardar");
+        btnCancelar = Estilo.botonSecundario("Cancelar");
         btnCancelar.addActionListener(e -> cerrar());
         btnPanel.add(btnGuardar);
         btnPanel.add(btnCancelar);
@@ -74,6 +79,7 @@ public class CursoFormDialog {
 
         dialog.add(formPanel, BorderLayout.CENTER);
         dialog.add(southPanel, BorderLayout.SOUTH);
+        Estilo.estilizarFormulario(dialog, formPanel, btnPanel, southPanel);
         dialog.pack();
         dialog.setLocationRelativeTo(owner);
     }
