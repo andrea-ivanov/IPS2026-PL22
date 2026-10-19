@@ -1,12 +1,13 @@
 package repository;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import model.grado.EstadoGrado;
 import model.grado.Grado;
 import model.grado.GradoDisplayDTO;
 import model.grado.GradoModel;
 import util.Database;
-import view.admin.TestDataFactory;
 
 /**
  * Repositorio para el acceso a datos de Grado.
@@ -47,13 +48,32 @@ public class GradoRepository {
 			try {
 				String sql = "SELECT gradoId AS id, nombre, facultad, ramaConocimiento AS rama, estado FROM Grado ORDER BY gradoId";
 				List<GradoDisplayDTO> list = db.executeQueryPojo(GradoDisplayDTO.class, sql);
-				if (list != null && !list.isEmpty()) {
+				if (list != null) {
+					for (GradoDisplayDTO g : list) {
+						g.setEstado(EstadoGrado.fromString(g.getEstado()).name());
+					}
 					return list;
 				}
 			} catch (Exception ex) {
 				System.err.println("Aviso al consultar BD en getTodosLosGrados: " + ex.getMessage());
 			}
 		}
-		return TestDataFactory.crearMockGradosDisplay();
+		return new ArrayList<>();
+	}
+
+	public String crearGrado(String nombre, String facultad, String ramaConocimiento, String anioAcademicoId) {
+		return gradoModel.crearGrado(nombre, facultad, ramaConocimiento, anioAcademicoId);
+	}
+
+	public void modificarGrado(String gradoId, String nombre, String facultad, String ramaConocimiento) {
+		gradoModel.modificarGrado(gradoId, nombre, facultad, ramaConocimiento);
+	}
+
+	public void validarEliminacion(String gradoId, String anioAcademicoId) {
+		gradoModel.validarEliminacion(gradoId, anioAcademicoId);
+	}
+
+	public void eliminarGrado(String gradoId, String anioAcademicoId) {
+		gradoModel.eliminarGrado(gradoId, anioAcademicoId);
 	}
 }

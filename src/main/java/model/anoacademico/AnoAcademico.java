@@ -1,3 +1,4 @@
+
 package model.anoacademico;
 
 import java.text.SimpleDateFormat;
@@ -34,12 +35,11 @@ public class AnoAcademico {
 	private Date inicioPeriodoMatriculacion;
 	private Date finPeriodoMatriculacion;
 
-	@Builder.Default
-	private boolean actual = false;
+	private boolean actual;
 
 	public AnoAcademico() {
 		super();
-		this.actual = false;
+		actual = false;
 	}
 
 	public AnoAcademico(Long id, String nombre, String anioAcademicoId, Date inicioAnoAcademico, Date finAnoAcademico,
@@ -143,3 +143,4 @@ public class AnoAcademico {
 		return formatearRangoFechas(inicioPeriodoMatriculacion, finPeriodoMatriculacion);
 	}
 }
+

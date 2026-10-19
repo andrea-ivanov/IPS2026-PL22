@@ -36,15 +36,7 @@ public abstract class BaseModelTest {
 				"DELETE FROM AnioAcademico",
 				"DELETE FROM Profesor",
 				"DELETE FROM Alumno",
-				"DELETE FROM AnoAcademico",
-				"CREATE TABLE IF NOT EXISTS AnoAcademico (" +
-						"id_ano_academico INTEGER PRIMARY KEY, " +
-						"nombre VARCHAR(50), " +
-						"inicio_ano_academico DATE, " +
-						"fin_ano_academico DATE, " +
-						"inicio_periodo_matriculacion DATE, " +
-						"fin_periodo_matriculacion DATE, " +
-						"actual INTEGER DEFAULT 1)"
+				"DROP TABLE IF EXISTS AnoAcademico"
 		});
 
 		db.executeBatch(new String[] {
@@ -56,11 +48,9 @@ public abstract class BaseModelTest {
 				"INSERT INTO Profesor (profesorId, dni, nombre, apellidos, email) VALUES ('1', '10000003C', 'Profesor Martinez', '', 'martinez@uni.es')",
 				"INSERT INTO Profesor (profesorId, dni, nombre, apellidos, email) VALUES ('2', '10000004D', 'Profesora Lopez', '', 'lopez@uni.es')",
 
-				// 3. Datos de Año Académico (AnioAcademico oficial y AnoAcademico compatibilidad)
+				// 3. Datos de Año Académico
 				"INSERT INTO AnioAcademico (anioAcademicoId, fechaInicio, fechaFin, inicioMatriculacion, finMatriculacion) VALUES ('1', '2026-09-01', '2027-06-30', '2026-07-01', '2026-08-31')",
 				"INSERT INTO AnioAcademico (anioAcademicoId, fechaInicio, fechaFin, inicioMatriculacion, finMatriculacion) VALUES ('2', '2027-09-01', '2028-06-30', '2027-07-01', '2027-08-31')",
-				"INSERT INTO AnioAcademico (anioAcademicoId, fechaInicio, fechaFin, inicioMatriculacion, finMatriculacion) VALUES ('2026/2027', '2026-09-01', '2027-06-30', '2026-07-01', '2026-08-31')",
-				"INSERT INTO AnoAcademico (id_ano_academico, nombre, inicio_ano_academico, fin_ano_academico, inicio_periodo_matriculacion, fin_periodo_matriculacion, actual) VALUES (1, '2026/2027', '2026-09-01', '2027-06-30', '2026-07-01', '2026-08-31', 1)",
 
 				// 4. Datos de Grados
 				"INSERT INTO Grado (gradoId, nombre, facultad, ramaConocimiento, estado, fechaInicioVigencia) VALUES ('1', 'Ingeniería Informática', 'Escuela de Ingeniería Informática', 'Ingeniería y Arquitectura', 'VIGENTE', '2024-09-01')",

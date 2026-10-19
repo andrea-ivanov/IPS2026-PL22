@@ -2,8 +2,6 @@ package model.anoacademico;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.Date;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,72 +33,29 @@ public class AnoAcademicoModelTest extends BaseModelTest {
 	public class HappyPath {
 
 		@Test
-		@DisplayName("Buscar año académico actual: devuelve el objeto actual con todos sus campos poblados")
-		public void testBuscarActual_DevuelveAnoAcademicoActual() {
+		@DisplayName("Buscar año académico actual: devuelve el último configurado (mayor fecha de inicio) con todos sus campos")
+		public void testBuscarActual_DevuelveUltimoConfigurado() {
 			AnoAcademico actual = anoAcademicoModel.buscarActual();
 
 			assertNotNull(actual, "El año académico actual no debe ser nulo");
-			assertEquals(1L, actual.getId());
-			assertEquals("2026/2027", actual.getNombre());
+			assertEquals("2", actual.getAnioAcademicoId());
+			assertEquals("2", actual.getNombre());
 			assertTrue(actual.isActual(), "Debe estar marcado como actual");
-			assertNotNull(actual.getInicioAnoAcademico(), "La fecha de inicio de año no debe ser nula");
-			assertNotNull(actual.getFinAnoAcademico(), "La fecha de fin de año no debe ser nula");
-			assertNotNull(actual.getInicioPeriodoMatriculacion(), "La fecha de inicio de matriculación no debe ser nula");
-			assertNotNull(actual.getFinPeriodoMatriculacion(), "La fecha de fin de matriculación no debe ser nula");
+			assertEquals("2027-09-01", Util.dateToIsoString(actual.getInicioAnoAcademico()));
+			assertEquals("2028-06-30", Util.dateToIsoString(actual.getFinAnoAcademico()));
+			assertEquals("2027-07-01", Util.dateToIsoString(actual.getInicioPeriodoMatriculacion()));
+			assertEquals("2027-08-31", Util.dateToIsoString(actual.getFinPeriodoMatriculacion()));
 		}
 
 		@Test
 		@DisplayName("Buscar por ID existente: devuelve el objeto correcto")
 		public void testBuscarPorIdExistente_ObjetoCorrecto() {
-			AnoAcademico ano = anoAcademicoModel.buscarPorId(1L);
+			AnoAcademico ano = anoAcademicoModel.buscarPorId("2");
 
 			assertNotNull(ano);
-			assertEquals(1L, ano.getId());
-			assertEquals("2026/2027", ano.getNombre());
-		}
-
-		@Test
-		@DisplayName("Actualizar fechas de año académico: persiste los cambios en base de datos")
-		public void testActualizarFechasAnoAcademico_PersisteEnBD() {
-			Date nuevoInicio = Util.isoStringToDate("2026-10-01");
-			Date nuevoFin = Util.isoStringToDate("2027-07-15");
-
-			anoAcademicoModel.actualizarFechasAnoAcademico(1L, nuevoInicio, nuevoFin);
-
-			AnoAcademico actualizado = anoAcademicoModel.buscarPorId(1L);
-			assertEquals(Util.dateToIsoString(nuevoInicio), Util.dateToIsoString(actualizado.getInicioAnoAcademico()));
-			assertEquals(Util.dateToIsoString(nuevoFin), Util.dateToIsoString(actualizado.getFinAnoAcademico()));
-		}
-
-		@Test
-		@DisplayName("Actualizar fechas de matriculación: persiste los cambios en base de datos")
-		public void testActualizarFechasMatriculacion_PersisteEnBD() {
-			Date nuevoInicio = Util.isoStringToDate("2026-07-10");
-			Date nuevoFin = Util.isoStringToDate("2026-09-15");
-
-			anoAcademicoModel.actualizarFechasMatriculacion(1L, nuevoInicio, nuevoFin);
-
-			AnoAcademico actualizado = anoAcademicoModel.buscarPorId(1L);
-			assertEquals(Util.dateToIsoString(nuevoInicio), Util.dateToIsoString(actualizado.getInicioPeriodoMatriculacion()));
-			assertEquals(Util.dateToIsoString(nuevoFin), Util.dateToIsoString(actualizado.getFinPeriodoMatriculacion()));
-		}
-
-		@Test
-		@DisplayName("Establecer como actual: desmarca el anterior y marca el nuevo")
-		public void testEstablecerActual_CambiaAnoActual() {
-			// Insertar un segundo año académico
-			db.executeUpdate("INSERT INTO AnoAcademico (id_ano_academico, nombre, inicio_ano_academico, fin_ano_academico, " +
-					"inicio_periodo_matriculacion, fin_periodo_matriculacion, actual) " +
-					"VALUES (2, '2027/2028', '2027-09-01', '2028-06-30', '2027-07-01', '2027-08-31', 0)");
-
-			anoAcademicoModel.establecerActual(2L);
-
-			AnoAcademico actual = anoAcademicoModel.buscarActual();
-			assertEquals(2L, actual.getId());
-			assertTrue(actual.isActual());
-
-			AnoAcademico anterior = anoAcademicoModel.buscarPorId(1L);
-			assertFalse(anterior.isActual());
+			assertEquals("2", ano.getAnioAcademicoId());
+			assertEquals("2027-09-01", Util.dateToIsoString(ano.getInicioAnoAcademico()));
+			assertEquals("2028-06-30", Util.dateToIsoString(ano.getFinAnoAcademico()));
 		}
 	}
 
@@ -112,10 +67,24 @@ public class AnoAcademicoModelTest extends BaseModelTest {
 	public class EdgeCases {
 
 		@Test
+		@DisplayName("Sin años académicos: buscarActual lanza ResourceNotFoundException")
+		public void testBuscarActualSinAnos_LanzaResourceNotFoundException() {
+			db.executeBatch(new String[] {
+					"DELETE FROM MatriculaCurso",
+					"DELETE FROM Matricula",
+					"DELETE FROM AnioAcademico"
+			});
+
+			assertThrows(ResourceNotFoundException.class, () -> {
+				anoAcademicoModel.buscarActual();
+			});
+		}
+
+		@Test
 		@DisplayName("ID inexistente: lanza ResourceNotFoundException")
 		public void testBuscarPorIdInexistente_LanzaResourceNotFoundException() {
 			assertThrows(ResourceNotFoundException.class, () -> {
-				anoAcademicoModel.buscarPorId(9999L);
+				anoAcademicoModel.buscarPorId("9999");
 			});
 		}
 
@@ -123,7 +92,7 @@ public class AnoAcademicoModelTest extends BaseModelTest {
 		@DisplayName("ID nulo: lanza ValidationException")
 		public void testBuscarPorIdNulo_LanzaValidationException() {
 			assertThrows(ValidationException.class, () -> {
-				anoAcademicoModel.buscarPorId((Long) null);
+				anoAcademicoModel.buscarPorId(null);
 			});
 		}
 
@@ -144,28 +113,5 @@ public class AnoAcademicoModelTest extends BaseModelTest {
 				anoAcademicoModel.buscarPorId(idInvalido);
 			});
 		}
-
-		@Test
-		@DisplayName("Fecha fin anterior a fecha inicio en año académico: lanza ValidationException")
-		public void testFechasInconsistentesAnoAcademico_LanzaValidationException() {
-			Date inicio = Util.isoStringToDate("2027-06-30");
-			Date fin = Util.isoStringToDate("2026-09-01"); // fin antes que inicio
-
-			assertThrows(ValidationException.class, () -> {
-				anoAcademicoModel.actualizarFechasAnoAcademico(1L, inicio, fin);
-			});
-		}
-
-		@Test
-		@DisplayName("Fecha fin anterior a fecha inicio en matriculación: lanza ValidationException")
-		public void testFechasInconsistentesMatriculacion_LanzaValidationException() {
-			Date inicio = Util.isoStringToDate("2026-09-01");
-			Date fin = Util.isoStringToDate("2026-07-01"); // fin antes que inicio
-
-			assertThrows(ValidationException.class, () -> {
-				anoAcademicoModel.actualizarFechasMatriculacion(1L, inicio, fin);
-			});
-		}
 	}
 }
-

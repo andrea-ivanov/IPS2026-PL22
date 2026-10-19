@@ -33,7 +33,7 @@ public class Grado {
 	private List<Curso> cursos = new ArrayList<>();
 
 	@Builder.Default
-	private EstadoGrado estado = EstadoGrado.ACTIVO;
+	private EstadoGrado estado = EstadoGrado.VIGENTE;
 
 	private Date fechaCreacion;
 
@@ -45,7 +45,7 @@ public class Grado {
 		this.facultad = "Escuela de Ingeniería Informática";
 		this.rama = "Ingeniería y Arquitectura";
 		this.cursos = new ArrayList<>();
-		this.estado = EstadoGrado.ACTIVO;
+		this.estado = EstadoGrado.VIGENTE;
 		this.activo = true;
 	}
 
@@ -58,7 +58,7 @@ public class Grado {
 		this.facultad = facultad != null ? facultad : "Escuela de Ingeniería Informática";
 		this.rama = rama != null ? rama : "Ingeniería y Arquitectura";
 		this.cursos = cursos != null ? cursos : new ArrayList<>();
-		this.estado = estado != null ? estado : EstadoGrado.ACTIVO;
+		this.estado = estado != null ? estado : EstadoGrado.VIGENTE;
 		this.fechaCreacion = fechaCreacion;
 		this.activo = activo;
 	}
