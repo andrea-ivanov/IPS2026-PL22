@@ -21,11 +21,7 @@ import java.util.List;
  * Interfaz por pasos (Asistente de Matrícula):
  * - Paso 1: Selección de Grado ofertado y tabla de asignaturas con checkboxes y
  * cálculo en vivo.
- * - Paso 1: Selección de Grado ofertado y tabla de asignaturas con checkboxes y
- * cálculo en vivo.
  * - Paso 2: Resumen previo consolidado antes de confirmar.
- * - Paso 3: Selección del método de pago (Tarjeta, Transferencia, Carta de
- * pago) y confirmación.
  * - Paso 3: Selección del método de pago (Tarjeta, Transferencia, Carta de
  * pago) y confirmación.
  */
@@ -112,7 +108,6 @@ public class SolicitudMatriculaView {
         JPanel header = new JPanel(new BorderLayout(5, 8));
         header.setOpaque(false);
 
-        JLabel lblTitulo = new JLabel("Solicitud de Matrícula", SwingConstants.CENTER);
         JLabel lblTitulo = new JLabel("Solicitud de Matrícula", SwingConstants.CENTER);
         lblTitulo.setFont(new Font("Tahoma", Font.BOLD, 18));
         lblTitulo.setForeground(new Color(33, 37, 41));
@@ -204,8 +199,6 @@ public class SolicitudMatriculaView {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
                     boolean cellHasFocus) {
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
-                    boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 if (value instanceof OfertaGradoDTO) {
                     OfertaGradoDTO g = (OfertaGradoDTO) value;
@@ -234,22 +227,10 @@ public class SolicitudMatriculaView {
 
         String[] columnas = { "Seleccionar", "Código", "Asignatura", "Curso", "Itinerario", "Créditos", "Convocatorias",
                 "Precio (€)" };
-        String[] columnas = { "Seleccionar", "Código", "Asignatura", "Curso", "Itinerario", "Créditos", "Convocatorias",
-                "Precio (€)" };
         modelCursos = new DefaultTableModel(columnas, 0) {
             @Override
             public Class<?> getColumnClass(int col) {
                 switch (col) {
-                    case 0:
-                        return Boolean.class;
-                    case 3:
-                        return Integer.class;
-                    case 5:
-                        return Double.class;
-                    case 6:
-                        return Integer.class;
-                    default:
-                        return String.class;
                     case 0:
                         return Boolean.class;
                     case 3:
@@ -434,7 +415,6 @@ public class SolicitudMatriculaView {
         btnContinuarPaso3 = Estilo.estilizarPrimario(new JButton("Proceder al Pago  >"));
         btnContinuarPaso3.setFont(new Font("Tahoma", Font.BOLD, 13));
         btnContinuarPaso3.setPreferredSize(new Dimension(200, 36));
-        btnContinuarPaso3.setForeground(Color.WHITE);
 
         panelSur.add(btnModificarAsignaturas, BorderLayout.WEST);
         panelSur.add(btnContinuarPaso3, BorderLayout.EAST);
@@ -500,9 +480,6 @@ public class SolicitudMatriculaView {
         panelAviso.setBackground(new Color(240, 248, 255));
 
         txtInfoMetodoPago = new JTextArea(
-                "• Pago con Tarjeta: La transacción se valida de forma inmediata. Su matrícula quedará registrada y las asignaturas pasarán directamente al estado 'PAGADA'.\n\n"
-                        +
-                        "• Pago por Transferencia o Carta de Pago: La matrícula quedará registrada en estado 'SOLICITADA' con asignaturas pendientes de pago. Deberá presentar el justificante de abono en secretaría para su validación manual definitiva.");
                 "• Pago con Tarjeta: La transacción se valida de forma inmediata. Su matrícula quedará registrada y las asignaturas pasarán directamente al estado 'PAGADA'.\n\n"
                         +
                         "• Pago por Transferencia o Carta de Pago: La matrícula quedará registrada en estado 'SOLICITADA' con asignaturas pendientes de pago. Deberá presentar el justificante de abono en secretaría para su validación manual definitiva.");
@@ -631,20 +608,6 @@ public class SolicitudMatriculaView {
                 + (resumen.getAnioAcademicoId() != null ? resumen.getAnioAcademicoId() : "") +
                 " &nbsp;|&nbsp; <b>Fecha de solicitud:</b> "
                 + (resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : "") + "</html>");
-        if (resumen == null)
-            return;
-        lblResumenEstudiante.setText(
-                "<html><b>Estudiante:</b> " + (resumen.getNombreCompleto() != null ? resumen.getNombreCompleto() : "") +
-                        " &nbsp;|&nbsp; <b>DNI:</b> " + (resumen.getDni() != null ? resumen.getDni() : "") +
-                        " &nbsp;|&nbsp; <b>Identificador:</b> "
-                        + (resumen.getAlumnoId() != null ? resumen.getAlumnoId() : "") + "</html>");
-        lblResumenGrado.setText(
-                "<html><b>Grado solicitado:</b> " + (resumen.getNombreGrado() != null ? resumen.getNombreGrado() : "") +
-                        " (" + (resumen.getGradoId() != null ? resumen.getGradoId() : "") + ")</html>");
-        lblResumenAnio.setText("<html><b>Año Académico:</b> "
-                + (resumen.getAnioAcademicoId() != null ? resumen.getAnioAcademicoId() : "") +
-                " &nbsp;|&nbsp; <b>Fecha de solicitud:</b> "
-                + (resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : "") + "</html>");
 
         modelResumenAsignaturas.setRowCount(0);
         if (resumen.getAsignaturas() != null) {
@@ -665,69 +628,6 @@ public class SolicitudMatriculaView {
     }
 
     // Getters
-    public JFrame getFrame() {
-        return frame;
-    }
-
-    public JPanel getPanelPrincipal() {
-        return panelPrincipal;
-    }
-
-    public JComboBox<OfertaGradoDTO> getCbGrados() {
-        return cbGrados;
-    }
-
-    public JTable tableCursos() {
-        return tableCursos;
-    }
-
-    public JTable getTableCursos() {
-        return tableCursos;
-    }
-
-    public DefaultTableModel getModelCursos() {
-        return modelCursos;
-    }
-
-    public JLabel getLblInfoEstudiante() {
-        return lblInfoEstudiante;
-    }
-
-    public JButton getBtnContinuarPaso2() {
-        return btnContinuarPaso2;
-    }
-
-    public JButton getBtnVolverMenuDesdePaso1() {
-        return btnVolverMenuDesdePaso1;
-    }
-
-    public JButton getBtnModificarAsignaturas() {
-        return btnModificarAsignaturas;
-    }
-
-    public JButton getBtnContinuarPaso3() {
-        return btnContinuarPaso3;
-    }
-
-    public JButton getBtnVolverPaso2() {
-        return btnVolverPaso2;
-    }
-
-    public JButton getBtnConfirmarMatricula() {
-        return btnConfirmarMatricula;
-    }
-
-    public JRadioButton getRbTarjeta() {
-        return rbTarjeta;
-    }
-
-    public JRadioButton getRbTransferencia() {
-        return rbTransferencia;
-    }
-
-    public JRadioButton getRbCartaPago() {
-        return rbCartaPago;
-    }
     public JFrame getFrame() {
         return frame;
     }
