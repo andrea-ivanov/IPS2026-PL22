@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
+import model.asignaciondocente.RolDocente;
 import repository.ProfesorRepository;
 import util.Database;
 import util.exception.ValidationException;
@@ -226,10 +227,10 @@ public class ActaModelTest {
 	/** Solo el coordinador con el acta abierta puede editar las notas (lo que habilita la tabla y los botones) */
 	@Test
 	public void testPuedeEditarNotas() {
-		assertAll(() -> assertTrue(ActaModel.puedeEditarNotas("COORDINADOR", "ABIERTA")),
-				() -> assertFalse(ActaModel.puedeEditarNotas("COORDINADOR", "CERRADA")),
-				() -> assertFalse(ActaModel.puedeEditarNotas("DOCENTE", "ABIERTA")),
-				() -> assertFalse(ActaModel.puedeEditarNotas("DOCENTE", "CERRADA")));
+		assertAll(() -> assertTrue(ActaModel.puedeEditarNotas(RolDocente.COORDINADOR, EstadoActa.ABIERTA)),
+				() -> assertFalse(ActaModel.puedeEditarNotas(RolDocente.COORDINADOR, EstadoActa.CERRADA)),
+				() -> assertFalse(ActaModel.puedeEditarNotas(RolDocente.DOCENTE, EstadoActa.ABIERTA)),
+				() -> assertFalse(ActaModel.puedeEditarNotas(RolDocente.DOCENTE, EstadoActa.CERRADA)));
 	}
 
 	/** En un acta cerrada solo salen los alumnos con calificacion */
@@ -289,6 +290,52 @@ public class ActaModelTest {
 		// la vencida de 2025-2026 y las 2 de enero de 2026-2027 (C005 y C003); la de junio sigue abierta
 		assertEquals(3, cerradas.size());
 		assertEquals("ABIERTA", getActa("C006", ANIO, "ORDINARIA_JUNIO").getEstado());
+	}
+
+	/** Al cerrar a mano, los alumnos sin nota quedan como NP y siguen apareciendo en el acta cerrada */
+	@Test
+	public void testCierreManualPoneNPALosSinNota() {
+		actaModel.guardarNotas("P004", CURSO, ANIO, CONV, Map.of("M011", "7"));
+		actaModel.cerrarActa("P004", CURSO, ANIO, CONV, HOY);
+
+		List<CalificacionActaDisplayDTO> notas = getNotas();
+		assertEquals(4, notas.size());
+		assertAll(() -> assertEquals("7", notas.get(0).getNota()),
+				() -> assertEquals("NP", notas.get(1).getNota()),
+				() -> assertEquals("NP", notas.get(2).getNota()),
+				() -> assertEquals("NP", notas.get(3).getNota()));
+		// el alumno SOLICITADA no entra en el acta, tampoco como NP
+		assertTrue(db.executeQueryArray("SELECT 1 FROM Calificacion WHERE matriculaId = 'M015'").isEmpty());
+	}
+
+	/** El cierre automático también deja como NP a los alumnos sin nota (el acta no queda vacía) */
+	@Test
+	public void testCierreAutomaticoPoneNPALosSinNota() {
+		actaModel.cerrarActasVencidas("2027-01-30");
+		List<CalificacionActaDisplayDTO> notas = getNotas();
+		assertEquals(4, notas.size());
+		assertTrue(notas.stream().allMatch(n -> "NP".equals(n.getNota())));
+	}
+
+	/** Quien aprueba en enero no entra en el acta de una convocatoria posterior del mismo año; quien suspende sí */
+	@Test
+	public void testAprobadoNoApareceEnConvocatoriaPosterior() {
+		db.executeUpdate("INSERT INTO Acta VALUES ('C005','2026-2027','ORDINARIA_JUNIO','ABIERTA',NULL,0)");
+		Map<String, String> notas = new LinkedHashMap<>();
+		notas.put("M011", "7");
+		notas.put("M012", "3");
+		actaModel.guardarNotas("P004", CURSO, ANIO, CONV, notas);
+
+		List<CalificacionActaDisplayDTO> junio = actaModel.getCalificaciones(CURSO, ANIO, "ORDINARIA_JUNIO");
+		assertEquals(3, junio.size());
+		assertFalse(junio.stream().anyMatch(n -> "M011".equals(n.getMatriculaId())));
+		assertTrue(junio.stream().anyMatch(n -> "M012".equals(n.getMatriculaId())));
+
+		// al cerrar junio, el aprobado en enero no recibe NP
+		actaModel.cerrarActa("P004", CURSO, ANIO, "ORDINARIA_JUNIO", HOY);
+		assertTrue(db.executeQueryArray("SELECT 1 FROM Calificacion WHERE matriculaId = 'M011' "
+				+ "AND tipoConvocatoria = 'ORDINARIA_JUNIO'").isEmpty());
+		assertEquals(3, actaModel.getCalificaciones(CURSO, ANIO, "ORDINARIA_JUNIO").size());
 	}
 
 	private List<CalificacionActaDisplayDTO> getNotas() {

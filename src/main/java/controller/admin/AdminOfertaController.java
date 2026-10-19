@@ -14,6 +14,7 @@ import repository.AnoAcademicoRepository;
 import repository.CursoRepository;
 import repository.GradoRepository;
 import repository.MatriculacionRepository;
+import model.profesor.ProfesorDTO;
 import repository.ProfesorRepository;
 import util.SwingUtil;
 
@@ -258,8 +259,8 @@ public class AdminOfertaController {
 	}
 
 	private void cargarCoordinadores(CursoFormDialog form) {
-		for (Object[] profesor : new ProfesorRepository().getListaProfesores()) {
-			form.getCbCoordinador().addItem(String.valueOf(profesor[0]));
+		for (ProfesorDTO profesor : new ProfesorRepository().getProfesores()) {
+			form.getCbCoordinador().addItem(profesor.toString());
 		}
 	}
 

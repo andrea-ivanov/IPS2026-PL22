@@ -3,7 +3,9 @@ package controller.profesor;
 import model.acta.ActaDisplayDTO;
 import model.acta.ActaModel;
 import model.acta.CalificacionActaDisplayDTO;
+import model.acta.EstadoActa;
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
+import model.profesor.ProfesorDTO;
 import repository.ActaRepository;
 import repository.ProfesorRepository;
 import util.ComboBuscable;
@@ -16,6 +18,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,7 +57,14 @@ public class ProfesorController {
     }
 
     public void initController() {
-        view.getBtnVolverInicio().addActionListener(e -> volverInicio());
+        view.getBtnVolverInicio().addActionListener(e -> view.getFrame().dispose());
+        // tanto el boton como la X de la ventana la cierran: al cerrarse se vuelve a la seleccion de rol
+        view.getFrame().addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                onVolverInicio.run();
+            }
+        });
         view.getBtnCargarAsignaciones().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarAsignaciones()));
         // Enter en el combo de profesores (despues de escribir o elegir) tambien carga sus asignaciones
         ((JTextField) view.getCbProfesores().getEditor().getEditorComponent())
@@ -71,20 +82,13 @@ public class ProfesorController {
         view.getBtnCerrarActa().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cerrarActa()));
     }
 
-    /** Cierra la ventana del profesor y vuelve a la pantalla de selección de rol. */
-    private void volverInicio() {
-        view.getFrame().dispose();
-        onVolverInicio.run();
-    }
-
     private void cargarAsignaciones() {
         // en el combo se puede escribir: solo vale si el texto corresponde a un profesor de la lista
-        Object seleccionado = ComboBuscable.getSeleccion(view.getCbProfesores());
+        ProfesorDTO seleccionado = ComboBuscable.getSeleccion(view.getCbProfesores());
         if (seleccionado == null)
             throw new ValidationException("Selecciona un profesor de la lista");
         view.getCbProfesores().setSelectedItem(seleccionado);
-        // el item del combo es "P001 - Nombre Apellidos": el id es lo que va antes del separador
-        profesorId = seleccionado.toString().split(" - ")[0];
+        profesorId = seleccionado.getProfesorId();
 
         asignaciones = repository.getAsignacionesDocentes(profesorId);
         cargarCombosFiltro();
@@ -99,9 +103,9 @@ public class ProfesorController {
             grados.addAll(getGrados(a));
             cursos.add(a.getCurso());
         }
-        List<String> opcionesGrado = new ArrayList<>(List.of("TODOS"));
+        List<String> opcionesGrado = new ArrayList<>(List.of(ProfesorView.FILTRO_TODOS));
         opcionesGrado.addAll(grados);
-        List<String> opcionesCurso = new ArrayList<>(List.of("TODOS"));
+        List<String> opcionesCurso = new ArrayList<>(List.of(ProfesorView.FILTRO_TODOS));
         opcionesCurso.addAll(cursos);
         view.getCbFiltroGrado().setModel(new DefaultComboBoxModel<>(opcionesGrado.toArray(new String[0])));
         view.getCbFiltroCurso().setModel(new DefaultComboBoxModel<>(opcionesCurso.toArray(new String[0])));
@@ -115,10 +119,10 @@ public class ProfesorController {
 
         List<AsignacionDocenteDisplayDTO> filtradas = new ArrayList<>();
         for (AsignacionDocenteDisplayDTO a : asignaciones) {
-            boolean coincideGrado = "TODOS".equals(gradoSelec) || getGrados(a).contains(gradoSelec);
-            boolean coincideCurso = "TODOS".equals(cursoSelec) || a.getCurso().equals(cursoSelec);
-            boolean coincideTipo = "TODOS".equals(tipoSelec) || a.getTipo().equals(tipoSelec);
-            boolean coincideRol = "TODOS".equals(rolSelec) || a.getRol().equals(rolSelec);
+            boolean coincideGrado = ProfesorView.FILTRO_TODOS.equals(gradoSelec) || getGrados(a).contains(gradoSelec);
+            boolean coincideCurso = ProfesorView.FILTRO_TODOS.equals(cursoSelec) || a.getCurso().equals(cursoSelec);
+            boolean coincideTipo = ProfesorView.FILTRO_TODOS.equals(tipoSelec) || a.getTipo().equals(tipoSelec);
+            boolean coincideRol = ProfesorView.FILTRO_TODOS.equals(rolSelec) || a.getRol().equals(rolSelec);
 
             if (coincideGrado && coincideCurso && coincideTipo && coincideRol)
                 filtradas.add(a);
@@ -170,7 +174,7 @@ public class ProfesorController {
             return;
         }
 
-        boolean editable = ActaModel.puedeEditarNotas(asignacionSelec.getRol(), acta.getEstado());
+        boolean editable = ActaModel.puedeEditarNotas(asignacionSelec.getRolDocente(), acta.getEstadoActa());
         List<CalificacionActaDisplayDTO> notas = actaRepository.getCalificaciones(acta.getCursoId(),
                 acta.getAnioAcademicoId(), acta.getTipoConvocatoria());
 
@@ -187,7 +191,7 @@ public class ProfesorController {
 
         if (editable)
             view.getLblEstadoActa().setText("Acta ABIERTA: escribe la nota (0 a 10), NP o dejala vacia");
-        else if (ActaModel.ESTADO_ABIERTA.equals(acta.getEstado()))
+        else if (acta.getEstadoActa() == EstadoActa.ABIERTA)
             view.getLblEstadoActa().setText("Rol DOCENTE: solo consulta");
         else
             view.getLblEstadoActa().setText("Acta CERRADA: solo lectura");
@@ -224,6 +228,7 @@ public class ProfesorController {
         int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
                 "¿Estás seguro de que deseas cerrar el acta de " + asignacionSelec.getCurso() + " ("
                         + acta.getAnioAcademicoId() + " - " + acta.getTipoConvocatoria() + ")?\n"
+                        + "Los alumnos sin nota quedarán como NP (no presentado).\n"
                         + "Una vez cerrada, las notas no se podrán modificar.",
                 "Cerrar Acta", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
@@ -247,7 +252,7 @@ public class ProfesorController {
     }
 
     private void initView() {
-        view.getCbProfesores().setModel(SwingUtil.getComboModelFromList(repository.getListaProfesores()));
+        view.getCbProfesores().setModel(new DefaultComboBoxModel<>(repository.getProfesores().toArray(new ProfesorDTO[0])));
         ComboBuscable.hacerBuscable(view.getCbProfesores());
         view.getFrame().setVisible(true);
     }

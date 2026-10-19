@@ -26,4 +26,8 @@ public class ActaDisplayDTO {
         this.fechaFin = fechaFin;
         this.estado = estado;
     }
+
+    public EstadoActa getEstadoActa() {
+        return EstadoActa.fromString(estado);
+    }
 }

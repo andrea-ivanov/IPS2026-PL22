@@ -1,12 +1,21 @@
 package view.profesor;
 
+import model.asignaciondocente.RolDocente;
+import model.grupo.TipoGrupo;
+import model.profesor.ProfesorDTO;
+
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
+import java.util.Arrays;
+import java.util.stream.Stream;
 
 public class ProfesorView {
+    /** Opción de los combos de filtro que no filtra */
+    public static final String FILTRO_TODOS = "TODOS";
+
     private JFrame frame;
-    private JComboBox<Object> cbProfesores;
+    private JComboBox<ProfesorDTO> cbProfesores;
     private JButton btnCargarAsignaciones;
     private JButton btnVolverInicio;
     private JComboBox<String> cbFiltroGrado;
@@ -27,7 +36,8 @@ public class ProfesorView {
     private void initialize() {
         frame = new JFrame("Panel de Profesor - Asignaciones Docentes");
         frame.setBounds(150, 100, 900, 650);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        // la X cierra solo esta ventana; el controlador vuelve entonces a la pantalla de selección de rol
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout());
 
         JPanel panelNorte = new JPanel(new GridLayout(2, 1));
@@ -54,19 +64,19 @@ public class ProfesorView {
         // Filtros: grado y curso se rellenan con las asignaciones del profesor al cargarlas
         JPanel panelFiltros = new JPanel();
         panelFiltros.add(new JLabel("Grado:"));
-        cbFiltroGrado = new JComboBox<>(new String[] { "TODOS" });
+        cbFiltroGrado = new JComboBox<>(new String[] { FILTRO_TODOS });
         panelFiltros.add(cbFiltroGrado);
 
         panelFiltros.add(new JLabel("Curso:"));
-        cbFiltroCurso = new JComboBox<>(new String[] { "TODOS" });
+        cbFiltroCurso = new JComboBox<>(new String[] { FILTRO_TODOS });
         panelFiltros.add(cbFiltroCurso);
 
         panelFiltros.add(new JLabel("Grupo:"));
-        cbFiltroTipo = new JComboBox<>(new String[] { "TODOS", "TE", "PL", "PA" });
+        cbFiltroTipo = new JComboBox<>(opcionesFiltro(TipoGrupo.values()));
         panelFiltros.add(cbFiltroTipo);
 
         panelFiltros.add(new JLabel("Rol:"));
-        cbFiltroRol = new JComboBox<>(new String[] { "TODOS", "COORDINADOR", "DOCENTE" });
+        cbFiltroRol = new JComboBox<>(opcionesFiltro(RolDocente.values()));
         panelFiltros.add(cbFiltroRol);
         panelNorte.add(panelFiltros);
 
@@ -108,11 +118,16 @@ public class ProfesorView {
         frame.getContentPane().add(splitPane, BorderLayout.CENTER);
     }
 
+    /** TODOS seguido de los valores del enum */
+    private static String[] opcionesFiltro(Enum<?>[] valores) {
+        return Stream.concat(Stream.of(FILTRO_TODOS), Arrays.stream(valores).map(Enum::name)).toArray(String[]::new);
+    }
+
     public JFrame getFrame() {
         return frame;
     }
 
-    public JComboBox<Object> getCbProfesores() {
+    public JComboBox<ProfesorDTO> getCbProfesores() {
         return cbProfesores;
     }
 

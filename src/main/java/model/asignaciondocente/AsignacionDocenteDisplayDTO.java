@@ -29,4 +29,8 @@ public class AsignacionDocenteDisplayDTO {
         this.tipo = tipo;
         this.rol = rol;
     }
+
+    public RolDocente getRolDocente() {
+        return RolDocente.fromString(rol);
+    }
 }
