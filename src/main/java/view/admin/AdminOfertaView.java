@@ -65,7 +65,7 @@ public class AdminOfertaView {
     private void initialize() {
         frame = new JFrame("Panel de Administrador - Oferta Académica");
         frame.setBounds(100, 100, 1000, 650);
-        frame.setBounds(100, 100, 1000, 650);
+        frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout());
 

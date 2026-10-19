@@ -17,6 +17,7 @@ public class MainView {
     private void initialize() {
         frame = new JFrame("Sistema de Matriculación - Login");
         frame.setBounds(100, 100, 480, 260);
+        frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout(10, 10));
 

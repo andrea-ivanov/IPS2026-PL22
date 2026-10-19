@@ -112,8 +112,24 @@ public class ResumenSolicitudDTO {
 		return totalCreditos;
 	}
 
+	public int getCreditosTotales() {
+		return (int) totalCreditos;
+	}
+
+	public void setTotalCreditos(double totalCreditos) {
+		this.totalCreditos = totalCreditos;
+	}
+
+	public void setCreditosTotales(int creditosTotales) {
+		this.totalCreditos = creditosTotales;
+	}
+
 	public double getImporteTotal() {
 		return importeTotal;
+	}
+
+	public void setImporteTotal(double importeTotal) {
+		this.importeTotal = importeTotal;
 	}
 
 	public String getMetodoPago() {

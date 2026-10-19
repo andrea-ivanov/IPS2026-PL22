@@ -38,6 +38,7 @@ public class SecretarioView {
     private void initialize() {
         frame = new JFrame("Panel de Secretaría - Gestión de Matrículas");
         frame.setBounds(100, 100, 1050, 650);
+        frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout());
 

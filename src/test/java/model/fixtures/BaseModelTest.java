@@ -11,11 +11,11 @@ import util.Database;
  * - Restablece una base de datos limpia y predecible antes de cada test.
  */
 public abstract class BaseModelTest {
-	protected static Database db = new Database();
+	protected static Database db = new Database("jdbc:sqlite:TestDB.db?foreign_keys=true");
 
 	@BeforeEach
 	public void setUp() {
-		db.createDatabase(true);
+		db.createDatabase(false);
 		loadCleanDatabase(db);
 	}
 

@@ -67,11 +67,22 @@ public class MainController {
     private void abrirVistaEstudiante() {
         Object itemSeleccionado = view.getCbAlumnos().getSelectedItem();
         String uo = null;
+        String nombre = null;
         if (itemSeleccionado != null) {
-            uo = itemSeleccionado.toString().split(" - ")[0].trim();
+            String itemStr = itemSeleccionado.toString().trim();
+            if (itemStr.contains(" - ")) {
+                String[] parts = itemStr.split(" - ", 2);
+                uo = parts[0].trim();
+                nombre = parts[1].trim();
+            } else {
+                uo = itemStr;
+            }
         }
         EstudianteView estudianteView = new EstudianteView();
-        EstudianteController estudianteController = new EstudianteController(estudianteView, uo);
+        EstudianteController estudianteController = new EstudianteController(estudianteView, uo, nombre, () -> {
+            view.getFrame().setLocationRelativeTo(null);
+            view.getFrame().setVisible(true);
+        });
         estudianteController.initController();
         view.getFrame().setVisible(false);
     }
@@ -98,6 +109,7 @@ public class MainController {
     }
 
     private void initView() {
+        view.getFrame().setLocationRelativeTo(null);
         view.getFrame().setVisible(true);
     }
 

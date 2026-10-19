@@ -11,29 +11,32 @@ import java.awt.*;
  * Integra:
  * - Filtro de grado consultado (soporte de dobles grados).
  * - Ordenación de asignaturas matriculadas (por curso y nº de matrícula).
- * - Indicadores visuales de Hitos de Permanencia (créditos anuales vs 12 y acumulados vs 90).
- * - Historial detallado de calificaciones obtenidas en las convocatorias presentadas.
+ * - Indicadores visuales de Hitos de Permanencia (créditos anuales vs 12 y
+ * acumulados vs 90).
+ * - Historial detallado de calificaciones obtenidas en las convocatorias
+ * presentadas.
  */
 public class MisMatriculasView {
     private JFrame frame;
     private JComboBox<Object> cbGrados;
-    
+
     // Tabla de asignaturas matriculadas
     private JTable tableMatriculas;
     private DefaultTableModel tableModel;
-    
+
     // Hitos de permanencia
     private JLabel lblHitoAnual;
     private JLabel lblHitoTotal;
-    
+
     // Pestañas y calificaciones
     private JTabbedPane tabbedPane;
     private JTable tableCalificaciones;
     private DefaultTableModel tableModelCalificaciones;
     private JButton btnVerNotasSeleccionada;
     private JButton btnVerTodasNotas;
-    
+
     private JButton btnVolver;
+    private JPanel panelPrincipal;
 
     public MisMatriculasView() {
         initialize();
@@ -41,9 +44,13 @@ public class MisMatriculasView {
 
     private void initialize() {
         frame = new JFrame("Mis Matrículas — Expediente y Calificaciones");
-        frame.setBounds(150, 100, 860, 580);
+        frame.setBounds(150, 100, 880, 600);
+        frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        frame.getContentPane().setLayout(new BorderLayout(10, 10));
+        frame.getContentPane().setLayout(new BorderLayout());
+
+        panelPrincipal = new JPanel(new BorderLayout(10, 10));
+        panelPrincipal.setBorder(new EmptyBorder(10, 10, 10, 10));
 
         // =========================================================================
         // Panel superior: Título, selector de grado e Hitos de Permanencia
@@ -80,7 +87,7 @@ public class MisMatriculasView {
         panelPermanencia.add(lblHitoTotal);
 
         panelNorte.add(panelPermanencia, BorderLayout.SOUTH);
-        frame.getContentPane().add(panelNorte, BorderLayout.NORTH);
+        panelPrincipal.add(panelNorte, BorderLayout.NORTH);
 
         // =========================================================================
         // Panel Central con Pestañas: Asignaturas y Calificaciones
@@ -116,7 +123,8 @@ public class MisMatriculasView {
         JPanel panelTabCalificaciones = new JPanel(new BorderLayout(5, 5));
         panelTabCalificaciones.setBorder(new EmptyBorder(5, 5, 5, 5));
 
-        String[] colCalificaciones = { "Año Académico", "Código", "Asignatura", "Convocatoria", "Calificación", "Resultado" };
+        String[] colCalificaciones = { "Año Académico", "Código", "Asignatura", "Convocatoria", "Calificación",
+                "Resultado" };
         tableModelCalificaciones = new DefaultTableModel(colCalificaciones, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -136,16 +144,23 @@ public class MisMatriculasView {
 
         tabbedPane.addTab("Calificaciones por Convocatoria", panelTabCalificaciones);
 
-        frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
+        panelPrincipal.add(tabbedPane, BorderLayout.CENTER);
 
         // =========================================================================
-        // Panel inferior para botón Cerrar
+        // Panel inferior para botón Volver al Menú
         // =========================================================================
         JPanel panelBottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        btnVolver = new JButton("Cerrar");
-        btnVolver.setPreferredSize(new Dimension(100, 30));
+        btnVolver = new JButton("Atrás");
+        btnVolver.setPreferredSize(new Dimension(220, 32));
+        btnVolver.setFont(new Font("Tahoma", Font.BOLD, 12));
         panelBottom.add(btnVolver);
-        frame.getContentPane().add(panelBottom, BorderLayout.SOUTH);
+        panelPrincipal.add(panelBottom, BorderLayout.SOUTH);
+
+        frame.getContentPane().add(panelPrincipal, BorderLayout.CENTER);
+    }
+
+    public JPanel getPanelPrincipal() {
+        return panelPrincipal;
     }
 
     public JFrame getFrame() {

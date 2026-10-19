@@ -94,6 +94,14 @@ public class OfertaCursoDTO {
 		this.seleccionado = seleccionado;
 	}
 
+	public boolean isSeleccionada() {
+		return seleccionado;
+	}
+
+	public void setSeleccionada(boolean seleccionada) {
+		this.seleccionado = seleccionada;
+	}
+
 	/**
 	 * Verifica si la asignatura puede ser seleccionada según el límite de convocatorias (máximo 6 con nota).
 	 */

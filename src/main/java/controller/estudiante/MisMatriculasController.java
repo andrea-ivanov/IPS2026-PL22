@@ -26,16 +26,28 @@ public class MisMatriculasController {
     private MisMatriculasView view;
     private MatriculacionModel model;
     private String uo;
+    private Runnable onVolver;
 
     public MisMatriculasController(MisMatriculasView view, MatriculacionModel model, String uo) {
+        this(view, model, uo, null);
+    }
+
+    public MisMatriculasController(MisMatriculasView view, MatriculacionModel model, String uo, Runnable onVolver) {
         this.view = view;
         this.model = model;
         this.uo = uo;
+        this.onVolver = onVolver;
     }
 
     public void initController() {
         // Asignar los listeners a los botones
-        view.getBtnVolver().addActionListener(e -> view.getFrame().dispose());
+        view.getBtnVolver().addActionListener(e -> {
+            if (onVolver != null) {
+                onVolver.run();
+            } else if (view.getFrame() != null) {
+                view.getFrame().dispose();
+            }
+        });
 
         // Botón para ver notas de la asignatura seleccionada
         view.getBtnVerNotasSeleccionada().addActionListener(e -> verNotasDeAsignaturaSeleccionada());
@@ -56,11 +68,14 @@ public class MisMatriculasController {
         // Carga inicial
         refrescarTodo();
 
-        // Mostrar la ventana
-        view.getFrame().setVisible(true);
+        // Mostrar la ventana solo si funciona en modo independiente
+        if (onVolver == null && view.getFrame() != null) {
+            view.getFrame().setLocationRelativeTo(null);
+            view.getFrame().setVisible(true);
+        }
     }
 
-    private void refrescarTodo() {
+    public void refrescarTodo() {
         String gradoId = getGradoIdSeleccionado();
         cargarMatriculas(gradoId);
         cargarHitosPermanencia(gradoId);
