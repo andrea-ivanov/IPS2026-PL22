@@ -3,6 +3,10 @@
 
 # IPS2026-PL22
 
+Documentación del proyecto:
+- [Historias de usuario implementadas](docs/HISTORIAS.md): qué clases y qué tests corresponden a cada una.
+- [Base de datos](docs/DATABASE.md): tablas, reglas de negocio y consultas de referencia.
+
 Este proyecto es utilizado como proyecto base o plantilla para el desarrollo y a modo de ejemplo para ilustrar algunos aspectos del desarrollo y automatización de pruebas para las asignaturas relacionadas con ingenieria del software, sistemas de información y pruebas de software.
 
 [Descargar la última versión](https://github.com/javiertuya/samples-test-dev/releases) - 

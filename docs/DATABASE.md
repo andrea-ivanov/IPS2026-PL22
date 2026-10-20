@@ -830,8 +830,7 @@ Los dobles grados comparten asignaturas con sus grados de origen.
 
 ### Pruebas automáticas
 
-- Las pruebas de `model/acta` (`ActaModelTest`) y `model/propuesta` (`PropuestaModelTest`), y las que heredan de `BaseModelTest`, cargan **sus propios datos** antes de cada prueba, así que no dependen de `data.sql`.
-- `GestionMatriculaModelTest` todavía carga `data.sql` y espera los datos de prueba anteriores (matrículas `M007`, `M010`, `M015`…). Con estos datos falla en 31 de sus 32 pruebas: hay que pasarla a datos propios.
+- Todas las pruebas usan `TestDB.db` y cargan **sus propios datos** antes de cada prueba, así que no dependen de `data.sql` ni modifican `DemoDB.db`: las de `model/acta` (`ActaModelTest`), `model/propuesta` (`PropuestaModelTest`), `model/matriculacion` (`GestionMatriculaModelTest`) y las que heredan de `BaseModelTest`.
 
 ---
 
