@@ -139,7 +139,8 @@ public class MatriculacionSolicitudModelTest extends BaseModelTest {
 		solicitud.setAsignaturas(asignaturas);
 
 		String matriculaId = matriculacionModel.registrarSolicitudMatricula(solicitud);
-		assertNotNull(matriculaId, "Debe generar y retornar un ID de matrícula");
+		// mismo formato que data.sql (M00001 ... M02100): la carga limpia no tiene ids con M, así que es la primera
+		assertEquals("M00001", matriculaId);
 
 		// Verificar en BD que la cabecera Matricula tiene estado SOLICITADA
 		List<Object[]> rowsMat = db.executeQueryArray("SELECT estado FROM Matricula WHERE matriculaId = ?",

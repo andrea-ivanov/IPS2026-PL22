@@ -551,11 +551,11 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Genera de forma segura el siguiente identificador correlativo para una matrícula (p. ej. "M017").
+	 * Genera de forma segura el siguiente identificador correlativo para una matrícula (p. ej. "M02101").
 	 * Utiliza la conexión proporcionada para operar dentro de una transacción.
 	 *
 	 * @param conn Conexión JDBC activa
-	 * @return Nuevo identificador formateado como "M%03d"
+	 * @return Nuevo identificador formateado como "M%05d", el mismo que data.sql
 	 * @throws SQLException si ocurre un error SQL
 	 */
 	public String generarSiguienteMatriculaId(Connection conn) throws SQLException {
@@ -566,7 +566,7 @@ public class MatriculacionModel {
 			if (rs.next()) {
 				maxNum = rs.getInt(1);
 			}
-			return String.format("M%03d", maxNum + 1);
+			return String.format("M%05d", maxNum + 1);
 		}
 	}
 
@@ -582,7 +582,7 @@ public class MatriculacionModel {
 	 * </p>
 	 *
 	 * @param solicitud DTO consolidado con toda la información de la solicitud y método de pago
-	 * @return El identificador de la nueva matrícula registrada (p. ej. "M017")
+	 * @return El identificador de la nueva matrícula registrada (p. ej. "M02101")
 	 * @throws ValidationException si alguna validación de negocio falla
 	 * @throws UnexpectedException si ocurre algún fallo transaccional en base de datos
 	 */
