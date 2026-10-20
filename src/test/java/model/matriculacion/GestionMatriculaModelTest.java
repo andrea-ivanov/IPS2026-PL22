@@ -27,12 +27,12 @@ class GestionMatriculaModelTest {
 	private static final String CURSO_INICIADO = "2026-10-17";
 	private static final String ANIO_TERMINADO = "2027-08-01";
 
-	private static Database db = new Database();
+	private static Database db = new Database("jdbc:sqlite:TestDB.db?foreign_keys=true");
 	private GestionMatriculaModel model;
 
 	@BeforeEach
 	void setUp() {
-		db.createDatabase(true);
+		db.createDatabase(false);
 		loadCleanDatabase(db);
 		model = new GestionMatriculaModel(db);
 	}

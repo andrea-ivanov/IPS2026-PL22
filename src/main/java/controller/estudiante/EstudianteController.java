@@ -1,6 +1,7 @@
 package controller.estudiante;
 
 import model.matriculacion.MatriculacionModel;
+import util.SwingUtil;
 import view.estudiante.EstudianteView;
 import view.estudiante.MisMatriculasView;
 import view.estudiante.SolicitudMatriculaView;
@@ -57,10 +58,10 @@ public class EstudianteController {
         view.getBtnVolverLogin().addActionListener(e -> volverAlLogin());
 
         // 2. Opción 1: Consultar Mis Matrículas (se abre dentro de la misma ventana)
-        view.getBtnMisMatriculas().addActionListener(e -> abrirConsultaMatriculas());
+        view.getBtnMisMatriculas().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirConsultaMatriculas));
 
         // 3. Opción 2: Solicitar Nueva Matrícula (se abre dentro de la misma ventana)
-        view.getBtnSolicitarMatricula().addActionListener(e -> abrirSolicitudMatricula());
+        view.getBtnSolicitarMatricula().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMatricula));
 
         // Mostrar menú inicial y centrar
         view.mostrarMenu();

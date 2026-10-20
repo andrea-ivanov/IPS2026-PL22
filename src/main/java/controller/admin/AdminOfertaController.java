@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  * Matriculación y Año Académico.
  * Soporta navegación entre paneles (Grados -> Cursos -> Matrícula), filtrado
  * reactivo,
- * gestión del Año Académico actual y mockeo estructurado.
+ * y gestión del Año Académico actual.
  */
 public class AdminOfertaController {
 	private AdminOfertaView view;
@@ -68,16 +68,10 @@ public class AdminOfertaController {
 
 	public AdminOfertaController(AdminOfertaView view) {
 		this.view = view;
-		try {
-			this.gradoRepository = new GradoRepository();
-			this.cursoRepository = new CursoRepository();
-			this.matriculacionRepository = new MatriculacionRepository();
-			this.anoAcademicoRepository = new AnoAcademicoRepository();
-		} catch (Exception ex) {
-			System.err.println("Aviso: No se pudo conectar con los repositorios en base de datos. Modo mock activado: "
-					+ ex.getMessage());
-			this.anoAcademicoRepository = new AnoAcademicoRepository();
-		}
+		this.gradoRepository = new GradoRepository();
+		this.cursoRepository = new CursoRepository();
+		this.matriculacionRepository = new MatriculacionRepository();
+		this.anoAcademicoRepository = new AnoAcademicoRepository();
 		this.initView();
 	}
 
@@ -121,13 +115,11 @@ public class AdminOfertaController {
 		cargarGrados();
 
 		// 3. Conexión de callbacks del botón 'Ver' en JTable
-		view.setOnVerGrado((idGrado, nombreGrado) -> {
-			cargarCursosDeGrado(idGrado, nombreGrado);
-		});
+		view.setOnVerGrado((idGrado, nombreGrado) ->
+				SwingUtil.exceptionWrapper(() -> cargarCursosDeGrado(idGrado, nombreGrado)));
 
-		view.setOnVerCurso((idCurso, nombreCurso) -> {
-			cargarMatriculasDeCurso(idCurso, nombreCurso);
-		});
+		view.setOnVerCurso((idCurso, nombreCurso) ->
+				SwingUtil.exceptionWrapper(() -> cargarMatriculasDeCurso(idCurso, nombreCurso)));
 
 		// 4. Selección por fila / doble clic en tablas
 		view.getTabGrados().addMouseListener(new MouseAdapter() {
@@ -138,7 +130,7 @@ public class AdminOfertaController {
 					String idGrado = String.valueOf(view.getTabGrados().getValueAt(row, 0));
 					String nombreGrado = String.valueOf(view.getTabGrados().getValueAt(row, 1));
 					view.showCursosView(nombreGrado);
-					cargarCursosDeGrado(idGrado, nombreGrado);
+					SwingUtil.exceptionWrapper(() -> cargarCursosDeGrado(idGrado, nombreGrado));
 				}
 			}
 		});
@@ -151,7 +143,7 @@ public class AdminOfertaController {
 					String idCurso = String.valueOf(view.getTabCursos().getValueAt(row, 0));
 					String nombreCurso = String.valueOf(view.getTabCursos().getValueAt(row, 1));
 					view.showMatriculacionView(nombreCurso);
-					cargarMatriculasDeCurso(idCurso, nombreCurso);
+					SwingUtil.exceptionWrapper(() -> cargarMatriculasDeCurso(idCurso, nombreCurso));
 				}
 			}
 		});
@@ -380,57 +372,24 @@ public class AdminOfertaController {
 	}
 
 	public void cargarGrados() {
-		todosLosGrados.clear();
-		try {
-			if (gradoRepository != null) {
-				todosLosGrados = gradoRepository.getTodosLosGrados();
-			}
-		} catch (Exception ex) {
-			System.err.println("Aviso al cargar grados desde repositorio: " + ex.getMessage());
-		}
-
+		todosLosGrados = gradoRepository.getTodosLosGrados();
 		aplicarFiltrosGrados();
-	}
-
-	public void cargarMocksGrados() {
-		cargarGrados();
 	}
 
 	public void cargarCursosDeGrado(String idGrado, String nombreGrado) {
 		this.gradoActualId = idGrado;
 		this.gradoActualNombre = nombreGrado;
-		todosLosCursos.clear();
-		try {
-			if (cursoRepository != null) {
-				todosLosCursos = cursoRepository.getCursosPorGrado(idGrado);
-			}
-		} catch (Exception ex) {
-			System.err.println("Aviso al cargar cursos desde repositorio: " + ex.getMessage());
-		}
-
+		todosLosCursos = cursoRepository.getCursosPorGrado(idGrado);
 		aplicarFiltrosCursos();
 	}
 
 	public void cargarMatriculasDeCurso(String idCurso, String nombreCurso) {
 		this.cursoActualId = idCurso;
 		this.cursoActualNombre = nombreCurso;
-		todasLasMatriculaciones.clear();
-		try {
-			if (matriculacionRepository != null) {
-				if (anoAcademicoActual != null) {
-					todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCursoYAnoActual(
-							idCurso, 
-							anoAcademicoActual.getAnioAcademicoId()
-					);
-				} else {
-					todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCurso(idCurso);
-				}
-			}
-		} catch (Exception ex) {
-			System.err.println("Aviso al cargar matrículas desde repositorio: " + ex.getMessage());
-		}
+		todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCursoYAnoActual(idCurso,
+				getAnioActualId());
 
-		Long idAnoActual = anoAcademicoActual != null ? anoAcademicoActual.getId() : 1L;
+		Long idAnoActual = anoAcademicoActual != null ? anoAcademicoActual.getId() : null;
 		for (MatriculacionDisplayDTO m : todasLasMatriculaciones) {
 			if (m.getIdAnoAcademico() == null) {
 				m.setIdAnoAcademico(idAnoActual);

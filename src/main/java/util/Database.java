@@ -117,40 +117,27 @@ public class Database extends DbUtil {
 	}
 
 	/**
-	 * Comprueba si la BD tiene las tablas creadas y datos cargados.
-	 * Si la tabla Grado no existe → ejecuta schema.sql + data.sql.
-	 * Si existe pero Grado, Alumno o MatriculaCurso están vacías → ejecuta solo data.sql.
+	 * Si la BD no tiene tablas (archivo nuevo) ejecuta schema.sql + data.sql.
+	 * Una BD con tablas nunca se toca, aunque alguna esté vacía: la carga es transaccional
+	 * (executeBatch), así que no puede quedar a medias. Si no se puede leer el estado, se lanza
+	 * la excepción en vez de recrear la BD y perder los datos.
 	 *
-	 * Se usan dos bloques try-with-resources SEPARADOS para que la conexión de
-	 * lectura esté cerrada antes de que executeBatch abra conexiones de escritura.
+	 * La conexión de lectura se cierra antes de que executeBatch abra conexiones de escritura.
 	 */
 	private void checkAndInitDatabase() {
-		boolean tableExists = false;
-		boolean dataExists = false;
-
-		// Fase 1: leer estado (conexión se cierra al salir del try)
+		boolean tableExists;
 		try (Connection conn = getConnection();
-			 Statement stmt = conn.createStatement()) {
-			ResultSet rs = stmt.executeQuery(
-					"SELECT count(*) FROM sqlite_master WHERE type='table' AND name='Grado'");
+			 Statement stmt = conn.createStatement();
+			 ResultSet rs = stmt.executeQuery(
+					"SELECT count(*) FROM sqlite_master WHERE type='table' AND name='Grado'")) {
 			tableExists = rs.next() && rs.getInt(1) > 0;
-			if (tableExists) {
-				// Se comprueban tablas del principio y del final de data.sql para detectar cargas a medias
-				ResultSet rsData = stmt.executeQuery("SELECT (SELECT count(*) FROM Grado) * "
-						+ "(SELECT count(*) FROM Alumno) * (SELECT count(*) FROM MatriculaCurso)");
-				dataExists = rsData.next() && rsData.getLong(1) > 0;
-			}
 		} catch (Exception ex) {
-			System.err.println("Aviso al comprobar estado de BD: " + ex.getMessage());
+			throw new ApplicationException(ex);
 		}
 
-		// Fase 2: actuar (la conexión de lectura ya está cerrada)
 		if (!tableExists) {
 			System.out.println("BD sin tablas detectada, ejecutando schema.sql y data.sql...");
 			createDatabase(false);
-			loadDatabase();
-		} else if (!dataExists) {
-			System.out.println("BD sin datos detectada, ejecutando data.sql...");
 			loadDatabase();
 		}
 	}

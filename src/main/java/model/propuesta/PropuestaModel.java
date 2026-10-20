@@ -1,5 +1,7 @@
 package model.propuesta;
 
+import static util.DbUtil.update;
+
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -11,13 +13,11 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.grado.GradoDisplayDTO;
 import util.Database;
-import util.UnexpectedException;
 import util.exception.ValidationException;
 
 /**
@@ -95,7 +95,7 @@ public class PropuestaModel {
 		Set<String> grados = new LinkedHashSet<>(gradoIds);
 
 		List<String> creadas = new ArrayList<>();
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			int siguiente = siguienteNumero(conn);
 			int filas = 0;
 			for (String gradoId : grados) {
@@ -210,29 +210,4 @@ public class PropuestaModel {
 		}
 	}
 
-	private int update(Connection conn, String sql, Object... params) throws SQLException {
-		return new QueryRunner().update(conn, sql, params);
-	}
-
-	@FunctionalInterface
-	private interface OperacionBD {
-		int ejecutar(Connection conn) throws SQLException;
-	}
-
-	/** Ejecuta la operación en una única transacción: o se aplican todos los cambios o ninguno. */
-	private int enTransaccion(OperacionBD operacion) {
-		Connection conn = null;
-		try {
-			conn = db.getConnection();
-			conn.setAutoCommit(false);
-			int result = operacion.ejecutar(conn);
-			conn.commit();
-			return result;
-		} catch (SQLException e) {
-			DbUtils.rollbackQuietly(conn);
-			throw new UnexpectedException(e);
-		} finally {
-			DbUtils.closeQuietly(conn);
-		}
-	}
 }

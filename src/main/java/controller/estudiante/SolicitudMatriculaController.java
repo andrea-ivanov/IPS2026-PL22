@@ -5,6 +5,7 @@ import model.matriculacion.OfertaCursoDTO;
 import model.matriculacion.OfertaGradoDTO;
 import model.matriculacion.ResumenSolicitudDTO;
 import util.exception.ValidationException;
+import util.SwingUtil;
 import view.estudiante.SolicitudMatriculaView;
 
 import javax.swing.*;
@@ -40,7 +41,7 @@ public class SolicitudMatriculaController {
         cargarGradosDisponibles();
 
         // 2. Escuchar cambio de grado para recargar dinámicamente las asignaturas
-        view.getCbGrados().addActionListener(e -> cargarAsignaturasDelGradoSeleccionado());
+        view.getCbGrados().addActionListener(e -> SwingUtil.exceptionWrapper(this::cargarAsignaturasDelGradoSeleccionado));
 
         // 3. Listener en la tabla para validación de convocatorias y cálculo en tiempo
         // real
@@ -55,7 +56,7 @@ public class SolicitudMatriculaController {
 
         // 5. Navegación Paso 1 -> Paso 2 (Continuar al Resumen con validaciones de
         // negocio)
-        view.getBtnContinuarPaso2().addActionListener(e -> validarYContinuarAlResumen());
+        view.getBtnContinuarPaso2().addActionListener(e -> SwingUtil.exceptionWrapper(this::validarYContinuarAlResumen));
 
         // 6. Navegación Paso 2 -> Paso 1 (Modificar Asignaturas)
         view.getBtnModificarAsignaturas().addActionListener(e -> view.mostrarPaso1());

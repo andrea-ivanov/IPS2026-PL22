@@ -164,7 +164,7 @@ public class MatriculacionDisplayDTO {
 	}
 
 	/**
-	 * Constructor de 5 parámetros utilizado en AdminOfertaView y TestDataFactory.
+	 * Constructor de 5 parámetros utilizado en AdminOfertaView.
 	 */
 	public MatriculacionDisplayDTO(String id, String nombreAlumno, String idCurso, String email, String estado) {
 		this.id = id;

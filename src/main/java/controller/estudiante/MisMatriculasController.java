@@ -50,20 +50,17 @@ public class MisMatriculasController {
         });
 
         // Botón para ver notas de la asignatura seleccionada
-        view.getBtnVerNotasSeleccionada().addActionListener(e -> verNotasDeAsignaturaSeleccionada());
+        view.getBtnVerNotasSeleccionada().addActionListener(e -> SwingUtil.exceptionWrapper(this::verNotasDeAsignaturaSeleccionada));
 
         // Botón para refrescar todas las notas
-        view.getBtnVerTodasNotas().addActionListener(e -> {
-            String gradoId = getGradoIdSeleccionado();
-            cargarCalificaciones(gradoId);
-        });
+        view.getBtnVerTodasNotas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarCalificaciones(getGradoIdSeleccionado())));
 
         // Cargar los grados del estudiante en el desplegable
         cargarGrados();
 
         // Al cambiar de grado consultado, refrescar la tabla, los hitos y las
         // calificaciones
-        view.getCbGrados().addActionListener(e -> refrescarTodo());
+        view.getCbGrados().addActionListener(e -> SwingUtil.exceptionWrapper(this::refrescarTodo));
 
         // Carga inicial
         refrescarTodo();

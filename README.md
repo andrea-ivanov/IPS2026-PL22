@@ -58,8 +58,9 @@ Preparación del repositorio y del proyecto:
   - *Maven->Update Project*: Actualiza todas las dependencias y permite usar el proyecto como 
     si hubiera sido creado desde el propio Eclipse
   - *Run As->Maven install*: Ejecuta este (o otros) comandos maven desde Eclipse
-  - Ejecutar los tests en `src/main/test` o el programa principal (aplicación swing)
-    en la clase `giis.demo.util.SwingMain`
+  - Ejecutar los tests en `src/test/java` o el programa principal (aplicación swing)
+    en la clase `controller.login.MainController`. Si `DemoDB.db` no tiene tablas se crea y se carga
+    desde `schema.sql` y `data.sql`; para volver a los datos iniciales, usar la opción de menú "Recargar base de datos..." del login.
 
 ## Reports
 
