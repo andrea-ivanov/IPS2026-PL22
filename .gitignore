@@ -3,7 +3,14 @@ target
 #sqlite databases
 *.db
 *.db-journal
+.gitattributes
 
 .project
 .classpath
 .settings
+
+# Claude Code 
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+graphify-out/
