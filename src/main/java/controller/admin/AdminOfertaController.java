@@ -17,6 +17,7 @@ import repository.MatriculacionRepository;
 import model.profesor.ProfesorDTO;
 import repository.ProfesorRepository;
 import util.SwingUtil;
+import util.exception.ValidationException;
 
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
@@ -358,16 +359,14 @@ public class AdminOfertaController {
 		String clean = text.trim();
 		if (clean.isEmpty() || clean.contains("_"))
 			return null;
-		String[] formatos = new String[] { "dd/MM/yy", "dd/MM/yyyy", "yyyy-MM-dd" };
-		for (String f : formatos) {
-			try {
-				SimpleDateFormat sdf = new SimpleDateFormat(f);
-				sdf.setLenient(false);
-				return sdf.parse(clean);
-			} catch (ParseException ignored) {
-			}
+		// la máscara del campo solo deja escribir dd/mm/aa
+		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yy");
+		sdf.setLenient(false);
+		try {
+			return sdf.parse(clean);
+		} catch (ParseException e) {
+			throw new ValidationException("Fecha no válida: " + clean + " (dd/mm/aa)");
 		}
-		return null;
 	}
 
 	public AnoAcademico getAnoAcademicoActual() {
