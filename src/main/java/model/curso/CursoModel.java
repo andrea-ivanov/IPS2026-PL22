@@ -1,6 +1,8 @@
 package model.curso;
 
 import static util.DbUtil.update;
+import static util.Util.parsearAnio;
+import static util.Util.parsearCreditos;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -170,32 +172,6 @@ public class CursoModel {
 			throw new ValidationException("No se puede eliminar el curso " + cursoId
 					+ ": tiene matrículas en el año académico " + anioAcademicoId);
 		}
-	}
-
-	private double parsearCreditos(String creditos) {
-		double valor;
-		try {
-			valor = Double.parseDouble(creditos.trim());
-		} catch (NumberFormatException e) {
-			throw new ValidationException("Los créditos deben ser un número: '" + creditos + "'");
-		}
-		if (valor <= 0) {
-			throw new ValidationException("Los créditos deben ser mayores que 0");
-		}
-		return valor;
-	}
-
-	private int parsearAnio(String anio) {
-		int valor;
-		try {
-			valor = Integer.parseInt(anio.trim());
-		} catch (NumberFormatException e) {
-			throw new ValidationException("El año debe ser un número entero: '" + anio + "'");
-		}
-		if (valor < 1 || valor > 6) {
-			throw new ValidationException("El año debe estar entre 1 y 6");
-		}
-		return valor;
 	}
 
 	private String generarId(Connection conn) throws SQLException {

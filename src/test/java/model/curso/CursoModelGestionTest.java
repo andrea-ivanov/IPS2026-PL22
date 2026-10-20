@@ -103,11 +103,19 @@ public class CursoModelGestionTest extends BaseModelTest {
 		}
 
 		@ParameterizedTest(name = "créditos = ''{0}''")
-		@ValueSource(strings = { "abc", "0", "-3" })
+		@ValueSource(strings = { "abc", "0", "-3", "Infinity", "NaN", "4.55", "1000" })
 		@DisplayName("TC-03 Créditos no válidos: lanza ValidationException y no inserta")
 		public void testCrearCurso_CreditosInvalidos(String creditos) {
 			assertThrows(ValidationException.class, () -> cursoModel.crearCurso("1", "Redes", creditos, "2", "1", "Software"));
 			assertSinAltas();
+		}
+
+		@Test
+		@DisplayName("TC-03b Créditos con coma decimal: se aceptan como en las propuestas")
+		public void testCrearCurso_CreditosConComa() {
+			String cursoId = cursoModel.crearCurso("1", "Redes", "6,5", "2", "1", "Software");
+			assertEquals(6.5, ((Number) db.executeQueryArray("SELECT creditos FROM Curso WHERE cursoId = ?", cursoId)
+					.get(0)[0]).doubleValue());
 		}
 
 		@ParameterizedTest(name = "año = ''{0}''")

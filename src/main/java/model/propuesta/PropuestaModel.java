@@ -1,8 +1,9 @@
 package model.propuesta;
 
 import static util.DbUtil.update;
+import static util.Util.parsearAnio;
+import static util.Util.parsearCreditos;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -32,7 +33,6 @@ public class PropuestaModel {
 	public static final int MAX_NOMBRE = 150;
 	public static final int MAX_DESCRIPCION = 1000;
 	// PropuestaCurso.creditos es DECIMAL(4,1)
-	private static final BigDecimal MAX_CREDITOS = new BigDecimal("999.9");
 	private static final String PREFIJO_ID = "PR";
 
 	private Database db;
@@ -172,36 +172,6 @@ public class PropuestaModel {
 		Number max = new QueryRunner().query(conn, "SELECT MAX(CAST(SUBSTR(propuestaId, 3) AS INTEGER)) "
 				+ "FROM PropuestaCurso WHERE propuestaId LIKE 'PR%'", new ScalarHandler<Number>());
 		return max == null ? 1 : max.intValue() + 1;
-	}
-
-	private int parsearAnio(String anio) {
-		int valor;
-		try {
-			valor = Integer.parseInt(anio.trim());
-		} catch (NumberFormatException e) {
-			throw new ValidationException("El año debe ser un número entero: '" + anio.trim() + "'");
-		}
-		if (valor < 1 || valor > 6) {
-			throw new ValidationException("El año debe estar entre 1 y 6");
-		}
-		return valor;
-	}
-
-	/** Admite coma o punto decimal y como mucho un decimal (la columna es DECIMAL(4,1)) */
-	private double parsearCreditos(String creditos) {
-		BigDecimal valor;
-		try {
-			valor = new BigDecimal(creditos.trim().replace(',', '.'));
-		} catch (NumberFormatException e) {
-			throw new ValidationException("Los créditos deben ser un número: '" + creditos.trim() + "'");
-		}
-		if (valor.signum() <= 0) {
-			throw new ValidationException("Los créditos deben ser mayores que 0");
-		}
-		if (valor.compareTo(MAX_CREDITOS) > 0 || valor.stripTrailingZeros().scale() > 1) {
-			throw new ValidationException("Los créditos deben ser menores que 1000 y tener como mucho un decimal");
-		}
-		return valor.doubleValue();
 	}
 
 	private void validarObligatorio(String valor, String mensaje) {
