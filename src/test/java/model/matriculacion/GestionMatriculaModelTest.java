@@ -728,7 +728,7 @@ class GestionMatriculaModelTest {
 	}
 
 	// =========================================================================
-	// HU 35229: situaciones a revisar (consultas de base-de-datos.md)
+	// HU 35229: situaciones a revisar (consultas de docs/DATABASE.md)
 	// =========================================================================
 
 	@Test

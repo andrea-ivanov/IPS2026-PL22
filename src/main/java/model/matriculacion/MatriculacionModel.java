@@ -23,7 +23,7 @@ import util.exception.ValidationException;
  * de fechas, enums (EstadoMatricula) y booleanos.
  */
 public class MatriculacionModel {
-	// Constantes de negocio según base-de-datos.md (Sección 6.1)
+	// Constantes de negocio según docs/DATABASE.md (Sección 6.1)
 	public static final double PRECIO_CREDITO = 20.0;
 	public static final int CREDITOS_MINIMOS_ANIO = 12;
 	public static final int CREDITOS_MINIMOS_TERCER_ANIO = 90;
@@ -144,7 +144,7 @@ public class MatriculacionModel {
 	/**
 	 * Obtiene las asignaturas matriculadas de un estudiante filtradas por el grado
 	 * consultado.
-	 * Implementa la consulta de referencia de la HU 35232 de base-de-datos.md.
+	 * Implementa la consulta de referencia de la HU 35232 de docs/DATABASE.md.
 	 *
 	 * @param uo      Identificador del alumno (p. ej. "AL001")
 	 * @param gradoId Identificador del grado (p. ej. "G001") o null para todos
