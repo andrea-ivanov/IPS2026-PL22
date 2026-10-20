@@ -9,6 +9,7 @@ import java.util.Map;
 
 
 import model.asignaciondocente.RolDocente;
+import model.matriculacion.MatriculacionModel;
 import util.Database;
 import util.exception.ValidationException;
 
@@ -40,7 +41,7 @@ public class ActaModel {
 			+ "JOIN Convocatoria cvAp ON cvAp.anioAcademicoId = ap.anioAcademicoId AND cvAp.tipoConvocatoria = ap.tipoConvocatoria "
 			+ "JOIN Convocatoria cvActa ON cvActa.anioAcademicoId = a.anioAcademicoId AND cvActa.tipoConvocatoria = a.tipoConvocatoria "
 			+ "WHERE ap.matriculaId = mc.matriculaId AND ap.cursoId = mc.cursoId AND ap.anioAcademicoId = a.anioAcademicoId "
-			+ "AND ap.nota >= 5 AND cvAp.fechaFin < cvActa.fechaFin) ";
+			+ "AND ap.nota >= " + MatriculacionModel.NOTA_APROBADO + " AND cvAp.fechaFin < cvActa.fechaFin) ";
 
 	private Database db;
 

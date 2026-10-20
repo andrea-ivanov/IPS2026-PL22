@@ -204,7 +204,7 @@ public class MatriculacionModel {
 		String sqlAnual = "SELECT m.matriculaId, m.anioAcademicoId, m.estado, "
 				+ "       COALESCE(SUM(c.creditos), 0) AS creditosSuperados "
 				+ "FROM Matricula m "
-				+ "LEFT JOIN (SELECT DISTINCT matriculaId, cursoId FROM Calificacion WHERE nota >= 5) a "
+				+ "LEFT JOIN (SELECT DISTINCT matriculaId, cursoId FROM Calificacion WHERE nota >= " + NOTA_APROBADO + ") a "
 				+ "       ON a.matriculaId = m.matriculaId "
 				+ "LEFT JOIN Curso c ON c.cursoId = a.cursoId "
 				+ "WHERE m.alumnoId = ? "
@@ -237,7 +237,7 @@ public class MatriculacionModel {
 				+ "                       JOIN Matricula m2 ON m2.matriculaId = ca.matriculaId "
 				+ "                       WHERE m2.alumnoId = ? "
 				+ (cleanGrado.isEmpty() ? "" : "AND m2.gradoId = ? ")
-				+ "                         AND ca.nota >= 5) s "
+				+ "                         AND ca.nota >= " + NOTA_APROBADO + ") s "
 				+ "                 JOIN Curso c ON c.cursoId = s.cursoId), 0) AS creditosTotales "
 				+ "FROM Matricula "
 				+ "WHERE alumnoId = ? "
