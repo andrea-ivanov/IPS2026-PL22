@@ -160,6 +160,9 @@ public class AdminOfertaController {
 		view.getBtnEliminarGrado().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarGrado));
 		view.getBtnModificarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onModificarCurso));
 		view.getBtnEliminarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarCurso));
+
+		// Se muestra al final: si la carga falla, no queda una ventana vacía abierta
+		view.getFrame().setVisible(true);
 	}
 
 	/** Cierra la ventana de Secretaría y vuelve a la pantalla de selección de rol. */
@@ -389,13 +392,6 @@ public class AdminOfertaController {
 		todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCursoYAnoActual(idCurso,
 				getAnioActualId());
 
-		Long idAnoActual = anoAcademicoActual != null ? anoAcademicoActual.getId() : null;
-		for (MatriculacionDisplayDTO m : todasLasMatriculaciones) {
-			if (m.getIdAnoAcademico() == null) {
-				m.setIdAnoAcademico(idAnoActual);
-			}
-		}
-
 		aplicarFiltrosMatriculacion();
 	}
 
@@ -486,7 +482,6 @@ public class AdminOfertaController {
 
 	private void initView() {
 		view.showGradosView();
-		view.getFrame().setVisible(true);
 	}
 }
 

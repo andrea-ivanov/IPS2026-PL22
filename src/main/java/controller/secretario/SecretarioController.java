@@ -9,7 +9,6 @@ import model.matriculacion.SituacionSecretaria;
 import repository.ActaRepository;
 import repository.MatriculacionRepository;
 import view.secretario.SecretarioView;
-import util.Database;
 import util.Paginacion;
 import util.SwingUtil;
 
@@ -37,20 +36,15 @@ public class SecretarioController {
     private SecretarioView view;
     private final Paginacion paginacionMatriculas = new Paginacion(FILAS_POR_PAGINA);
     private final Paginacion paginacionGrupos = new Paginacion(FILAS_POR_PAGINA);
-    private MatriculacionRepository repository;
-    private ActaRepository actaRepository = new ActaRepository();
+    private final MatriculacionRepository repository = new MatriculacionRepository();
+    private final ActaRepository actaRepository = new ActaRepository();
     // Evita recargar la tabla mientras se rellenan los desplegables de filtros
     private boolean cargandoFiltros = false;
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
     private Runnable onVolverInicio = () -> { };
 
     public SecretarioController(SecretarioView view) {
-        this(view, new MatriculacionRepository(new Database()));
-    }
-
-    public SecretarioController(SecretarioView view, MatriculacionRepository repository) {
         this.view = view;
-        this.repository = repository;
         this.initView();
     }
 
@@ -342,9 +336,14 @@ public class SecretarioController {
         String estadoFinal = repository.aceptarSolicitud(matriculaId, cursoId, metodoPago, hoy());
         // Se refresca antes del aviso para que detrás ya se vea el nuevo estado guardado en la BD
         refrescar();
-        String mensaje = "ACTIVA".equals(estadoFinal)
-                ? "Solicitud aceptada. Como el año académico " + m.getAnioAcademicoId() + " ya ha comenzado, la matrícula queda ACTIVA."
-                : "Solicitud aceptada. La matrícula queda PAGADA y pasará a ACTIVA al iniciar el curso.";
+        String mensaje;
+        if ("ACTIVA".equals(estadoFinal)) {
+            mensaje = "Solicitud aceptada. Como el año académico " + m.getAnioAcademicoId() + " ya ha comenzado, la matrícula queda ACTIVA.";
+        } else if ("FINALIZADA".equals(estadoFinal)) {
+            mensaje = "Solicitud aceptada. Como el año académico " + m.getAnioAcademicoId() + " ya ha terminado, la matrícula queda FINALIZADA.";
+        } else {
+            mensaje = "Solicitud aceptada. La matrícula queda PAGADA y pasará a ACTIVA al iniciar el curso.";
+        }
         JOptionPane.showMessageDialog(view.getFrame(), mensaje, "Éxito", JOptionPane.INFORMATION_MESSAGE);
     }
 
