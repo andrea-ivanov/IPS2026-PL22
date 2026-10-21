@@ -34,6 +34,14 @@ public class Database extends DbUtil {
 	 * Si la base de datos SQLite no tiene tablas (archivo vacío/nuevo), la inicializa automáticamente.
 	 */
 	public Database() {
+		this(null);
+	}
+
+	/**
+	 * Como el constructor sin parámetros, pero con una URL de base de datos específica (por ejemplo para pruebas
+	 * unitarias). La comprobación e inicialización de arranque se hacen sobre esta URL, no sobre la configurada.
+	 */
+	public Database(String customUrl) {
 		Properties prop = new Properties();
 		InputStream in = null;
 
@@ -94,6 +102,9 @@ public class Database extends DbUtil {
 			}
 		}
 
+		if (customUrl != null && !customUrl.trim().isEmpty()) {
+			url = customUrl.trim();
+		}
 		if (driver == null || url == null) {
 			throw new ApplicationException("Configuracion de driver y/o url no encontrada en application.properties");
 		}
@@ -104,16 +115,6 @@ public class Database extends DbUtil {
 		//    createDatabase/loadDatabase, que abren conexiones de escritura propias.
 		//    SQLite solo admite un writer a la vez → SQLITE_BUSY si se anidan conexiones.
 		checkAndInitDatabase();
-	}
-
-	/**
-	 * Constructor para permitir el uso de una URL de base de datos específica (por ejemplo para pruebas unitarias).
-	 */
-	public Database(String customUrl) {
-		this();
-		if (customUrl != null && !customUrl.trim().isEmpty()) {
-			this.url = customUrl.trim();
-		}
 	}
 
 	/**

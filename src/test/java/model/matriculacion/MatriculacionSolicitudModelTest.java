@@ -10,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import model.fixtures.BaseModelTest;
-import util.Database;
 import util.UnexpectedException;
 import util.exception.ValidationException;
 
@@ -367,11 +366,11 @@ public class MatriculacionSolicitudModelTest extends BaseModelTest {
 	@Test
 	@DisplayName("HU 35235: si la BD falla, la solicitud se rechaza en vez de darse por válida")
 	public void testSolicitudRechazadaSiFallaLaBaseDeDatos() {
-		// BD en memoria sin tablas: todas las consultas de validación fallan.
+		// Sin la tabla Alumno las consultas de validación fallan (el setUp de la siguiente prueba recrea el esquema).
 		// Antes cada comprobación atrapaba el error y devolvía "todo correcto".
-		MatriculacionModel sinTablas = new MatriculacionModel(new Database("jdbc:sqlite::memory:"));
+		db.executeBatchNoFail(new String[] { "DROP TABLE Alumno" });
 
 		assertThrows(UnexpectedException.class,
-				() -> sinTablas.validarSolicitudMatricula("1", "1", "1", List.of("1")));
+				() -> matriculacionModel.validarSolicitudMatricula("1", "1", "1", List.of("1")));
 	}
 }
