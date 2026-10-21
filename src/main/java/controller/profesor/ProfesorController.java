@@ -139,6 +139,8 @@ public class ProfesorController {
 
         TableModel tmodel = SwingUtil.getTableModelFromPojos(filtradas,
                 new String[] { "cursoId", "curso", "grado", "grupoCodigo", "tipo", "rol" });
+        ((DefaultTableModel) tmodel).setColumnIdentifiers(
+                new String[] { "Cód. Curso", "Curso", "Grados", "Grupo", "Tipo", "Rol" });
         view.getTabAsignaciones().setModel(tmodel);
         SwingUtil.autoAdjustColumns(view.getTabAsignaciones());
     }
@@ -186,7 +188,7 @@ public class ProfesorController {
         List<CalificacionActaDisplayDTO> notas = actaRepository.getCalificaciones(acta.getCursoId(),
                 acta.getAnioAcademicoId(), acta.getTipoConvocatoria());
 
-        DefaultTableModel model = new DefaultTableModel(new String[] { "matriculaId", "alumnoId", "alumno", "dni", "nota" }, 0) {
+        DefaultTableModel model = new DefaultTableModel(new String[] { "Matrícula", "Cód. Alumno", "Alumno", "DNI", "Nota" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return editable && column == COLUMNA_NOTA;
@@ -264,6 +266,8 @@ public class ProfesorController {
         List<PropuestaDisplayDTO> propuestas = propuestaRepository.getPropuestas(profesorId);
         TableModel tmodel = SwingUtil.getTableModelFromPojos(propuestas,
                 new String[] { "propuestaId", "grado", "nombre", "anio", "creditos", "fechaPropuesta", "estado" });
+        ((DefaultTableModel) tmodel).setColumnIdentifiers(
+                new String[] { "Propuesta", "Grado", "Nombre", "Año", "Créditos", "Fecha", "Estado" });
         view.getTabPropuestas().setModel(tmodel);
         SwingUtil.autoAdjustColumns(view.getTabPropuestas());
         view.getBtnEnviarPropuesta().setEnabled(true);

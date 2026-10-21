@@ -5,7 +5,7 @@ import lombok.*;
 /**
  * DTO para la visualización de Cursos en la tabla de la vista de administración.
  * Se adapta al formato de columnas de AdminOfertaView:
- * {"Código", "NombreCurso", "Año", "Itinerario", "Profesor", "Estado", "Acciones"}
+ * {"Código", "Nombre", "Año", "Itinerario", "Profesor", "Estado", "Acciones"}
  */
 @Getter
 @Setter
