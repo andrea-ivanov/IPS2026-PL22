@@ -544,7 +544,7 @@ public class SecretarioController {
         if (p.getTotalFilas() == 0) {
             return "No hay " + plural + " con estos filtros";
         }
-        Locale es = new Locale("es", "ES");
+        Locale es = Locale.forLanguageTag("es-ES");
         return String.format(es, "Mostrando %,d - %,d de %,d %s", p.getDesde(), p.getHasta(), p.getTotalFilas(),
                 p.getTotalFilas() == 1 ? singular : plural);
     }
