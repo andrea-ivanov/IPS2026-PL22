@@ -390,6 +390,10 @@ public class AdminOfertaController {
 		this.cursoActualNombre = nombreCurso;
 		todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCursoYAnoActual(idCurso,
 				getAnioActualId());
+		if (todasLasMatriculaciones.isEmpty()) {
+			view.getLblTituloMatriculas().setText(view.getLblTituloMatriculas().getText() + " (sin matrículas"
+					+ (getAnioActualId() != null ? " en " + getAnioActualId() : "") + ")");
+		}
 
 		aplicarFiltrosMatriculacion();
 	}

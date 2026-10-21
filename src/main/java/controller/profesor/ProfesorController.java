@@ -99,7 +99,6 @@ public class ProfesorController {
         asignaciones = repository.getAsignacionesDocentes(profesorId);
         cargarCombosFiltro();
         aplicarFiltros();
-        view.getLblProfesorPropuesta().setText("Propuestas de " + seleccionado);
         cargarPropuestas();
     }
 
@@ -205,6 +204,9 @@ public class ProfesorController {
             view.getLblEstadoActa().setText("Rol DOCENTE: solo consulta");
         else
             view.getLblEstadoActa().setText("Acta CERRADA: solo lectura");
+        if (notas.isEmpty())
+            view.getLblEstadoActa().setText(view.getLblEstadoActa().getText()
+                    + " · Ningún alumno en esta convocatoria: todos aprobaron en una anterior o no hay matriculados");
         view.getBtnGuardarNotas().setEnabled(editable);
         view.getBtnCerrarActa().setEnabled(editable);
     }
@@ -264,6 +266,8 @@ public class ProfesorController {
         view.getListGradosPropuesta().setListData(grados.toArray(new GradoDisplayDTO[0]));
 
         List<PropuestaDisplayDTO> propuestas = propuestaRepository.getPropuestas(profesorId);
+        view.getLblProfesorPropuesta().setText("Propuestas de " + view.getCbProfesores().getSelectedItem()
+                + (propuestas.isEmpty() ? ": todavía no ha enviado ninguna" : ""));
         TableModel tmodel = SwingUtil.getTableModelFromPojos(propuestas,
                 new String[] { "propuestaId", "grado", "nombre", "anio", "creditos", "fechaPropuesta", "estado" });
         ((DefaultTableModel) tmodel).setColumnIdentifiers(

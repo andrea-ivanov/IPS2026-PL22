@@ -118,6 +118,12 @@ public class MisMatriculasController {
     }
 
     private void cargarHitosPermanencia(String gradoId) {
+        // sin grado en el desplegable el alumno no tiene matrículas: no hay permanencia que calcular
+        if (gradoId == null) {
+            view.getLblHitoAnual().setText("No tienes ninguna matrícula registrada");
+            view.getLblHitoTotal().setText("");
+            return;
+        }
         HitosPermanenciaDTO hitos = model.getHitosPermanencia(uo, gradoId);
 
         // 1. Hito anual: créditos superados en el último año evaluado vs 12
