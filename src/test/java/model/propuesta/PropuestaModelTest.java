@@ -24,12 +24,12 @@ public class PropuestaModelTest {
 	private static final String HOY = "2026-10-19";
 	private static final String PROFESOR = "P001";
 
-	private static Database db = new Database();
+	private static Database db = new Database("jdbc:sqlite:TestDB.db?foreign_keys=true");
 	private PropuestaModel model;
 
 	@BeforeEach
 	public void setUp() {
-		db.createDatabase(true);
+		db.createDatabase(false);
 		loadCleanDatabase(db);
 		model = new PropuestaModel(db);
 	}

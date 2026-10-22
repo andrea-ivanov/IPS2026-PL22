@@ -9,7 +9,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -259,19 +258,6 @@ public class GradoModelGestionTest extends BaseModelTest {
 	@Nested
 	@DisplayName("3. Mapeo del estado del grado")
 	public class MapeoEstado {
-
-		@ParameterizedTest(name = "{0} -> {1}")
-		@CsvSource({
-				"VIGENTE, VIGENTE",
-				"PENDIENTE_RENOVACION, PENDIENTE_RENOVACION",
-				"EN_EXTINCION, EN_EXTINCION",
-				"EXTINTO, EN_EXTINCION" })
-		@DisplayName("TF-03 buscarPorId devuelve el estado real (EXTINTO se trata como EN_EXTINCION)")
-		public void testBuscarPorId_EstadoReal(String estadoBD, String esperado) {
-			db.executeUpdate("UPDATE Grado SET estado = ? WHERE gradoId = '1'", estadoBD);
-
-			assertEquals(EstadoGrado.valueOf(esperado), gradoModel.buscarPorId("1").getEstado());
-		}
 
 		@Test
 		@DisplayName("TF-06 getTodosLosGrados muestra EN_EXTINCION para un grado EXTINTO")

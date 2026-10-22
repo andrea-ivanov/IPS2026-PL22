@@ -8,7 +8,6 @@ import model.matriculacion.GestionMatriculaModel;
 import model.matriculacion.GrupoConsultaDTO;
 import model.matriculacion.GrupoPlazasDTO;
 import model.matriculacion.MatriculaSecretariaDTO;
-import model.matriculacion.Matriculacion;
 import model.matriculacion.MatriculacionDisplayDTO;
 import model.matriculacion.MatriculacionModel;
 import util.Database;
@@ -20,29 +19,14 @@ import util.Database;
 public class MatriculacionRepository {
 	private MatriculacionModel matriculacionModel;
 	private GestionMatriculaModel gestionModel;
-	private Database db;
 
 	public MatriculacionRepository() {
-		try {
-			this.db = new Database();
-		} catch (Exception ignored) {
-		}
-		this.matriculacionModel = this.db != null ? new MatriculacionModel(this.db) : new MatriculacionModel();
-		this.gestionModel = new GestionMatriculaModel(this.db);
+		this(new Database());
 	}
 
 	public MatriculacionRepository(Database db) {
-		this.db = db;
 		this.matriculacionModel = new MatriculacionModel(db);
 		this.gestionModel = new GestionMatriculaModel(db);
-	}
-
-	public Matriculacion findById(String id) {
-		return matriculacionModel.buscarPorId(id);
-	}
-
-	public Matriculacion findById(Long id) {
-		return matriculacionModel.buscarPorId(id);
 	}
 
 	// =========================================================================

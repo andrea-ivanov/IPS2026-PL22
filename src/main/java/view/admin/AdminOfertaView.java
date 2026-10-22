@@ -171,7 +171,7 @@ public class AdminOfertaView {
         Estilo.addFiltro(filterPanel, "Estado", cbFiltroEstadoCurso);
 
         // Table
-        String[] columnNames = { "Código", "NombreCurso", "Año", "Itinerario", "Profesor", "Estado", "Acciones" };
+        String[] columnNames = { "Código", "Nombre", "Año", "Itinerario", "Profesor", "Estado", "Acciones" };
         DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -202,7 +202,7 @@ public class AdminOfertaView {
         Estilo.addFiltro(filterPanel, "Alumno (Código/Nombre)", txtFiltroAlumno);
 
         // Table
-        String[] columnNames = { "Código", "NombreAlumno" };
+        String[] columnNames = { "Código", "Alumno" };
         DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {

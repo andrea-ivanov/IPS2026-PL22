@@ -12,11 +12,11 @@ public class HitosPermanenciaDTO {
     
     private String ultimoAnoEvaluadoId;
     private int creditosAnualesSuperados;
-    private int creditosAnualesExigidos = 12;
+    private int creditosAnualesExigidos = MatriculacionModel.CREDITOS_MINIMOS_ANIO;
     private boolean cumpleHitoAnual;
     
     private int creditosTotalesSuperados;
-    private int creditosTotalesExigidos = 90;
+    private int creditosTotalesExigidos = MatriculacionModel.CREDITOS_MINIMOS_TERCER_ANIO;
     private int aniosEnGrado;
     private boolean cumpleHitoTercerAnio;
 
@@ -36,12 +36,10 @@ public class HitosPermanenciaDTO {
         this.gradoId = gradoId;
         this.ultimoAnoEvaluadoId = ultimoAnoEvaluadoId;
         this.creditosAnualesSuperados = creditosAnualesSuperados;
-        this.creditosAnualesExigidos = 12;
-        this.cumpleHitoAnual = creditosAnualesSuperados >= 12;
+        this.cumpleHitoAnual = creditosAnualesSuperados >= creditosAnualesExigidos;
         this.creditosTotalesSuperados = creditosTotalesSuperados;
-        this.creditosTotalesExigidos = 90;
         this.aniosEnGrado = aniosEnGrado;
-        this.cumpleHitoTercerAnio = aniosEnGrado < 3 || creditosTotalesSuperados >= 90;
+        this.cumpleHitoTercerAnio = aniosEnGrado < 3 || creditosTotalesSuperados >= creditosTotalesExigidos;
     }
 
     public String getEstadoHitoAnualTexto() {

@@ -17,6 +17,7 @@ import repository.MatriculacionRepository;
 import model.profesor.ProfesorDTO;
 import repository.ProfesorRepository;
 import util.SwingUtil;
+import util.exception.ValidationException;
 
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
@@ -38,7 +39,7 @@ import java.util.stream.Collectors;
  * Matriculación y Año Académico.
  * Soporta navegación entre paneles (Grados -> Cursos -> Matrícula), filtrado
  * reactivo,
- * gestión del Año Académico actual y mockeo estructurado.
+ * y gestión del Año Académico actual.
  */
 public class AdminOfertaController {
 	private AdminOfertaView view;
@@ -68,16 +69,10 @@ public class AdminOfertaController {
 
 	public AdminOfertaController(AdminOfertaView view) {
 		this.view = view;
-		try {
-			this.gradoRepository = new GradoRepository();
-			this.cursoRepository = new CursoRepository();
-			this.matriculacionRepository = new MatriculacionRepository();
-			this.anoAcademicoRepository = new AnoAcademicoRepository();
-		} catch (Exception ex) {
-			System.err.println("Aviso: No se pudo conectar con los repositorios en base de datos. Modo mock activado: "
-					+ ex.getMessage());
-			this.anoAcademicoRepository = new AnoAcademicoRepository();
-		}
+		this.gradoRepository = new GradoRepository();
+		this.cursoRepository = new CursoRepository();
+		this.matriculacionRepository = new MatriculacionRepository();
+		this.anoAcademicoRepository = new AnoAcademicoRepository();
 		this.initView();
 	}
 
@@ -121,13 +116,11 @@ public class AdminOfertaController {
 		cargarGrados();
 
 		// 3. Conexión de callbacks del botón 'Ver' en JTable
-		view.setOnVerGrado((idGrado, nombreGrado) -> {
-			cargarCursosDeGrado(idGrado, nombreGrado);
-		});
+		view.setOnVerGrado((idGrado, nombreGrado) ->
+				SwingUtil.exceptionWrapper(() -> cargarCursosDeGrado(idGrado, nombreGrado)));
 
-		view.setOnVerCurso((idCurso, nombreCurso) -> {
-			cargarMatriculasDeCurso(idCurso, nombreCurso);
-		});
+		view.setOnVerCurso((idCurso, nombreCurso) ->
+				SwingUtil.exceptionWrapper(() -> cargarMatriculasDeCurso(idCurso, nombreCurso)));
 
 		// 4. Selección por fila / doble clic en tablas
 		view.getTabGrados().addMouseListener(new MouseAdapter() {
@@ -138,7 +131,7 @@ public class AdminOfertaController {
 					String idGrado = String.valueOf(view.getTabGrados().getValueAt(row, 0));
 					String nombreGrado = String.valueOf(view.getTabGrados().getValueAt(row, 1));
 					view.showCursosView(nombreGrado);
-					cargarCursosDeGrado(idGrado, nombreGrado);
+					SwingUtil.exceptionWrapper(() -> cargarCursosDeGrado(idGrado, nombreGrado));
 				}
 			}
 		});
@@ -151,7 +144,7 @@ public class AdminOfertaController {
 					String idCurso = String.valueOf(view.getTabCursos().getValueAt(row, 0));
 					String nombreCurso = String.valueOf(view.getTabCursos().getValueAt(row, 1));
 					view.showMatriculacionView(nombreCurso);
-					cargarMatriculasDeCurso(idCurso, nombreCurso);
+					SwingUtil.exceptionWrapper(() -> cargarMatriculasDeCurso(idCurso, nombreCurso));
 				}
 			}
 		});
@@ -168,6 +161,9 @@ public class AdminOfertaController {
 		view.getBtnEliminarGrado().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarGrado));
 		view.getBtnModificarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onModificarCurso));
 		view.getBtnEliminarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarCurso));
+
+		// Se muestra al final: si la carga falla, no queda una ventana vacía abierta
+		view.getFrame().setVisible(true);
 	}
 
 	/** Cierra la ventana de Secretaría y vuelve a la pantalla de selección de rol. */
@@ -363,16 +359,14 @@ public class AdminOfertaController {
 		String clean = text.trim();
 		if (clean.isEmpty() || clean.contains("_"))
 			return null;
-		String[] formatos = new String[] { "dd/MM/yy", "dd/MM/yyyy", "yyyy-MM-dd" };
-		for (String f : formatos) {
-			try {
-				SimpleDateFormat sdf = new SimpleDateFormat(f);
-				sdf.setLenient(false);
-				return sdf.parse(clean);
-			} catch (ParseException ignored) {
-			}
+		// la máscara del campo solo deja escribir dd/mm/aa
+		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yy");
+		sdf.setLenient(false);
+		try {
+			return sdf.parse(clean);
+		} catch (ParseException e) {
+			throw new ValidationException("Fecha no válida: " + clean + " (dd/mm/aa)");
 		}
-		return null;
 	}
 
 	public AnoAcademico getAnoAcademicoActual() {
@@ -380,61 +374,25 @@ public class AdminOfertaController {
 	}
 
 	public void cargarGrados() {
-		todosLosGrados.clear();
-		try {
-			if (gradoRepository != null) {
-				todosLosGrados = gradoRepository.getTodosLosGrados();
-			}
-		} catch (Exception ex) {
-			System.err.println("Aviso al cargar grados desde repositorio: " + ex.getMessage());
-		}
-
+		todosLosGrados = gradoRepository.getTodosLosGrados();
 		aplicarFiltrosGrados();
-	}
-
-	public void cargarMocksGrados() {
-		cargarGrados();
 	}
 
 	public void cargarCursosDeGrado(String idGrado, String nombreGrado) {
 		this.gradoActualId = idGrado;
 		this.gradoActualNombre = nombreGrado;
-		todosLosCursos.clear();
-		try {
-			if (cursoRepository != null) {
-				todosLosCursos = cursoRepository.getCursosPorGrado(idGrado);
-			}
-		} catch (Exception ex) {
-			System.err.println("Aviso al cargar cursos desde repositorio: " + ex.getMessage());
-		}
-
+		todosLosCursos = cursoRepository.getCursosPorGrado(idGrado);
 		aplicarFiltrosCursos();
 	}
 
 	public void cargarMatriculasDeCurso(String idCurso, String nombreCurso) {
 		this.cursoActualId = idCurso;
 		this.cursoActualNombre = nombreCurso;
-		todasLasMatriculaciones.clear();
-		try {
-			if (matriculacionRepository != null) {
-				if (anoAcademicoActual != null) {
-					todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCursoYAnoActual(
-							idCurso, 
-							anoAcademicoActual.getAnioAcademicoId()
-					);
-				} else {
-					todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCurso(idCurso);
-				}
-			}
-		} catch (Exception ex) {
-			System.err.println("Aviso al cargar matrículas desde repositorio: " + ex.getMessage());
-		}
-
-		Long idAnoActual = anoAcademicoActual != null ? anoAcademicoActual.getId() : 1L;
-		for (MatriculacionDisplayDTO m : todasLasMatriculaciones) {
-			if (m.getIdAnoAcademico() == null) {
-				m.setIdAnoAcademico(idAnoActual);
-			}
+		todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCursoYAnoActual(idCurso,
+				getAnioActualId());
+		if (todasLasMatriculaciones.isEmpty()) {
+			view.getLblTituloMatriculas().setText(view.getLblTituloMatriculas().getText() + " (sin matrículas"
+					+ (getAnioActualId() != null ? " en " + getAnioActualId() : "") + ")");
 		}
 
 		aplicarFiltrosMatriculacion();
@@ -527,7 +485,6 @@ public class AdminOfertaController {
 
 	private void initView() {
 		view.showGradosView();
-		view.getFrame().setVisible(true);
 	}
 }
 

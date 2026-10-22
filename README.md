@@ -3,6 +3,10 @@
 
 # IPS2026-PL22
 
+Documentación del proyecto:
+- [Historias de usuario implementadas](docs/HISTORIAS.md): qué clases y qué tests corresponden a cada una.
+- [Base de datos](docs/DATABASE.md): tablas, reglas de negocio y consultas de referencia.
+
 Este proyecto es utilizado como proyecto base o plantilla para el desarrollo y a modo de ejemplo para ilustrar algunos aspectos del desarrollo y automatización de pruebas para las asignaturas relacionadas con ingenieria del software, sistemas de información y pruebas de software.
 
 [Descargar la última versión](https://github.com/javiertuya/samples-test-dev/releases) - 
@@ -58,8 +62,9 @@ Preparación del repositorio y del proyecto:
   - *Maven->Update Project*: Actualiza todas las dependencias y permite usar el proyecto como 
     si hubiera sido creado desde el propio Eclipse
   - *Run As->Maven install*: Ejecuta este (o otros) comandos maven desde Eclipse
-  - Ejecutar los tests en `src/main/test` o el programa principal (aplicación swing)
-    en la clase `giis.demo.util.SwingMain`
+  - Ejecutar los tests en `src/test/java` o el programa principal (aplicación swing)
+    en la clase `controller.login.MainController`. Si `DemoDB.db` no tiene tablas se crea y se carga
+    desde `schema.sql` y `data.sql`; para volver a los datos iniciales, usar la opción de menú "Recargar base de datos..." del login.
 
 ## Reports
 

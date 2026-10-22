@@ -31,16 +31,16 @@ public class ActaModelTest {
 	private static final String ANIO = "2026-2027";
 	private static final String CONV = "ORDINARIA_ENERO";
 
-	private static Database db = new Database();
+	private static Database db = new Database("jdbc:sqlite:TestDB.db?foreign_keys=true");
 	private ActaModel actaModel;
 	private ProfesorRepository profesorRepository;
 
 	@BeforeEach
 	public void setUp() {
-		db.createDatabase(true);
+		db.createDatabase(false);
 		loadCleanDatabase(db);
 		actaModel = new ActaModel(db);
-		profesorRepository = new ProfesorRepository();
+		profesorRepository = new ProfesorRepository(db);
 	}
 
 	/**

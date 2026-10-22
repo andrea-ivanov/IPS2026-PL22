@@ -11,7 +11,15 @@ import util.Database;
  * Acceso a la base de datos para la parte del profesor.
  */
 public class ProfesorRepository {
-    private Database db = new Database();
+    private final Database db;
+
+    public ProfesorRepository() {
+        this(new Database());
+    }
+
+    public ProfesorRepository(Database db) {
+        this.db = db;
+    }
 
     /** Profesores para los combos, ordenados por id (el combo muestra "P001 - Nombre Apellidos") */
     public List<ProfesorDTO> getProfesores() {

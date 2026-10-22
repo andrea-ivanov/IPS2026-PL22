@@ -120,6 +120,36 @@ public abstract class DbUtil {
 		}
 	}
 
+	/** Ejecuta una sentencia de actualizacion en la conexion indicada (para usar dentro de enTransaccion) */
+	public static int update(Connection conn, String sql, Object... params) throws SQLException {
+		return new QueryRunner().update(conn, sql, params);
+	}
+
+	@FunctionalInterface
+	public interface OperacionBD<T> {
+		T ejecutar(Connection conn) throws SQLException;
+	}
+
+	/** Ejecuta la operación en una única transacción: o se aplican todos los cambios o ninguno. */
+	public <T> T enTransaccion(OperacionBD<T> operacion) {
+		Connection conn = null;
+		try {
+			conn = getConnection();
+			conn.setAutoCommit(false);
+			T result = operacion.ejecutar(conn);
+			conn.commit();
+			return result;
+		} catch (SQLException e) {
+			DbUtils.rollbackQuietly(conn);
+			throw new UnexpectedException(e);
+		} catch (RuntimeException e) {
+			DbUtils.rollbackQuietly(conn);
+			throw e;
+		} finally {
+			DbUtils.closeQuietly(conn);
+		}
+	}
+
 	/**
 	 * Metodo simple para ejecutar todas las sentencias sql que se encuentran en un
 	 * archivo, teniendo en cuenta:

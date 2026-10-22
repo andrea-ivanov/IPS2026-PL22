@@ -1,17 +1,19 @@
 package model.curso;
 
+import static util.DbUtil.update;
+import static util.Util.parsearAnio;
+import static util.Util.parsearCreditos;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
-import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ColumnListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.grado.EstadoGrado;
 import util.Database;
-import util.UnexpectedException;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
 
@@ -27,73 +29,6 @@ public class CursoModel {
 
 	public CursoModel(Database db) {
 		this.db = db;
-	}
-
-	/**
-	 * Busca un Curso por su ID en formato String tras validar formato y nulidad.
-	 *
-	 * @param id Identificador en formato String
-	 * @return Objeto Curso correspondiente
-	 * @throws ValidationException Si el id es nulo, vacío o con formato no numérico
-	 * @throws ResourceNotFoundException Si no existe en la base de datos
-	 */
-	public Curso buscarPorId(String id) {
-		validarFormatoId(id);
-		return buscarPorIdInterno(id.trim());
-	}
-
-	/**
-	 * Busca un Curso por su ID numérico.
-	 *
-	 * @param id Identificador numérico Long
-	 * @return Objeto Curso correspondiente
-	 * @throws ValidationException Si el id es nulo
-	 * @throws ResourceNotFoundException Si no existe en la base de datos
-	 */
-	public Curso buscarPorId(Long id) {
-		if (id == null) {
-			throw new ValidationException("El ID de curso no puede ser nulo");
-		}
-		return buscarPorIdInterno(id.toString());
-	}
-
-	private Curso buscarPorIdInterno(String idStr) {
-		List<Object[]> rows = null;
-		try {
-			String sql = "SELECT c.cursoId, c.nombre, gc.gradoId, c.coordinadorId, c.creditos FROM Curso c LEFT JOIN GradoCurso gc ON c.cursoId = gc.cursoId WHERE c.cursoId = ? LIMIT 1";
-			rows = db.executeQueryArray(sql, idStr);
-		} catch (Exception ignored) {
-		}
-
-		if (rows == null || rows.isEmpty()) {
-			try {
-				String sqlAlt = "SELECT id_curso, nombre, id_grado, id_coordinador FROM Curso WHERE id_curso = ?";
-				rows = db.executeQueryArray(sqlAlt, idStr);
-			} catch (Exception ignored) {
-			}
-		}
-
-		if (rows == null || rows.isEmpty()) {
-			throw new ResourceNotFoundException("Curso", idStr);
-		}
-
-		Object[] row = rows.get(0);
-		Long idCurso = parseNumber(row[0], 1L);
-		String cursoCode = row[0] != null ? row[0].toString() : idStr;
-		String nombre = (String) row[1];
-		Long idGrado = row[2] != null ? parseNumber(row[2], null) : null;
-		Long idCoordinador = row[3] != null ? parseNumber(row[3], null) : null;
-		int creditos = row.length > 4 && row[4] != null ? ((Number) row[4]).intValue() : 6;
-
-		return Curso.builder()
-				.id(idCurso)
-				.cursoId(cursoCode)
-				.nombre(nombre)
-				.idGrado(idGrado)
-				.idCoordinador(idCoordinador)
-				.creditos(creditos)
-				.activo(true)
-				.build();
 	}
 
 	/**
@@ -113,7 +48,7 @@ public class CursoModel {
 		double valorCreditos = parsearCreditos(creditos);
 		int valorAnio = parsearAnio(anio);
 
-		return enTransaccion(conn -> {
+		return db.enTransaccion(conn -> {
 			String estadoGrado = new QueryRunner().query(conn, "SELECT estado FROM Grado WHERE gradoId = ?",
 					new ScalarHandler<String>(), gradoId);
 			if (estadoGrado == null) {
@@ -152,7 +87,7 @@ public class CursoModel {
 		double valorCreditos = parsearCreditos(creditos);
 		int valorAnio = parsearAnio(anio);
 
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			int filas = update(conn, "UPDATE GradoCurso SET anio = ?, itinerario = ? WHERE gradoId = ? AND cursoId = ?",
 					valorAnio, itinerario.trim(), gradoId, cursoId);
 			if (filas == 0) {
@@ -193,7 +128,7 @@ public class CursoModel {
 	 * @throws ValidationException Si el curso ya está INACTIVO o tiene matrículas en el año en ese grado
 	 */
 	public void validarEliminacion(String gradoId, String cursoId, String anioAcademicoId) {
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			comprobarEliminable(conn, gradoId, cursoId, anioAcademicoId);
 			return null;
 		});
@@ -205,7 +140,7 @@ public class CursoModel {
 	 * @throws ValidationException Si el curso no se puede eliminar (ver validarEliminacion)
 	 */
 	public void eliminarCurso(String gradoId, String cursoId, String anioAcademicoId) {
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			comprobarEliminable(conn, gradoId, cursoId, anioAcademicoId);
 			update(conn, "UPDATE GradoCurso SET estado = ? WHERE gradoId = ? AND cursoId = ?",
 					EstadoCurso.INACTIVO.name(), gradoId, cursoId);
@@ -239,32 +174,6 @@ public class CursoModel {
 		}
 	}
 
-	private double parsearCreditos(String creditos) {
-		double valor;
-		try {
-			valor = Double.parseDouble(creditos.trim());
-		} catch (NumberFormatException e) {
-			throw new ValidationException("Los créditos deben ser un número: '" + creditos + "'");
-		}
-		if (valor <= 0) {
-			throw new ValidationException("Los créditos deben ser mayores que 0");
-		}
-		return valor;
-	}
-
-	private int parsearAnio(String anio) {
-		int valor;
-		try {
-			valor = Integer.parseInt(anio.trim());
-		} catch (NumberFormatException e) {
-			throw new ValidationException("El año debe ser un número entero: '" + anio + "'");
-		}
-		if (valor < 1 || valor > 6) {
-			throw new ValidationException("El año debe estar entre 1 y 6");
-		}
-		return valor;
-	}
-
 	private String generarId(Connection conn) throws SQLException {
 		List<String> ids = new QueryRunner().query(conn, "SELECT cursoId FROM Curso WHERE cursoId GLOB 'C[0-9]*'",
 				new ColumnListHandler<String>());
@@ -283,58 +192,5 @@ public class CursoModel {
 		}
 	}
 
-	private int update(Connection conn, String sql, Object... params) throws SQLException {
-		return new QueryRunner().update(conn, sql, params);
-	}
-
-	@FunctionalInterface
-	private interface OperacionBD<T> {
-		T ejecutar(Connection conn) throws SQLException;
-	}
-
-	/** Ejecuta la operación en una única transacción: o se aplican todos los cambios o ninguno. */
-	private <T> T enTransaccion(OperacionBD<T> operacion) {
-		Connection conn = null;
-		try {
-			conn = db.getConnection();
-			conn.setAutoCommit(false);
-			T result = operacion.ejecutar(conn);
-			conn.commit();
-			return result;
-		} catch (SQLException e) {
-			DbUtils.rollbackQuietly(conn);
-			throw new UnexpectedException(e);
-		} catch (RuntimeException e) {
-			DbUtils.rollbackQuietly(conn);
-			throw e;
-		} finally {
-			DbUtils.closeQuietly(conn);
-		}
-	}
-
-	private void validarFormatoId(String id) {
-		if (id == null) {
-			throw new ValidationException("El ID de curso no puede ser nulo");
-		}
-		String trimmed = id.trim();
-		if (trimmed.isEmpty()) {
-			throw new ValidationException("El ID de curso no puede estar vacío");
-		}
-		if (!trimmed.matches("^\\d+$") && !trimmed.matches("^[Cc]\\d{3,4}$")) {
-			throw new ValidationException("El formato del ID de curso es inválido: '" + id + "'. Debe ser un número entero positivo o código C001.");
-		}
-	}
-
-	private Long parseNumber(Object val, Long defaultVal) {
-		if (val == null) return defaultVal;
-		if (val instanceof Number) return ((Number) val).longValue();
-		String s = val.toString().trim();
-		try {
-			return Long.parseLong(s);
-		} catch (NumberFormatException e) {
-			String digits = s.replaceAll("\\D+", "");
-			return digits.isEmpty() ? defaultVal : Long.parseLong(digits.substring(0, Math.min(digits.length(), 6)));
-		}
-	}
 }
 

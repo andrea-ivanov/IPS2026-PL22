@@ -41,7 +41,7 @@ public class CalificacionDisplayDTO {
         if (nota == null) {
             return "NO PRESENTADO";
         }
-        return nota >= 5.0 ? "APROBADO" : "SUSPENSO";
+        return nota >= MatriculacionModel.NOTA_APROBADO ? "APROBADO" : "SUSPENSO";
     }
 
     /**

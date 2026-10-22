@@ -1,6 +1,9 @@
 package model.propuesta;
 
-import java.math.BigDecimal;
+import static util.DbUtil.update;
+import static util.Util.parsearAnio;
+import static util.Util.parsearCreditos;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -11,13 +14,11 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.grado.GradoDisplayDTO;
 import util.Database;
-import util.UnexpectedException;
 import util.exception.ValidationException;
 
 /**
@@ -32,7 +33,6 @@ public class PropuestaModel {
 	public static final int MAX_NOMBRE = 150;
 	public static final int MAX_DESCRIPCION = 1000;
 	// PropuestaCurso.creditos es DECIMAL(4,1)
-	private static final BigDecimal MAX_CREDITOS = new BigDecimal("999.9");
 	private static final String PREFIJO_ID = "PR";
 
 	private Database db;
@@ -95,7 +95,7 @@ public class PropuestaModel {
 		Set<String> grados = new LinkedHashSet<>(gradoIds);
 
 		List<String> creadas = new ArrayList<>();
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			int siguiente = siguienteNumero(conn);
 			int filas = 0;
 			for (String gradoId : grados) {
@@ -174,65 +174,10 @@ public class PropuestaModel {
 		return max == null ? 1 : max.intValue() + 1;
 	}
 
-	private int parsearAnio(String anio) {
-		int valor;
-		try {
-			valor = Integer.parseInt(anio.trim());
-		} catch (NumberFormatException e) {
-			throw new ValidationException("El año debe ser un número entero: '" + anio.trim() + "'");
-		}
-		if (valor < 1 || valor > 6) {
-			throw new ValidationException("El año debe estar entre 1 y 6");
-		}
-		return valor;
-	}
-
-	/** Admite coma o punto decimal y como mucho un decimal (la columna es DECIMAL(4,1)) */
-	private double parsearCreditos(String creditos) {
-		BigDecimal valor;
-		try {
-			valor = new BigDecimal(creditos.trim().replace(',', '.'));
-		} catch (NumberFormatException e) {
-			throw new ValidationException("Los créditos deben ser un número: '" + creditos.trim() + "'");
-		}
-		if (valor.signum() <= 0) {
-			throw new ValidationException("Los créditos deben ser mayores que 0");
-		}
-		if (valor.compareTo(MAX_CREDITOS) > 0 || valor.stripTrailingZeros().scale() > 1) {
-			throw new ValidationException("Los créditos deben ser menores que 1000 y tener como mucho un decimal");
-		}
-		return valor.doubleValue();
-	}
-
 	private void validarObligatorio(String valor, String mensaje) {
 		if (valor == null || valor.trim().isEmpty()) {
 			throw new ValidationException(mensaje);
 		}
 	}
 
-	private int update(Connection conn, String sql, Object... params) throws SQLException {
-		return new QueryRunner().update(conn, sql, params);
-	}
-
-	@FunctionalInterface
-	private interface OperacionBD {
-		int ejecutar(Connection conn) throws SQLException;
-	}
-
-	/** Ejecuta la operación en una única transacción: o se aplican todos los cambios o ninguno. */
-	private int enTransaccion(OperacionBD operacion) {
-		Connection conn = null;
-		try {
-			conn = db.getConnection();
-			conn.setAutoCommit(false);
-			int result = operacion.ejecutar(conn);
-			conn.commit();
-			return result;
-		} catch (SQLException e) {
-			DbUtils.rollbackQuietly(conn);
-			throw new UnexpectedException(e);
-		} finally {
-			DbUtils.closeQuietly(conn);
-		}
-	}
 }

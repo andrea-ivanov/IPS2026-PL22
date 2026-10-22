@@ -35,7 +35,7 @@ public class MainController {
         view.getCbRoles().addActionListener(e -> actualizarVisibilidadAlumno());
         actualizarVisibilidadAlumno();
 
-        view.getBtnAcceder().addActionListener(e -> gestionarAcceso());
+        view.getBtnAcceder().addActionListener(e -> SwingUtil.exceptionWrapper(this::gestionarAcceso));
         view.getBtnRecargarBD().addActionListener(e -> SwingUtil.exceptionWrapper(this::recargarBaseDatos));
     }
 
@@ -51,7 +51,7 @@ public class MainController {
     }
 
     /**
-     * La BD es persistente: data.sql solo se carga sola si la BD esta vacia.
+     * La BD es persistente: data.sql solo se carga sola si la BD no tiene tablas.
      * Este boton la borra y la vuelve a cargar desde schema.sql y data.sql (se pierden los cambios hechos en la aplicacion)
      */
     private void recargarBaseDatos() {
