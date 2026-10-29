@@ -22,7 +22,7 @@ import util.exception.ValidationException;
 public class GradoModelModificacionTest extends BaseModelTest {
 	private static final String NOMBRE = "Ingeniería Informática";
 	private static final String FACULTAD = "Escuela de Ingeniería Informática";
-	private static final String RAMA = "Ingeniería y Arquitectura";
+	private static final String RAMA = "Ingenieria y Arquitectura";
 
 	private GradoModel gradoModel;
 
