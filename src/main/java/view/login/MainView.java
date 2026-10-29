@@ -24,6 +24,16 @@ public class MainView {
     private JMenuItem btnRecargarBD;
 
     public MainView() {
+       try {
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         initialize();
     }
 
