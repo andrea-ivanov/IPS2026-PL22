@@ -37,6 +37,8 @@ public final class Estilo {
     public static final Font NORMAL = new Font("Tahoma", Font.PLAIN, 12);
     public static final Font BOTON = new Font("Tahoma", Font.BOLD, 12);
 
+    private static final boolean ES_MAC = System.getProperty("os.name", "").toLowerCase().contains("mac");
+
     private Estilo() {
     }
 
@@ -215,6 +217,7 @@ public final class Estilo {
 
         @Override
         public boolean getScrollableTracksViewportHeight() {
+            // Si la ventana es alta la tarjeta llega hasta abajo; si es baja aparece la barra
             return getParent() instanceof JViewport && getParent().getHeight() > getPreferredSize().height;
         }
     }
@@ -261,6 +264,19 @@ public final class Estilo {
     // Botones
     // =========================================================================
 
+    /**
+     * Asegura que el botón pinte correctamente su color de fondo en todos los sistemas operativos.
+     * En macOS, el Look and Feel nativo (Aqua) ignora setBackground a menos que se configure
+     * como opaco y use BasicButtonUI para renderizar los colores personalizados.
+     */
+    public static void prepararBoton(JButton boton) {
+        boton.setOpaque(true);
+        boton.setContentAreaFilled(true);
+        if (ES_MAC) {
+            boton.setUI(new javax.swing.plaf.basic.BasicButtonUI());
+        }
+    }
+
     /** Botón principal (azul). */
     public static JButton botonPrimario(String texto) {
         return estilizarPrimario(new JButton(texto));
@@ -292,6 +308,7 @@ public final class Estilo {
     }
 
     public static JButton estilizarSecundario(JButton boton) {
+        prepararBoton(boton);
         boton.setFont(BOTON);
         boton.setBackground(TARJETA);
         boton.setForeground(TEXTO);
@@ -303,6 +320,7 @@ public final class Estilo {
 
     /** Botón de color con texto blanco; al deshabilitarse se pinta en gris para que se note. */
     private static JButton estilizarColor(JButton boton, Color fondo, Color borde) {
+        prepararBoton(boton);
         boton.setFont(BOTON);
         boton.setForeground(Color.WHITE);
         boton.setFocusPainted(false);
@@ -324,11 +342,11 @@ public final class Estilo {
     }
 
     public static JButton estilizarBotonFila(JButton button) {
+        prepararBoton(button);
         button.setFont(new Font("Tahoma", Font.BOLD, 11));
         button.setForeground(PRIMARIO);
         button.setBackground(TARJETA);
         button.setFocusPainted(false);
-        button.setOpaque(true);
         button.setBorder(new LineBorder(PRIMARIO, 1, true));
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return button;

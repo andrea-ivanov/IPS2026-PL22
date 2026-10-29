@@ -67,6 +67,13 @@ public class SecretarioView {
     private JLabel lblResultadosGrupos;
     private PanelPaginacion paginacionGrupos;
 
+    // Pestaña de propuestas de microcredenciales
+    private JTable tabPropuestas;
+    private JButton btnAceptarPropuesta;
+    private JButton btnRechazarPropuesta;
+    private JButton btnRecargarPropuestas;
+    private JLabel lblResultadosPropuestas;
+
     private JLabel lblDetalleId, lblDetalleAnio, lblDetalleEstudiante, lblDetalleEmail, lblDetalleGrado,
             lblDetalleCurso,
             lblDetalleGrupos, lblDetalleEstado, lblDetalleEstadoMatricula, lblDetallePago, lblDetalleCancelacion;
@@ -105,6 +112,7 @@ public class SecretarioView {
         tabsListado.setFont(TITULO_TARJETA);
         tabsListado.addTab("  Matrículas  ", createListadoPanel());
         tabsListado.addTab("  Grupos  ", createGruposPanel());
+        tabsListado.addTab("  Propuestas de Microcredenciales  ", createPropuestasPanel());
         cardsPanel.add(tabsListado, "LISTADO");
         cardsPanel.add(createDetallePanel(), "DETALLE");
         contenido.add(cardsPanel, BorderLayout.CENTER);
@@ -302,6 +310,65 @@ public class SecretarioView {
     /** Cambia el título de la lista de alumnos del grupo seleccionado. */
     public void setTituloAlumnosGrupo(String titulo) {
         lblTituloAlumnosGrupo.setText(titulo);
+    }
+
+    // =========================================================================
+    // Pestaña de propuestas de microcredenciales
+    // =========================================================================
+
+    private JPanel createPropuestasPanel() {
+        JPanel panel = panelPestana();
+
+        JPanel filterPanel = crearTarjetaFiltros("Gestión de propuestas");
+        btnAceptarPropuesta = botonPrimario("Aceptar Propuesta");
+        btnAceptarPropuesta.setToolTipText("Aprobar propuesta para registrarla como microcredencial oficial");
+        btnRechazarPropuesta = botonSecundario("Rechazar Propuesta");
+        btnRechazarPropuesta.setForeground(new Color(185, 28, 28));
+        btnRechazarPropuesta.setToolTipText("Rechazar propuesta indicando obligatoriamente el motivo");
+        btnRecargarPropuestas = botonSecundario("Actualizar listado");
+
+        addBotonesFiltro(filterPanel, btnAceptarPropuesta, btnRechazarPropuesta, btnRecargarPropuestas);
+
+        JLabel ayuda = textoSecundario("<html>Seleccione una propuesta pendiente para revisarla.<br><br>"
+                + "• <b>Aceptar</b>: La propuesta pasará a ACEPTADA y se registrará oficialmente como microcredencial disponible en el sistema.<br><br>"
+                + "• <b>Rechazar</b>: Se exigirá introducir obligatoriamente el motivo del rechazo. La propuesta quedará invalidada.</html>");
+        ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
+        filterPanel.add(Box.createVerticalStrut(12));
+        filterPanel.add(ayuda);
+        panel.add(envolverFiltros(filterPanel), BorderLayout.WEST);
+
+        String[] columnasPropuestas = { "ID Propuesta", "Nombre del Curso", "Profesor Proponente", "Créditos",
+                "Periodo / Año", "Grado", "Fecha Envío" };
+        tabPropuestas = new JTable(new DefaultTableModel(columnasPropuestas, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        });
+        estilizarTabla(tabPropuestas);
+        tabPropuestas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        anchos(tabPropuestas, 100, 240, 200, 80, 110, 180, 100);
+        anchoMinimo(tabPropuestas, 90, 0);
+        anchoMinimo(tabPropuestas, 70, 3);
+        anchoMinimo(tabPropuestas, 90, 4);
+
+        JPanel propuestasCard = tarjeta(new BorderLayout(0, 10));
+        JPanel tituloPropuestas = new JPanel(new BorderLayout());
+        tituloPropuestas.setOpaque(false);
+        tituloPropuestas.add(tituloTarjeta("Propuestas de Microcredenciales Pendientes"), BorderLayout.WEST);
+        tituloPropuestas.add(textoSecundario("Listado de propuestas pendientes de validación"), BorderLayout.EAST);
+        propuestasCard.add(tituloPropuestas, BorderLayout.NORTH);
+        propuestasCard.add(scrollTabla(tabPropuestas), BorderLayout.CENTER);
+
+        lblResultadosPropuestas = textoSecundario("0 propuestas pendientes");
+        JPanel pie = new JPanel(new BorderLayout());
+        pie.setOpaque(false);
+        lblResultadosPropuestas.setFont(ETIQUETA);
+        pie.add(lblResultadosPropuestas, BorderLayout.WEST);
+        propuestasCard.add(pie, BorderLayout.SOUTH);
+
+        panel.add(propuestasCard, BorderLayout.CENTER);
+        return panel;
     }
 
     // =========================================================================
@@ -516,7 +583,9 @@ public class SecretarioView {
         pie.setOpaque(false);
         resultados.setFont(ETIQUETA);
         pie.add(resultados, BorderLayout.WEST);
-        pie.add(paginacion, BorderLayout.EAST);
+        if (paginacion != null) {
+            pie.add(paginacion, BorderLayout.EAST);
+        }
         return pie;
     }
 
@@ -587,15 +656,7 @@ public class SecretarioView {
 
     /** Botón "Ver / Gestionar" de cada fila: blanco con borde y texto azul, centrado en la celda. */
     private static JButton crearBotonFila() {
-        JButton button = new JButton(TEXTO_ACCION);
-        button.setFont(new Font("Tahoma", Font.BOLD, 11));
-        button.setForeground(PRIMARIO);
-        button.setBackground(TARJETA);
-        button.setFocusPainted(false);
-        button.setOpaque(true);
-        button.setBorder(new LineBorder(PRIMARIO, 1, true));
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return button;
+        return botonFila(TEXTO_ACCION);
     }
 
     /** Celda con el botón dentro y un pequeño margen, con el fondo de la fila. */
@@ -772,6 +833,26 @@ public class SecretarioView {
 
     public PanelPaginacion getPaginacionGrupos() {
         return paginacionGrupos;
+    }
+
+    public JTable getTabPropuestas() {
+        return tabPropuestas;
+    }
+
+    public JButton getBtnAceptarPropuesta() {
+        return btnAceptarPropuesta;
+    }
+
+    public JButton getBtnRechazarPropuesta() {
+        return btnRechazarPropuesta;
+    }
+
+    public JButton getBtnRecargarPropuestas() {
+        return btnRecargarPropuestas;
+    }
+
+    public JLabel getLblResultadosPropuestas() {
+        return lblResultadosPropuestas;
     }
 
     public String getIdMatriculaSeleccionada() {

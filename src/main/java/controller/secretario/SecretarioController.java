@@ -6,12 +6,15 @@ import model.matriculacion.GrupoConsultaDTO;
 import model.matriculacion.GrupoPlazasDTO;
 import model.matriculacion.MatriculaSecretariaDTO;
 import model.matriculacion.SituacionSecretaria;
+import model.propuesta.PropuestaDisplayDTO;
 import repository.ActaRepository;
 import repository.MatriculacionRepository;
+import repository.PropuestaRepository;
 import view.secretario.SecretarioView;
 import util.Database;
 import util.Paginacion;
 import util.SwingUtil;
+import util.exception.ValidationException;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -28,6 +31,7 @@ import java.util.Map;
  * HU 35229: ciclo de vida de las matrículas y grupos (aceptar solicitudes, modificar, asignar grupos,
  * cancelar, activar al inicio del año y finalizar al terminarlo).
  * HU 35239: consulta de las actas cerradas por el sistema (notificaciones a secretaría).
+ * Revisión de propuestas de microcredenciales (aceptar y registrar oficialmente o rechazar con motivo).
  */
 public class SecretarioController {
     private static final String TODOS = "TODOS";
@@ -39,18 +43,25 @@ public class SecretarioController {
     private final Paginacion paginacionGrupos = new Paginacion(FILAS_POR_PAGINA);
     private MatriculacionRepository repository;
     private ActaRepository actaRepository = new ActaRepository();
+    private PropuestaRepository propuestaRepository;
     // Evita recargar la tabla mientras se rellenan los desplegables de filtros
     private boolean cargandoFiltros = false;
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
     private Runnable onVolverInicio = () -> { };
 
     public SecretarioController(SecretarioView view) {
-        this(view, new MatriculacionRepository(new Database()));
+        this(view, new MatriculacionRepository(new Database()), new PropuestaRepository());
     }
 
     public SecretarioController(SecretarioView view, MatriculacionRepository repository) {
+        this(view, repository, new PropuestaRepository());
+    }
+
+    public SecretarioController(SecretarioView view, MatriculacionRepository repository,
+            PropuestaRepository propuestaRepository) {
         this.view = view;
         this.repository = repository;
+        this.propuestaRepository = propuestaRepository;
         this.initView();
     }
 
@@ -92,6 +103,11 @@ public class SecretarioController {
             }
         });
 
+        // Revisión de propuestas de microcredenciales
+        view.getBtnAceptarPropuesta().addActionListener(e -> SwingUtil.exceptionWrapper(this::aceptarPropuesta));
+        view.getBtnRechazarPropuesta().addActionListener(e -> SwingUtil.exceptionWrapper(this::rechazarPropuesta));
+        view.getBtnRecargarPropuestas().addActionListener(e -> SwingUtil.exceptionWrapper(this::cargarPropuestasPendientes));
+
         // El ciclo de vida (activar/finalizar por fechas) ya se ha actualizado al arrancar la aplicación
         // (MainController), así que abrir la consulta no modifica ningún dato
         SwingUtil.exceptionWrapper(() -> {
@@ -99,6 +115,7 @@ public class SecretarioController {
             cargarMatriculasFiltradas();
             cargarOpcionesGrupos();
             cargarGrupos();
+            cargarPropuestasPendientes();
         });
     }
 
@@ -483,6 +500,86 @@ public class SecretarioController {
         cargarPaginaMatriculas();
         cargarPaginaGrupos();
         mostrarDetalle();
+    }
+
+    // =========================================================================
+    // Propuestas de Microcredenciales
+    // =========================================================================
+
+    public void cargarPropuestasPendientes() {
+        List<PropuestaDisplayDTO> propuestas = propuestaRepository.getPropuestasPendientesSecretaria();
+        DefaultTableModel model = (DefaultTableModel) view.getTabPropuestas().getModel();
+        model.setRowCount(0);
+        for (PropuestaDisplayDTO p : propuestas) {
+            String profesor = p.getProfesorNombre() != null && !p.getProfesorNombre().trim().isEmpty()
+                    ? p.getProfesorNombre().trim()
+                    : p.getProfesorId();
+            model.addRow(new Object[] {
+                    p.getPropuestaId(),
+                    p.getNombre(),
+                    profesor,
+                    p.getCreditos(),
+                    "Año " + p.getAnio(),
+                    p.getGrado(),
+                    p.getFechaPropuesta()
+            });
+        }
+        if (view.getLblResultadosPropuestas() != null) {
+            view.getLblResultadosPropuestas().setText(propuestas.size() + " propuestas pendientes de revisión");
+        }
+    }
+
+    private void aceptarPropuesta() {
+        int row = view.getTabPropuestas().getSelectedRow();
+        if (row < 0) {
+            throw new ValidationException("Seleccione una propuesta pendiente de la tabla para aceptarla");
+        }
+        int modelRow = view.getTabPropuestas().convertRowIndexToModel(row);
+        String propuestaId = (String) view.getTabPropuestas().getModel().getValueAt(modelRow, 0);
+        String nombre = (String) view.getTabPropuestas().getModel().getValueAt(modelRow, 1);
+        String profesor = (String) view.getTabPropuestas().getModel().getValueAt(modelRow, 2);
+
+        int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
+                "¿Desea aceptar la propuesta \"" + nombre + "\" (Profesor: " + profesor + ")?\n\n"
+                        + "El estado cambiará a ACEPTADA y se registrará oficialmente como microcredencial disponible en el sistema.",
+                "Aceptar Propuesta", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        String cursoId = propuestaRepository.aceptarPropuesta(propuestaId);
+        JOptionPane.showMessageDialog(view.getFrame(),
+                "Propuesta aceptada con éxito.\nSe ha registrado oficialmente como microcredencial con código: " + cursoId,
+                "Éxito", JOptionPane.INFORMATION_MESSAGE);
+        cargarPropuestasPendientes();
+    }
+
+    private void rechazarPropuesta() {
+        int row = view.getTabPropuestas().getSelectedRow();
+        if (row < 0) {
+            throw new ValidationException("Seleccione una propuesta pendiente de la tabla para rechazarla");
+        }
+        int modelRow = view.getTabPropuestas().convertRowIndexToModel(row);
+        String propuestaId = (String) view.getTabPropuestas().getModel().getValueAt(modelRow, 0);
+        String nombre = (String) view.getTabPropuestas().getModel().getValueAt(modelRow, 1);
+
+        String motivo = JOptionPane.showInputDialog(view.getFrame(),
+                "Introduzca de forma obligatoria el motivo del rechazo para la propuesta \"" + nombre + "\":",
+                "Rechazar Propuesta", JOptionPane.WARNING_MESSAGE);
+        if (motivo == null) {
+            return;
+        }
+        String motivoLimpio = motivo.trim();
+        if (motivoLimpio.isEmpty()) {
+            throw new ValidationException("El motivo del rechazo es obligatorio");
+        }
+
+        propuestaRepository.rechazarPropuesta(propuestaId, motivoLimpio);
+        JOptionPane.showMessageDialog(view.getFrame(),
+                "La propuesta \"" + nombre + "\" ha sido rechazada y ha quedado invalidada.\n"
+                        + "El profesor deberá crear una nueva propuesta desde cero si desea volver a intentarlo.",
+                "Propuesta Rechazada", JOptionPane.INFORMATION_MESSAGE);
+        cargarPropuestasPendientes();
     }
 
     // =========================================================================

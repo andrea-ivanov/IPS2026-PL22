@@ -2,6 +2,7 @@ package model.propuesta;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,10 +15,12 @@ import org.junit.jupiter.api.Test;
 
 import model.grado.GradoDisplayDTO;
 import util.Database;
+import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
 
 /**
- * Pruebas de la HU 35243: propuestas de asignaturas del profesor (PropuestaModel).
+ * Pruebas de la HU 35243: propuestas de asignaturas del profesor (PropuestaModel)
+ * y revisión de propuestas de microcredenciales por parte de Secretaría.
  * Cada prueba parte de sus propios datos (loadCleanDatabase), independientes de data.sql
  */
 public class PropuestaModelTest {
@@ -208,6 +211,78 @@ public class PropuestaModelTest {
 		String descripcionLarga = "x".repeat(PropuestaModel.MAX_DESCRIPCION + 1);
 		assertThrows(ValidationException.class,
 				() -> model.crearPropuestas(PROFESOR, List.of("G001"), "Algebra", "1", "6", descripcionLarga, HOY));
+	}
+
+	// //////////////////////////////////////////////
+	// Secretaría: Revisión de Propuestas
+	// //////////////////////////////////////////////
+
+	@Test
+	public void testListarPropuestasPendientesSecretaria() {
+		List<PropuestaDisplayDTO> pendientes = model.getPropuestasPendientes();
+		assertEquals(1, pendientes.size());
+		PropuestaDisplayDTO p = pendientes.get(0);
+		assertEquals("PR004", p.getPropuestaId());
+		assertEquals("Robotica", p.getNombre());
+		assertEquals("Luis Fernandez", p.getProfesorNombre());
+		assertEquals("P002", p.getProfesorId());
+		assertEquals(6.0, p.getCreditos());
+		assertEquals(3, p.getAnio());
+		assertEquals("Software", p.getGrado());
+		assertEquals("PENDIENTE", p.getEstado());
+	}
+
+	@Test
+	public void testAceptarPropuesta() {
+		String cursoId = model.aceptarPropuesta("PR004");
+		assertEquals("C005", cursoId);
+
+		// Verificar que la propuesta pasó a ACEPTADA
+		List<PropuestaDisplayDTO> pendientes = model.getPropuestasPendientes();
+		assertEquals(0, pendientes.size());
+
+		List<Object[]> curso = db.executeQueryArray("SELECT cursoId, coordinadorId, nombre, creditos FROM Curso WHERE cursoId = ?", cursoId);
+		assertEquals(1, curso.size());
+		assertEquals("P002", curso.get(0)[1]);
+		assertEquals("Robotica", curso.get(0)[2]);
+
+		List<Object[]> gradoCurso = db.executeQueryArray("SELECT gradoId, cursoId, anio, estado FROM GradoCurso WHERE cursoId = ?", cursoId);
+		assertEquals(1, gradoCurso.size());
+		assertEquals("G001", gradoCurso.get(0)[0]);
+		assertEquals(3, ((Number) gradoCurso.get(0)[2]).intValue());
+		assertEquals("ACTIVO", gradoCurso.get(0)[3]);
+	}
+
+	@Test
+	public void testAceptarPropuestaNoExistenteONoPendiente() {
+		assertThrows(ResourceNotFoundException.class, () -> model.aceptarPropuesta("PR999"));
+		// PR005 ya está rechazada
+		ValidationException e = assertThrows(ValidationException.class, () -> model.aceptarPropuesta("PR005"));
+		assertTrue(e.getMessage().contains("Solo se pueden aceptar propuestas en estado PENDIENTE"), e.getMessage());
+	}
+
+	@Test
+	public void testRechazarPropuestaConMotivo() {
+		model.rechazarPropuesta("PR004", "No cumple los requisitos docentes actuales");
+
+		List<PropuestaDisplayDTO> pendientes = model.getPropuestasPendientes();
+		assertEquals(0, pendientes.size());
+
+		List<Object[]> p = db.executeQueryArray("SELECT estado, descripcion FROM PropuestaCurso WHERE propuestaId = 'PR004'");
+		assertEquals(1, p.size());
+		assertEquals("RECHAZADA", p.get(0)[0]);
+		assertTrue(((String) p.get(0)[1]).contains("Motivo rechazo: No cumple los requisitos docentes actuales"));
+	}
+
+	@Test
+	public void testRechazarPropuestaSinMotivo() {
+		assertThrows(ValidationException.class, () -> model.rechazarPropuesta("PR004", null));
+		assertThrows(ValidationException.class, () -> model.rechazarPropuesta("PR004", "   "));
+	}
+
+	@Test
+	public void testRechazarPropuestaNoPendiente() {
+		assertThrows(ValidationException.class, () -> model.rechazarPropuesta("PR005", "Otro motivo"));
 	}
 
 	private void assertMensaje(String mensaje, List<String> grados, String nombre, String anio, String creditos) {

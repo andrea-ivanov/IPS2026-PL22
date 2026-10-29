@@ -13,19 +13,25 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.handlers.ColumnListHandler;
+import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.grado.GradoDisplayDTO;
 import util.Database;
 import util.UnexpectedException;
+import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
 
 /**
- * Lógica de negocio de las propuestas de asignaturas de un profesor (HU 35243).
+ * Lógica de negocio de las propuestas de asignaturas de un profesor (HU 35243)
+ * y de la revisión de propuestas por parte de Secretaría.
  * - El profesor solo propone en los grados en los que imparte docencia, y solo si están VIGENTES
  * - Si elige varios grados se crea una propuesta por grado; si alguna no es válida no se guarda ninguna
  * - Una propuesta válida se guarda como PENDIENTE con la fecha actual
  * - El nombre no puede repetirse en el grado (ni como asignatura ni como propuesta no rechazada)
+ * - Secretaría puede revisar las propuestas pendientes para aceptarlas (registrándolas en Curso y GradoCurso)
+ *   o rechazarlas (guardando obligatoriamente el motivo).
  */
 public class PropuestaModel {
 	public static final String GRADO_VIGENTE = "VIGENTE";
@@ -74,8 +80,25 @@ public class PropuestaModel {
 				profesorId);
 	}
 
+	/**
+	 * Propuestas pendientes de revisión para Secretaría, visualizando los datos clave
+	 * (nombre del curso, profesor proponente, créditos y periodo de impartición / año).
+	 */
+	public List<PropuestaDisplayDTO> getPropuestasPendientes() {
+		return db.executeQueryPojo(PropuestaDisplayDTO.class,
+				"SELECT p.propuestaId, p.gradoId, g.nombre AS grado, p.nombre, p.profesorId, "
+						+ "(pr.nombre || ' ' || pr.apellidos) AS profesorNombre, "
+						+ "p.anio, CAST(p.creditos AS REAL) AS creditos, p.descripcion, p.fechaPropuesta, p.estado "
+						+ "FROM PropuestaCurso p "
+						+ "JOIN Profesor pr ON pr.profesorId = p.profesorId "
+						+ "JOIN Grado g ON g.gradoId = p.gradoId "
+						+ "WHERE p.estado = ? "
+						+ "ORDER BY p.fechaPropuesta ASC, p.propuestaId ASC",
+				EstadoPropuesta.PENDIENTE.name());
+	}
+
 	// =========================================================================
-	// Alta
+	// Alta y Gestión de Propuestas
 	// =========================================================================
 
 	/**
@@ -109,6 +132,106 @@ public class PropuestaModel {
 			return filas;
 		});
 		return creadas;
+	}
+
+	/**
+	 * Acepta una propuesta pendiente:
+	 * - Cambia su estado internamente a ACEPTADA.
+	 * - Registra oficialmente el curso en Curso y lo asocia en GradoCurso con estado ACTIVO.
+	 * Todo se realiza en una única transacción atómica.
+	 *
+	 * @param propuestaId Identificador de la propuesta
+	 * @return Identificador del curso creado (e.g. C001)
+	 */
+	public String aceptarPropuesta(String propuestaId) {
+		validarObligatorio(propuestaId, "El identificador de la propuesta es obligatorio");
+		return enTransaccion(conn -> {
+			Map<String, Object> propuesta = new QueryRunner().query(conn,
+					"SELECT propuestaId, profesorId, gradoId, nombre, anio, CAST(creditos AS REAL) AS creditos, estado "
+							+ "FROM PropuestaCurso WHERE propuestaId = ?",
+					new MapHandler(), propuestaId.trim());
+			if (propuesta == null || propuesta.isEmpty()) {
+				throw new ResourceNotFoundException("Propuesta", propuestaId);
+			}
+
+			String estado = (String) propuesta.get("estado");
+			if (!EstadoPropuesta.PENDIENTE.name().equalsIgnoreCase(estado)) {
+				throw new ValidationException("Solo se pueden aceptar propuestas en estado PENDIENTE (estado actual: " + estado + ")");
+			}
+
+			String nombre = (String) propuesta.get("nombre");
+			String gradoId = (String) propuesta.get("gradoId");
+			String profesorId = (String) propuesta.get("profesorId");
+			Number anioNum = (Number) propuesta.get("anio");
+			int anio = anioNum != null ? anioNum.intValue() : 1;
+			Number creditosNum = (Number) propuesta.get("creditos");
+			double creditos = creditosNum != null ? creditosNum.doubleValue() : 6.0;
+
+			// Generar nuevo código de curso
+			String nuevoCursoId = siguienteCursoId(conn);
+
+			// 1. Insertar el curso oficial coordinado por el profesor proponente
+			update(conn, "INSERT INTO Curso (cursoId, coordinadorId, nombre, creditos) VALUES (?, ?, ?, ?)",
+					nuevoCursoId, profesorId, nombre, creditos);
+
+			// 2. Asociar a GradoCurso en estado ACTIVO
+			update(conn, "INSERT INTO GradoCurso (gradoId, cursoId, anio, itinerario, estado) VALUES (?, ?, ?, NULL, 'ACTIVO')",
+					gradoId, nuevoCursoId, anio);
+
+			// 3. Actualizar estado de la propuesta a ACEPTADA
+			update(conn, "UPDATE PropuestaCurso SET estado = ? WHERE propuestaId = ?",
+					EstadoPropuesta.ACEPTADA.name(), propuestaId.trim());
+
+			return nuevoCursoId;
+		});
+	}
+
+	/**
+	 * Rechaza una propuesta pendiente:
+	 * - Exige un motivo de rechazo obligatorio.
+	 * - Cambia su estado internamente a RECHAZADA.
+	 * - Guarda el motivo de rechazo asociado en la descripción.
+	 *
+	 * @param propuestaId Identificador de la propuesta
+	 * @param motivoRechazo Motivo obligatorio del rechazo
+	 */
+	public void rechazarPropuesta(String propuestaId, String motivoRechazo) {
+		validarObligatorio(propuestaId, "El identificador de la propuesta es obligatorio");
+		validarObligatorio(motivoRechazo, "El motivo del rechazo es obligatorio");
+		String motivoLimpio = motivoRechazo.trim();
+		if (motivoLimpio.isEmpty()) {
+			throw new ValidationException("El motivo del rechazo es obligatorio");
+		}
+		if (motivoLimpio.length() > MAX_DESCRIPCION) {
+			throw new ValidationException("El motivo del rechazo no puede superar los " + MAX_DESCRIPCION + " caracteres");
+		}
+
+		enTransaccion(conn -> {
+			Map<String, Object> propuesta = new QueryRunner().query(conn,
+					"SELECT propuestaId, estado, descripcion FROM PropuestaCurso WHERE propuestaId = ?",
+					new MapHandler(), propuestaId.trim());
+			if (propuesta == null || propuesta.isEmpty()) {
+				throw new ResourceNotFoundException("Propuesta", propuestaId);
+			}
+
+			String estado = (String) propuesta.get("estado");
+			if (!EstadoPropuesta.PENDIENTE.name().equalsIgnoreCase(estado)) {
+				throw new ValidationException("Solo se pueden rechazar propuestas en estado PENDIENTE (estado actual: " + estado + ")");
+			}
+
+			String descActual = (String) propuesta.get("descripcion");
+			String nuevaDesc = (descActual != null && !descActual.trim().isEmpty())
+					? descActual.trim() + " | Motivo rechazo: " + motivoLimpio
+					: "Motivo rechazo: " + motivoLimpio;
+			if (nuevaDesc.length() > MAX_DESCRIPCION) {
+				nuevaDesc = nuevaDesc.substring(0, MAX_DESCRIPCION);
+			}
+
+			update(conn, "UPDATE PropuestaCurso SET estado = ?, descripcion = ? WHERE propuestaId = ?",
+					EstadoPropuesta.RECHAZADA.name(), nuevaDesc, propuestaId.trim());
+
+			return 1;
+		});
 	}
 
 	/**
@@ -157,6 +280,19 @@ public class PropuestaModel {
 	// =========================================================================
 	// Auxiliares
 	// =========================================================================
+
+	/** Genera el siguiente ID de curso: C001, C002... */
+	private String siguienteCursoId(Connection conn) throws SQLException {
+		List<String> ids = new QueryRunner().query(conn, "SELECT cursoId FROM Curso WHERE cursoId GLOB 'C[0-9]*'",
+				new ColumnListHandler<String>());
+		int max = 0;
+		for (String id : ids) {
+			if (id != null && id.matches("^C\\d+$")) {
+				max = Math.max(max, Integer.parseInt(id.substring(1)));
+			}
+		}
+		return String.format("C%03d", max + 1);
+	}
 
 	/** Nombre repetido en el grado, sin distinguir mayúsculas: como asignatura del grado o como propuesta no rechazada */
 	private boolean existeNombreEnGrado(String gradoId, String nombre) {
@@ -215,17 +351,17 @@ public class PropuestaModel {
 	}
 
 	@FunctionalInterface
-	private interface OperacionBD {
-		int ejecutar(Connection conn) throws SQLException;
+	private interface OperacionBD<T> {
+		T ejecutar(Connection conn) throws SQLException;
 	}
 
 	/** Ejecuta la operación en una única transacción: o se aplican todos los cambios o ninguno. */
-	private int enTransaccion(OperacionBD operacion) {
+	private <T> T enTransaccion(OperacionBD<T> operacion) {
 		Connection conn = null;
 		try {
 			conn = db.getConnection();
 			conn.setAutoCommit(false);
-			int result = operacion.ejecutar(conn);
+			T result = operacion.ejecutar(conn);
 			conn.commit();
 			return result;
 		} catch (SQLException e) {
