@@ -172,6 +172,8 @@ public class AdminOfertaController {
 		onVolverInicio.run();
 	}
 
+	// TODO: cuando GradoFormDialog tenga el desplegable de ramas, leer aqui y en onModificarGrado el valor de BD
+	// de la rama seleccionada (sin tilde) en lugar de getTxtRama().getText(), y preseleccionar la actual al modificar
 	private void onAnadirGrado() {
 		GradoFormDialog form = new GradoFormDialog(view.getFrame());
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
