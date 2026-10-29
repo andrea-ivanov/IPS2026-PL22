@@ -240,15 +240,19 @@ public class SolicitudMatriculaController {
         String metodoPago = view.getMetodoPagoSeleccionado();
         resumenActual.setMetodoPago(metodoPago);
 
-        int confirmacion = JOptionPane.showConfirmDialog(view.getFrame(),
+        Object[] opciones = new Object[] { "Sí", "No" };
+        int confirmacion = JOptionPane.showOptionDialog(view.getFrame(),
                 "¿Está seguro de que desea confirmar la solicitud de matrícula por un importe de " +
                         String.format("%.2f €", resumenActual.getImporteTotal()) +
                         " mediante " + metodoPago + "?",
                 "Confirmar Solicitud de Matrícula",
                 JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE);
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                opciones,
+                opciones[0]);
 
-        if (confirmacion != JOptionPane.YES_OPTION) {
+        if (confirmacion != 0) {
             return;
         }
 
