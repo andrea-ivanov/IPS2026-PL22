@@ -11,6 +11,11 @@
 --   CREDITOS_MINIMOS_ANIO = 12 (superados cada anio, salvo si la matricula del anio esta CANCELADA)
 --   CREDITOS_MINIMOS_TERCER_ANIO = 90 (superados al acabar el 3er anio en el grado; los anios cancelados cuentan)
 --   MAX_CONVOCATORIAS = 6 por asignatura (solo cuentan las calificaciones con nota)
+--   MAX_CREDITOS_MICROCREDENCIAL = 15 (provisional, pendiente de que el PO fije el maximo)
+--   DIAS_MATRICULACION_MICROCREDENCIAL = 14 (periodo de matriculacion de 2 semanas)
+--   PORCENTAJE_MINIMO_PLAZAS_MICROCREDENCIAL = 10 (de plazas pagadas, el dia antes de la imparticion)
+--   DIAS_CIERRE_ACTA_MICROCREDENCIAL = 15 (tras el fin de la imparticion; despues la cierra el sistema)
+--   ANIOS_VIGENCIA_GRADO = 4 (anios academicos de vigencia de un grado nuevo o renovado)
 --
 -- Reglas que aplica el modelo (no se pueden expresar con CHECK):
 --   - Matricula y MatriculaCurso cambian de estado siempre en el mismo metodo
@@ -20,6 +25,26 @@
 --     las asignaturas SOLICITADAS (sin pagar) quedan pendientes hasta que las revise el secretario
 --   - El secretario asigna grupos solo a asignaturas PAGADAS o ACTIVAS, sin superar Grupo.capacidad
 --   - Solo se califica en actas ABIERTAS y solo el coordinador del curso cierra el acta
+--   - Grados: al acabar el anio en que vence la vigencia (fechaInicioVigencia + 4 anios) el grado pasa a
+--     PENDIENTE_RENOVACION. El revisor externo emite un dictamen (RevisionGrado) solo entre el fin de ese anio y el
+--     inicio del siguiente: FAVORABLE -> VIGENTE con fechaInicioVigencia = inicio del anio siguiente;
+--     DESFAVORABLE -> EN_EXTINCION en ese momento. No se admiten solicitudes de matricula en grados EN_EXTINCION.
+--   - Al iniciar el anio: los grados EN_EXTINCION y los PENDIENTE_RENOVACION sin dictamen pasan a EXTINTO, y sus
+--     matriculas de ese anio (y sus asignaturas) se cancelan con motivo EXTINCION_GRADO
+--   - Microcredenciales: inscripcion solo con matricula no cancelada ese anio en un grado de la misma rama,
+--     dentro del periodo de matriculacion; las plazas y el 10% cuentan solo inscripciones pagadas y validadas;
+--     importe = creditos * PRECIO_CREDITO; nunca se devuelve dinero; sus creditos no cuentan para la permanencia
+--   - El dia antes de empezar la imparticion: las inscripciones sin pagar se cancelan por IMPAGO; si las pagadas
+--     no llegan al 10% de las plazas, la microcredencial y sus inscripciones se cancelan por BAJA_DEMANDA
+--   - Solo el profesor de la microcredencial califica y cierra su acta (con confirmacion); al cerrarla, la
+--     microcredencial y sus inscripciones INSCRITAS pasan a FINALIZADA. Si no la cierra en 15 dias tras el fin
+--     de la imparticion, la cierra el sistema (cierreAutomatico = 1). El alumno solo ve la nota con el acta cerrada
+
+DROP TABLE IF EXISTS RevisionGrado;
+
+DROP TABLE IF EXISTS MatriculaMicrocredencial;
+
+DROP TABLE IF EXISTS Microcredencial;
 
 DROP TABLE IF EXISTS Calificacion;
 
@@ -110,7 +135,8 @@ CREATE TABLE Grado (
     estado VARCHAR(25) NOT NULL,
     fechaInicioVigencia DATE NOT NULL,
     CONSTRAINT pk_grado PRIMARY KEY (gradoId),
-    CONSTRAINT ck_grado_estado CHECK (estado IN ('VIGENTE', 'EN_EXTINCION', 'EXTINTO', 'PENDIENTE_RENOVACION'))
+    CONSTRAINT ck_grado_estado CHECK (estado IN ('VIGENTE', 'EN_EXTINCION', 'EXTINTO', 'PENDIENTE_RENOVACION')),
+    CONSTRAINT ck_grado_rama CHECK (ramaConocimiento IN ('Artes y Humanidades', 'Ciencias', 'Ciencias de la Salud', 'Ciencias Sociales y Juridicas', 'Ingenieria y Arquitectura'))
 );
 
 -- =========================
@@ -241,6 +267,7 @@ CREATE TABLE Acta (
 -- No tiene estado PAGADA: el pago es de cada asignatura (MatriculaCurso)
 -- uq_matricula_solicitud: impide solicitudes duplicadas
 -- uq_matricula_grado: destino de la FK de MatriculaCurso
+-- uq_matricula_anio: destino de la FK de MatriculaMicrocredencial
 -- =========================
 CREATE TABLE Matricula (
     matriculaId VARCHAR(10) NOT NULL,
@@ -254,11 +281,12 @@ CREATE TABLE Matricula (
     CONSTRAINT pk_matricula PRIMARY KEY (matriculaId),
     CONSTRAINT uq_matricula_solicitud UNIQUE (alumnoId, gradoId, anioAcademicoId),
     CONSTRAINT uq_matricula_grado UNIQUE (matriculaId, gradoId),
+    CONSTRAINT uq_matricula_anio UNIQUE (matriculaId, anioAcademicoId),
     CONSTRAINT fk_matricula_alumno FOREIGN KEY (alumnoId) REFERENCES Alumno (alumnoId),
     CONSTRAINT fk_matricula_grado FOREIGN KEY (gradoId) REFERENCES Grado (gradoId),
     CONSTRAINT fk_matricula_anioAcademico FOREIGN KEY (anioAcademicoId) REFERENCES AnioAcademico (anioAcademicoId),
     CONSTRAINT ck_matricula_estado CHECK (estado IN ('SOLICITADA', 'ACTIVA', 'FINALIZADA', 'CANCELADA')),
-    CONSTRAINT ck_matricula_motivo CHECK (motivoCancelacion IN ('IMPAGO', 'FUERZA_MAYOR', 'INCOMPATIBILIDAD')),
+    CONSTRAINT ck_matricula_motivo CHECK (motivoCancelacion IN ('IMPAGO', 'FUERZA_MAYOR', 'INCOMPATIBILIDAD', 'EXTINCION_GRADO')),
     CONSTRAINT ck_matricula_cancelacionMotivo CHECK ((estado = 'CANCELADA') = (motivoCancelacion IS NOT NULL)),
     CONSTRAINT ck_matricula_cancelacionFecha CHECK ((estado = 'CANCELADA') = (fechaCancelacion IS NOT NULL))
 );
@@ -286,7 +314,7 @@ CREATE TABLE MatriculaCurso (
     CONSTRAINT fk_matriculaCurso_matricula FOREIGN KEY (matriculaId, gradoId) REFERENCES Matricula (matriculaId, gradoId),
     CONSTRAINT fk_matriculaCurso_gradoCurso FOREIGN KEY (gradoId, cursoId) REFERENCES GradoCurso (gradoId, cursoId),
     CONSTRAINT ck_matriculaCurso_estado CHECK (estado IN ('SOLICITADA', 'PAGADA', 'ACTIVA', 'FINALIZADA', 'CANCELADA')),
-    CONSTRAINT ck_matriculaCurso_motivo CHECK (motivoCancelacion IN ('IMPAGO', 'FUERZA_MAYOR', 'INCOMPATIBILIDAD')),
+    CONSTRAINT ck_matriculaCurso_motivo CHECK (motivoCancelacion IN ('IMPAGO', 'FUERZA_MAYOR', 'INCOMPATIBILIDAD', 'EXTINCION_GRADO')),
     CONSTRAINT ck_matriculaCurso_cancelacionMotivo CHECK ((estado = 'CANCELADA') = (motivoCancelacion IS NOT NULL)),
     CONSTRAINT ck_matriculaCurso_cancelacionFecha CHECK ((estado = 'CANCELADA') = (fechaCancelacion IS NOT NULL)),
     CONSTRAINT ck_matriculaCurso_importe CHECK (importe >= 0),
@@ -327,4 +355,120 @@ CREATE TABLE Calificacion (
     CONSTRAINT fk_calificacion_matriculaCurso FOREIGN KEY (matriculaId, cursoId) REFERENCES MatriculaCurso (matriculaId, cursoId),
     CONSTRAINT fk_calificacion_acta FOREIGN KEY (cursoId, anioAcademicoId, tipoConvocatoria) REFERENCES Acta (cursoId, anioAcademicoId, tipoConvocatoria),
     CONSTRAINT ck_calificacion_nota CHECK (nota BETWEEN 0 AND 10)
+);
+
+-- =========================
+-- MICROCREDENCIAL
+-- La propone un profesor (PROPUESTA) y el secretario la acepta (ACEPTADA) o la rechaza con motivo (RECHAZADA).
+-- No se guarda que secretario decide. Una propuesta rechazada no se reutiliza: el profesor crea otra nueva.
+-- El dia antes de la imparticion, si las inscripciones pagadas no llegan al 10% de las plazas: CANCELADA_BAJA_DEMANDA.
+-- Al cerrar el acta (el profesor o, pasados 15 dias del fin de la imparticion, el sistema): FINALIZADA.
+-- profesorId: profesor que la propone, la imparte y califica
+-- creditos: maximo MAX_CREDITOS_MICROCREDENCIAL (se valida en el modelo)
+-- finMatriculacion: inicio + 14 dias (se valida en el modelo)
+-- inicioImparticion: tiempo de ejecucion
+-- fechaResolucion: cuando el secretario la acepta o la rechaza
+-- fechaCancelacion: cancelacion por baja demanda (el dia antes de la imparticion)
+-- fechaCierreActa: el acta esta abierta mientras sea nula
+-- cierreAutomatico: 0 = la cerro el profesor (o sigue abierta), 1 = la cerro el sistema
+-- uq_microcredencial_anio: destino de la FK de MatriculaMicrocredencial
+-- =========================
+CREATE TABLE Microcredencial (
+    microcredencialId VARCHAR(10) NOT NULL,
+    anioAcademicoId VARCHAR(10) NOT NULL,
+    profesorId VARCHAR(10) NOT NULL,
+    nombre VARCHAR(150) NOT NULL,
+    ramaConocimiento VARCHAR(100) NOT NULL,
+    creditos DECIMAL(4,1) NOT NULL,
+    plazas INT NOT NULL,
+    inicioMatriculacion DATE NOT NULL,
+    finMatriculacion DATE NOT NULL,
+    inicioImparticion DATE NOT NULL,
+    finImparticion DATE NOT NULL,
+    estado VARCHAR(25) NOT NULL,
+    fechaPropuesta DATE NOT NULL,
+    fechaResolucion DATE,
+    motivoRechazo VARCHAR(500),
+    fechaCancelacion DATE,
+    fechaCierreActa DATE,
+    cierreAutomatico INT NOT NULL,
+    CONSTRAINT pk_microcredencial PRIMARY KEY (microcredencialId),
+    CONSTRAINT uq_microcredencial_anio UNIQUE (microcredencialId, anioAcademicoId),
+    CONSTRAINT uq_microcredencial_nombre UNIQUE (nombre, anioAcademicoId),
+    CONSTRAINT fk_microcredencial_anioAcademico FOREIGN KEY (anioAcademicoId) REFERENCES AnioAcademico (anioAcademicoId),
+    CONSTRAINT fk_microcredencial_profesor FOREIGN KEY (profesorId) REFERENCES Profesor (profesorId),
+    CONSTRAINT ck_microcredencial_rama CHECK (ramaConocimiento IN ('Artes y Humanidades', 'Ciencias', 'Ciencias de la Salud', 'Ciencias Sociales y Juridicas', 'Ingenieria y Arquitectura')),
+    CONSTRAINT ck_microcredencial_creditos CHECK (creditos > 0),
+    CONSTRAINT ck_microcredencial_plazas CHECK (plazas > 0),
+    CONSTRAINT ck_microcredencial_matriculacion CHECK (inicioMatriculacion < finMatriculacion),
+    CONSTRAINT ck_microcredencial_imparticion CHECK (finMatriculacion < inicioImparticion AND inicioImparticion < finImparticion),
+    CONSTRAINT ck_microcredencial_estado CHECK (estado IN ('PROPUESTA', 'ACEPTADA', 'RECHAZADA', 'CANCELADA_BAJA_DEMANDA', 'FINALIZADA')),
+    CONSTRAINT ck_microcredencial_resolucion CHECK ((estado = 'PROPUESTA') = (fechaResolucion IS NULL)),
+    CONSTRAINT ck_microcredencial_rechazo CHECK ((estado = 'RECHAZADA') = (motivoRechazo IS NOT NULL)),
+    CONSTRAINT ck_microcredencial_cancelacion CHECK ((estado = 'CANCELADA_BAJA_DEMANDA') = (fechaCancelacion IS NOT NULL)),
+    CONSTRAINT ck_microcredencial_acta CHECK ((estado = 'FINALIZADA') = (fechaCierreActa IS NOT NULL)),
+    CONSTRAINT ck_microcredencial_cierreActa CHECK (fechaCierreActa IS NULL OR fechaCierreActa >= inicioImparticion),
+    CONSTRAINT ck_microcredencial_cierreAutomatico CHECK (cierreAutomatico IN (0, 1) AND (cierreAutomatico = 0 OR fechaCierreActa IS NOT NULL))
+);
+
+-- =========================
+-- MATRICULA MICROCREDENCIAL (Matricula <-> Microcredencial)
+-- Cuelga de la matricula del alumno de ese anio (la que acredita la rama), pero sus creditos
+-- no cuentan para la permanencia: no estan en MatriculaCurso ni en Calificacion
+-- anioAcademicoId se repite para que la BD garantice que la microcredencial es del mismo anio que la matricula
+-- Estados: SOLICITADA (sin pagar o pendiente de validar) -> INSCRITA (pagada y validada)
+--          -> FINALIZADA (al cerrar el acta) | ABANDONADA (la deja durante la imparticion)
+--          | CANCELADA (IMPAGO si no estaba pagada el dia antes de la imparticion, BAJA_DEMANDA si se cancela la microcredencial)
+-- No se devuelve el dinero en ningun caso
+-- fechaBaja: fecha de abandono o de cancelacion
+-- importe: creditos de la microcredencial * PRECIO_CREDITO
+-- pagoValidado: automatico con tarjeta; con transferencia o carta de pago lo valida el secretario
+-- nota: la pone el profesor con el acta abierta; nula = no presentado (o sin calificar)
+-- =========================
+CREATE TABLE MatriculaMicrocredencial (
+    matriculaId VARCHAR(10) NOT NULL,
+    anioAcademicoId VARCHAR(10) NOT NULL,
+    microcredencialId VARCHAR(10) NOT NULL,
+    fechaSolicitud DATE NOT NULL,
+    estado VARCHAR(10) NOT NULL,
+    motivoCancelacion VARCHAR(15),
+    fechaBaja DATE,
+    importe DECIMAL(10,2) NOT NULL,
+    metodoPago VARCHAR(15),
+    fechaPago DATE,
+    pagoValidado INT NOT NULL,
+    nota DECIMAL(4,2),
+    CONSTRAINT pk_matriculaMicrocredencial PRIMARY KEY (matriculaId, microcredencialId),
+    CONSTRAINT fk_matriculaMicrocredencial_matricula FOREIGN KEY (matriculaId, anioAcademicoId) REFERENCES Matricula (matriculaId, anioAcademicoId),
+    CONSTRAINT fk_matriculaMicrocredencial_microcredencial FOREIGN KEY (microcredencialId, anioAcademicoId) REFERENCES Microcredencial (microcredencialId, anioAcademicoId),
+    CONSTRAINT ck_matriculaMicrocredencial_estado CHECK (estado IN ('SOLICITADA', 'INSCRITA', 'FINALIZADA', 'ABANDONADA', 'CANCELADA')),
+    CONSTRAINT ck_matriculaMicrocredencial_motivo CHECK (motivoCancelacion IN ('IMPAGO', 'BAJA_DEMANDA')),
+    CONSTRAINT ck_matriculaMicrocredencial_cancelacion CHECK ((estado = 'CANCELADA') = (motivoCancelacion IS NOT NULL)),
+    CONSTRAINT ck_matriculaMicrocredencial_baja CHECK ((estado IN ('ABANDONADA', 'CANCELADA')) = (fechaBaja IS NOT NULL)),
+    CONSTRAINT ck_matriculaMicrocredencial_importe CHECK (importe >= 0),
+    CONSTRAINT ck_matriculaMicrocredencial_metodoPago CHECK (metodoPago IN ('TARJETA', 'TRANSFERENCIA', 'CARTA_PAGO')),
+    CONSTRAINT ck_matriculaMicrocredencial_pagoValidado CHECK (pagoValidado IN (0, 1)),
+    CONSTRAINT ck_matriculaMicrocredencial_pagada CHECK (estado NOT IN ('INSCRITA', 'FINALIZADA', 'ABANDONADA') OR (metodoPago IS NOT NULL AND fechaPago IS NOT NULL AND pagoValidado = 1)),
+    CONSTRAINT ck_matriculaMicrocredencial_pagoCancelacion CHECK (motivoCancelacion IS NULL
+        OR (motivoCancelacion = 'IMPAGO' AND pagoValidado = 0)
+        OR (motivoCancelacion = 'BAJA_DEMANDA' AND metodoPago IS NOT NULL AND fechaPago IS NOT NULL AND pagoValidado = 1)),
+    CONSTRAINT ck_matriculaMicrocredencial_nota CHECK (nota IS NULL OR (estado IN ('INSCRITA', 'FINALIZADA') AND nota BETWEEN 0 AND 10))
+);
+
+-- =========================
+-- REVISION GRADO
+-- Dictamen del revisor externo sobre un grado PENDIENTE_RENOVACION, emitido entre el fin de un anio academico y el
+-- inicio del siguiente. No se guarda que revisor lo emite (el revisor es un rol de la aplicacion, como el secretario).
+-- anioAcademicoId es el anio que va a empezar (el primero de la nueva vigencia si es FAVORABLE)
+-- pk_revisionGrado: un dictamen por grado y anio
+-- =========================
+CREATE TABLE RevisionGrado (
+    gradoId VARCHAR(10) NOT NULL,
+    anioAcademicoId VARCHAR(10) NOT NULL,
+    resultado VARCHAR(12) NOT NULL,
+    fechaRevision DATE NOT NULL,
+    CONSTRAINT pk_revisionGrado PRIMARY KEY (gradoId, anioAcademicoId),
+    CONSTRAINT fk_revisionGrado_grado FOREIGN KEY (gradoId) REFERENCES Grado (gradoId),
+    CONSTRAINT fk_revisionGrado_anioAcademico FOREIGN KEY (anioAcademicoId) REFERENCES AnioAcademico (anioAcademicoId),
+    CONSTRAINT ck_revisionGrado_resultado CHECK (resultado IN ('FAVORABLE', 'DESFAVORABLE'))
 );
