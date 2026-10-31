@@ -208,7 +208,7 @@ public class MetricasGradoModelTest {
 
 			assertEquals(List.of("G001 2025-2026", "G004 2025-2026"), claves(lista));
 			// éxito: presentados 18 cr (AL01 C001 y C002, AL02 C001), superados 12 cr (AL01 C001, AL02 C001)
-			assertFila(lista.get(0), "G001", "Biologia", "Ciencias", "2025-2026", 66.7, null, 2, 3);
+			assertFila(lista.get(0), "G001", "Biologia", "Facultad de Ciencias", "Ciencias", "2025-2026", 66.7, null, 2, 3);
 		}
 
 		@Test
@@ -231,7 +231,7 @@ public class MetricasGradoModelTest {
 		@DisplayName("TM-04 Una asignatura compartida cuenta solo para el grado de la matrícula")
 		public void testAsignaturaCompartida() {
 			assertFila(getFila(todos(), "G004", "2025-2026"),
-					"G004", "Biologia", "Ciencias de la Salud", "2025-2026", 100.0, null, 2, 2);
+					"G004", "Biologia", "Facultad de Veterinaria", "Ciencias de la Salud", "2025-2026", 100.0, null, 2, 2);
 		}
 	}
 
@@ -300,14 +300,14 @@ public class MetricasGradoModelTest {
 			assertEquals(List.of("G001 2026-2027", "G001 2025-2026", "G001 2024-2025", "G004 2025-2026",
 					"G002 2026-2027", "G002 2025-2026", "G002 2024-2025", "G002 2023-2024"), claves(lista));
 			assertAll(
-					() -> assertFila(lista.get(0), "G001", "Biologia", "Ciencias", "2026-2027", 100.0, 42.9, 1, 3),
-					() -> assertFila(lista.get(1), "G001", "Biologia", "Ciencias", "2025-2026", 66.7, null, 2, 3),
-					() -> assertFila(lista.get(2), "G001", "Biologia", "Ciencias", "2024-2025", 42.9, null, 3, 7),
-					() -> assertFila(lista.get(3), "G004", "Biologia", "Ciencias de la Salud", "2025-2026", 100.0, null, 2, 2),
-					() -> assertFila(lista.get(4), "G002", "Derecho", "Ciencias Sociales y Juridicas", "2026-2027", null, 100.0, 0, 1),
-					() -> assertFila(lista.get(5), "G002", "Derecho", "Ciencias Sociales y Juridicas", "2025-2026", 100.0, 0.0, 1, 1),
-					() -> assertFila(lista.get(6), "G002", "Derecho", "Ciencias Sociales y Juridicas", "2024-2025", 0.0, null, 0, 1),
-					() -> assertFila(lista.get(7), "G002", "Derecho", "Ciencias Sociales y Juridicas", "2023-2024", 0.0, null, 0, 1));
+					() -> assertFila(lista.get(0), "G001", "Biologia", "Facultad de Ciencias", "Ciencias", "2026-2027", 100.0, 42.9, 1, 3),
+					() -> assertFila(lista.get(1), "G001", "Biologia", "Facultad de Ciencias", "Ciencias", "2025-2026", 66.7, null, 2, 3),
+					() -> assertFila(lista.get(2), "G001", "Biologia", "Facultad de Ciencias", "Ciencias", "2024-2025", 42.9, null, 3, 7),
+					() -> assertFila(lista.get(3), "G004", "Biologia", "Facultad de Veterinaria", "Ciencias de la Salud", "2025-2026", 100.0, null, 2, 2),
+					() -> assertFila(lista.get(4), "G002", "Derecho", "Facultad de Derecho", "Ciencias Sociales y Juridicas", "2026-2027", null, 100.0, 0, 1),
+					() -> assertFila(lista.get(5), "G002", "Derecho", "Facultad de Derecho", "Ciencias Sociales y Juridicas", "2025-2026", 100.0, 0.0, 1, 1),
+					() -> assertFila(lista.get(6), "G002", "Derecho", "Facultad de Derecho", "Ciencias Sociales y Juridicas", "2024-2025", 0.0, null, 0, 1),
+					() -> assertFila(lista.get(7), "G002", "Derecho", "Facultad de Derecho", "Ciencias Sociales y Juridicas", "2023-2024", 0.0, null, 0, 1));
 		}
 
 		@Test
@@ -473,12 +473,13 @@ public class MetricasGradoModelTest {
 				.findFirst().orElseThrow(() -> new AssertionError("No hay DTO para " + gradoId + " " + anio));
 	}
 
-	private static void assertFila(GradoAnioRevisorDisplayDTO fila, String idGrado, String nombreGrado, String rama,
-			String anio, Double tasaExito, Double tasaAbandono, int aprobados, int matriculados) {
+	private static void assertFila(GradoAnioRevisorDisplayDTO fila, String idGrado, String nombreGrado, String facultad,
+			String rama, String anio, Double tasaExito, Double tasaAbandono, int aprobados, int matriculados) {
 		String fallo = idGrado + " " + anio;
 		assertAll(fallo,
 				() -> assertEquals(idGrado, fila.getIdGrado(), fallo + ": idGrado"),
 				() -> assertEquals(nombreGrado, fila.getNombreGrado(), fallo + ": nombreGrado"),
+				() -> assertEquals(facultad, fila.getFacultad(), fallo + ": facultad"),
 				() -> assertEquals(rama, fila.getRama(), fallo + ": rama"),
 				() -> assertEquals(anio, fila.getIdAnioAcademico(), fallo + ": idAnioAcademico"),
 				() -> assertEquals(tasaExito, fila.getTasaExito(), fallo + ": tasaExito"),
