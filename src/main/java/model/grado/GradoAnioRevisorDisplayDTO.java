@@ -13,6 +13,7 @@ import lombok.*;
 public class GradoAnioRevisorDisplayDTO {
 	private String idGrado;
 	private String nombreGrado;
+	private String facultad;
 	private String rama;
 	private String idAnioAcademico;
 	private Double tasaExito;    // null si no hay ningún presentado
@@ -24,11 +25,12 @@ public class GradoAnioRevisorDisplayDTO {
 		super();
 	}
 
-	public GradoAnioRevisorDisplayDTO(String idGrado, String nombreGrado, String rama, String idAnioAcademico,
+	public GradoAnioRevisorDisplayDTO(String idGrado, String nombreGrado, String facultad, String rama, String idAnioAcademico,
 			Double tasaExito, Double tasaAbandono, int aprobados, int matriculados) {
 		super();
 		this.idGrado = idGrado;
 		this.nombreGrado = nombreGrado;
+		this.facultad = facultad;
 		this.rama = rama;
 		this.idAnioAcademico = idAnioAcademico;
 		this.tasaExito = tasaExito;
