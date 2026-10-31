@@ -35,6 +35,6 @@ public class GradoDisplayDTO {
 	 * Constructor de 4 argumentos para compatibilidad hacia atrás.
 	 */
 	public GradoDisplayDTO(String id, String nombre, String facultad, String estado) {
-		this(id, nombre, facultad, "Ingeniería y Arquitectura", estado);
+		this(id, nombre, facultad, "Ingenieria y Arquitectura", estado);
 	}
 }

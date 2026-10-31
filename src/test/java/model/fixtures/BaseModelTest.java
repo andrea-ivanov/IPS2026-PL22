@@ -53,8 +53,8 @@ public abstract class BaseModelTest {
 				"INSERT INTO AnioAcademico (anioAcademicoId, fechaInicio, fechaFin, inicioMatriculacion, finMatriculacion) VALUES ('2', '2027-09-01', '2028-06-30', '2027-07-01', '2027-08-31')",
 
 				// 4. Datos de Grados
-				"INSERT INTO Grado (gradoId, nombre, facultad, ramaConocimiento, estado, fechaInicioVigencia) VALUES ('1', 'Ingeniería Informática', 'Escuela de Ingeniería Informática', 'Ingeniería y Arquitectura', 'VIGENTE', '2024-09-01')",
-				"INSERT INTO Grado (gradoId, nombre, facultad, ramaConocimiento, estado, fechaInicioVigencia) VALUES ('2', 'Ingeniería de Telecomunicaciones', 'Escuela de Ingeniería', 'Ingeniería y Arquitectura', 'VIGENTE', '2024-09-01')",
+				"INSERT INTO Grado (gradoId, nombre, facultad, ramaConocimiento, estado, fechaInicioVigencia) VALUES ('1', 'Ingeniería Informática', 'Escuela de Ingeniería Informática', 'Ingenieria y Arquitectura', 'VIGENTE', '2024-09-01')",
+				"INSERT INTO Grado (gradoId, nombre, facultad, ramaConocimiento, estado, fechaInicioVigencia) VALUES ('2', 'Ingeniería de Telecomunicaciones', 'Escuela de Ingeniería', 'Ingenieria y Arquitectura', 'VIGENTE', '2024-09-01')",
 
 				// 5. Datos de Cursos
 				"INSERT INTO Curso (cursoId, coordinadorId, nombre, creditos) VALUES ('1', '1', 'Programación', 6)",

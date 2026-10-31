@@ -37,6 +37,9 @@ public class GradoModel {
 	 * @throws ValidationException Si falta algún dato obligatorio o el año académico no existe
 	 */
 	public String crearGrado(String nombre, String facultad, String ramaConocimiento, String anioAcademicoId) {
+		// TODO: validar aqui y en modificarGrado que la rama es una de las de ck_grado_rama (schema.sql) y lanzar
+		// ValidationException con un mensaje claro; poner la lista en un enum RamaConocimiento (valor de BD sin tilde
+		// y texto con tilde para la vista), reutilizable para ck_microcredencial_rama
 		validarObligatorio(nombre, "El nombre del grado es obligatorio");
 		validarObligatorio(facultad, "La facultad del grado es obligatoria");
 		validarObligatorio(ramaConocimiento, "La rama de conocimiento del grado es obligatoria");
