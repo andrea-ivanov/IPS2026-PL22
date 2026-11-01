@@ -21,6 +21,7 @@ public class EstudianteView {
     public static final String CARD_MENU = "CARD_MENU";
     public static final String CARD_CONSULTA = "CARD_CONSULTA";
     public static final String CARD_SOLICITUD = "CARD_SOLICITUD";
+    public static final String CARD_MICROCREDENCIAL = "CARD_MICROCREDENCIAL";
 
     private JFrame frame;
     private CardLayout cardLayout;
@@ -30,11 +31,13 @@ public class EstudianteView {
     private JLabel lblTitle;
     private JButton btnMisMatriculas;
     private JButton btnSolicitarMatricula;
+    private JButton btnSolicitarMicrocredencial;
     private JButton btnVolverLogin;
 
     // --- Contenedores embebidos de submódulos ---
     private JPanel panelConsultaContainer;
     private JPanel panelSolicitudContainer;
+    private JPanel panelMicrocredencialContainer;
 
     public EstudianteView() {
         initialize();
@@ -62,6 +65,10 @@ public class EstudianteView {
         panelSolicitudContainer = new JPanel(new BorderLayout());
         cardsPanel.add(panelSolicitudContainer, CARD_SOLICITUD);
 
+        // 4. Tarjeta: Contenedor para Solicitud de Microcredenciales
+        panelMicrocredencialContainer = new JPanel(new BorderLayout());
+        cardsPanel.add(panelMicrocredencialContainer, CARD_MICROCREDENCIAL);
+
         frame.getContentPane().add(cardsPanel, BorderLayout.CENTER);
     }
 
@@ -84,27 +91,44 @@ public class EstudianteView {
         panelNorte.add(Box.createVerticalStrut(6));
         panel.add(panelNorte, BorderLayout.NORTH);
 
-        // --- Panel Central con las 2 Opciones Principales ---
+        // --- Panel Central con las Opciones Principales ---
         JPanel panelOpciones = new JPanel(new GridLayout(1, 2, 25, 0));
         panelOpciones.setOpaque(false);
-        panelOpciones.setBorder(new EmptyBorder(20, 10, 20, 10));
+        panelOpciones.setBorder(new EmptyBorder(15, 10, 15, 10));
 
-        // Opción 1: Consulta de Matrículas
+        // Opción 1: Consulta de Matrículas (Columna Izquierda)
         JPanel cardConsulta = crearTarjetaOpcion(
                 "Consultar Mis Matrículas",
                 "<html>Acceda a su historial académico, consulte las asignaturas matriculadas, sus calificaciones en las convocatorias e indicadores del régimen de permanencia.</html>",
-                "Mi Expediente");
+                "Mi Expediente",
+                false);
         btnMisMatriculas = (JButton) cardConsulta.getClientProperty("botonAccion");
         panelOpciones.add(cardConsulta);
 
-        // Opción 2: Nueva Solicitud de Matrícula
+        // Columna Derecha: Matrícula Oficial arriba y Microcredenciales justo debajo
+        JPanel panelDerecho = new JPanel(new GridLayout(2, 1, 0, 15));
+        panelDerecho.setOpaque(false);
+
+        // Opción 2: Nueva Solicitud de Matrícula (Grados Oficiales)
         JPanel cardSolicitud = crearTarjetaOpcion(
                 "Solicitar Nueva Matrícula",
-                "<html>Explore la oferta académica disponible en grados y cursos activos, seleccione sus asignaturas con cálculo automático de créditos e importe, y confirme el método de pago.</html>",
-                "Nueva Solicitud");
+                "<html>Explore la oferta académica en grados y cursos activos, seleccione asignaturas con cálculo automático e importe y confirme el método de pago.</html>",
+                "Nueva Solicitud",
+                true);
         btnSolicitarMatricula = (JButton) cardSolicitud.getClientProperty("botonAccion");
-        panelOpciones.add(cardSolicitud);
+        panelDerecho.add(cardSolicitud);
 
+        // Opción 3: Solicitar Nueva Microcredencial (justo debajo del recuadro
+        // anterior)
+        JPanel cardMicrocredencial = crearTarjetaOpcion(
+                "Solicitar Nueva Microcredencial",
+                "<html>Inscríbase en microcredenciales de especialización vinculadas a sus ramas habilitadas, con tarifa de 20 €/crédito y sin impacto en permanencia.</html>",
+                "Nueva Microcredencial",
+                true);
+        btnSolicitarMicrocredencial = (JButton) cardMicrocredencial.getClientProperty("botonAccion");
+        panelDerecho.add(cardMicrocredencial);
+
+        panelOpciones.add(panelDerecho);
         panel.add(panelOpciones, BorderLayout.CENTER);
 
         // --- Panel Sur con Botón para Volver al Login ---
@@ -120,32 +144,36 @@ public class EstudianteView {
     }
 
     private JPanel crearTarjetaOpcion(String titulo, String descripcion, String textoBoton) {
-        JPanel card = new JPanel(new BorderLayout(10, 15));
+        return crearTarjetaOpcion(titulo, descripcion, textoBoton, false);
+    }
+
+    private JPanel crearTarjetaOpcion(String titulo, String descripcion, String textoBoton, boolean compacta) {
+        JPanel card = new JPanel(new BorderLayout(8, compacta ? 8 : 15));
         card.setBackground(Color.WHITE);
         card.setBorder(new CompoundBorder(
                 new LineBorder(new Color(222, 226, 230), 1, true),
-                new EmptyBorder(20, 20, 20, 20)));
+                new EmptyBorder(compacta ? 12 : 20, compacta ? 16 : 20, compacta ? 10 : 20, compacta ? 16 : 20)));
 
         // Título de la opción
         JLabel lblOpcionTitulo = new JLabel(titulo, SwingConstants.CENTER);
-        lblOpcionTitulo.setFont(new Font("Tahoma", Font.BOLD, 16));
+        lblOpcionTitulo.setFont(new Font("Tahoma", Font.BOLD, compacta ? 14 : 16));
         lblOpcionTitulo.setForeground(new Color(13, 110, 253));
         card.add(lblOpcionTitulo, BorderLayout.NORTH);
 
         // Descripción
         JLabel lblDesc = new JLabel(descripcion);
-        lblDesc.setFont(new Font("Tahoma", Font.PLAIN, 13));
+        lblDesc.setFont(new Font("Tahoma", Font.PLAIN, compacta ? 12 : 13));
         lblDesc.setForeground(new Color(73, 80, 87));
         lblDesc.setVerticalAlignment(SwingConstants.TOP);
         card.add(lblDesc, BorderLayout.CENTER);
 
         // Botón de acción
         JButton btn = Estilo.estilizarPrimario(new JButton(textoBoton));
-        btn.setFont(new Font("Tahoma", Font.BOLD, 13));
-        btn.setPreferredSize(new Dimension(200, 38));
+        btn.setFont(new Font("Tahoma", Font.BOLD, compacta ? 12 : 13));
+        btn.setPreferredSize(new Dimension(compacta ? 190 : 200, compacta ? 32 : 38));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        JPanel panelBtn = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        JPanel panelBtn = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         panelBtn.setOpaque(false);
         panelBtn.add(btn);
         card.add(panelBtn, BorderLayout.SOUTH);
@@ -169,6 +197,11 @@ public class EstudianteView {
         frame.setTitle("Vista Estudiante — Solicitud de Nueva Matrícula");
     }
 
+    public void mostrarMicrocredencial() {
+        cardLayout.show(cardsPanel, CARD_MICROCREDENCIAL);
+        frame.setTitle("Vista Estudiante — Solicitud de Microcredenciales");
+    }
+
     public JFrame getFrame() {
         return frame;
     }
@@ -181,6 +214,10 @@ public class EstudianteView {
         return btnSolicitarMatricula;
     }
 
+    public JButton getBtnSolicitarMicrocredencial() {
+        return btnSolicitarMicrocredencial;
+    }
+
     public JButton getBtnVolverLogin() {
         return btnVolverLogin;
     }
@@ -191,6 +228,10 @@ public class EstudianteView {
 
     public JPanel getPanelSolicitudContainer() {
         return panelSolicitudContainer;
+    }
+
+    public JPanel getPanelMicrocredencialContainer() {
+        return panelMicrocredencialContainer;
     }
 
     public JLabel getLblTitle() {
