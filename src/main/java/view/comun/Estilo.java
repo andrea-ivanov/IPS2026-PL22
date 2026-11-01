@@ -59,7 +59,8 @@ public final class Estilo {
 
     /**
      * Centra la ventana con su tamaño normal (el que recupera al restaurarla),
-     * aplica el icono de la aplicación (eliminando el logo de Java por defecto) y la abre maximizada.
+     * aplica el icono de la aplicación (eliminando el logo de Java por defecto) y
+     * la abre maximizada.
      */
     public static void maximizarCentrado(JFrame frame) {
         aplicarIconoVentana(frame);
@@ -72,7 +73,8 @@ public final class Estilo {
      * reemplazando el icono por defecto de Java (cafetera).
      */
     public static void aplicarIconoVentana(Window window) {
-        if (window == null) return;
+        if (window == null)
+            return;
         try {
             Image icono = getIconoApp();
             if (icono != null && window instanceof Frame) {
@@ -88,15 +90,18 @@ public final class Estilo {
      * genera un emblema vectorial universitario con birrete nítido y antialiasing.
      */
     public static Image getIconoApp() {
-        if (iconoAppCache != null) return iconoAppCache;
+        if (iconoAppCache != null)
+            return iconoAppCache;
         try {
             java.net.URL res = Estilo.class.getResource("/img/logo.png");
-            if (res == null) res = Estilo.class.getResource("/img/escudo.png");
+            if (res == null)
+                res = Estilo.class.getResource("/img/escudo.png");
             if (res != null) {
                 iconoAppCache = new ImageIcon(res).getImage();
                 return iconoAppCache;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // Generar icono universitario nítido de 32x32
         BufferedImage img = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
@@ -118,25 +123,29 @@ public final class Estilo {
     }
 
     public static Icon getIconoInfo() {
-        if (iconoInfoCache != null) return iconoInfoCache;
+        if (iconoInfoCache != null)
+            return iconoInfoCache;
         iconoInfoCache = crearIconoCircular(EXITO, "✓");
         return iconoInfoCache;
     }
 
     public static Icon getIconoAviso() {
-        if (iconoAvisoCache != null) return iconoAvisoCache;
+        if (iconoAvisoCache != null)
+            return iconoAvisoCache;
         iconoAvisoCache = crearIconoCircular(new Color(230, 150, 0), "!");
         return iconoAvisoCache;
     }
 
     public static Icon getIconoError() {
-        if (iconoErrorCache != null) return iconoErrorCache;
+        if (iconoErrorCache != null)
+            return iconoErrorCache;
         iconoErrorCache = crearIconoCircular(PELIGRO, "✕");
         return iconoErrorCache;
     }
 
     public static Icon getIconoPregunta() {
-        if (iconoPreguntaCache != null) return iconoPreguntaCache;
+        if (iconoPreguntaCache != null)
+            return iconoPreguntaCache;
         iconoPreguntaCache = crearIconoCircular(PRIMARIO, "?");
         return iconoPreguntaCache;
     }
