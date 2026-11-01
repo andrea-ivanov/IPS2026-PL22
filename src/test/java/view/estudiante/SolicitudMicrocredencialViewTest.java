@@ -11,28 +11,29 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import controller.estudiante.SolicitudMicrocredencialController;
+import controller.estudiante.SolicitudMatriculaController;
 import model.fixtures.BaseModelTest;
 import model.matriculacion.MatriculacionModel;
 import model.matriculacion.OfertaMicrocredencialDTO;
 import model.matriculacion.ResumenSolicitudMicrocredencialDTO;
 
 /**
- * Pruebas unitarias para la Vista y Controlador de Solicitud de Microcredenciales (HU 35987).
+ * Pruebas unitarias para la Vista y Controlador unificados en modo Microcredenciales (HU 35987).
  */
 public class SolicitudMicrocredencialViewTest extends BaseModelTest {
-    private SolicitudMicrocredencialView view;
-    private SolicitudMicrocredencialController controller;
+    private SolicitudMatriculaView view;
+    private SolicitudMatriculaController controller;
     private MatriculacionModel model;
     private AtomicBoolean menuVuelto;
 
     @BeforeEach
     public void setUpView() {
         menuVuelto = new AtomicBoolean(false);
-        view = new SolicitudMicrocredencialView();
+        view = new SolicitudMatriculaView();
         model = new MatriculacionModel(db);
-        controller = new SolicitudMicrocredencialController(view, model, "AL0001", () -> menuVuelto.set(true));
+        controller = new SolicitudMatriculaController(view, model, "AL0001", () -> menuVuelto.set(true));
         controller.initController();
+        controller.seleccionarModoMicrocredencial();
     }
 
     @AfterEach
@@ -43,7 +44,7 @@ public class SolicitudMicrocredencialViewTest extends BaseModelTest {
     }
 
     @Test
-    @DisplayName("HU35987: Inicialización en Paso 1 con componentes clave y renderizado de checkboxes")
+    @DisplayName("HU35987: Inicialización en modo Microcredenciales con componentes clave y checkboxes")
     public void testInicializacionPaso1() {
         assertNotNull(view.getLblRamasHabilitadas(), "La etiqueta de ramas habilitadas debe existir");
         assertNotNull(view.getCbFiltroRama(), "El combo de filtro por rama debe existir");
@@ -66,7 +67,7 @@ public class SolicitudMicrocredencialViewTest extends BaseModelTest {
     }
 
     @Test
-    @DisplayName("HU35987: Selección de métodos de pago")
+    @DisplayName("HU35987: Selección de métodos de pago en vista unificada")
     public void testMetodosPago() {
         view.getRbTarjeta().setSelected(true);
         assertEquals("TARJETA", view.getMetodoPagoSeleccionado());
@@ -79,7 +80,7 @@ public class SolicitudMicrocredencialViewTest extends BaseModelTest {
     }
 
     @Test
-    @DisplayName("HU35987: Cálculo en vivo a 20.0 € por crédito")
+    @DisplayName("HU35987: Cálculo en vivo a 20.0 € por crédito en microcredenciales")
     public void testCalculoEnVivoCreditosEImporte() {
         if (view.getModelMicrocredenciales().getRowCount() > 0) {
             view.getModelMicrocredenciales().setValueAt(Boolean.TRUE, 0, 0);
@@ -94,7 +95,7 @@ public class SolicitudMicrocredencialViewTest extends BaseModelTest {
     }
 
     @Test
-    @DisplayName("HU35987: Carga del resumen consolidado en Paso 2")
+    @DisplayName("HU35987: Carga del resumen consolidado de microcredencial en Paso 2")
     public void testCargaResumen() {
         ResumenSolicitudMicrocredencialDTO resumen = new ResumenSolicitudMicrocredencialDTO();
         resumen.setAlumnoId("AL0001");
@@ -109,7 +110,7 @@ public class SolicitudMicrocredencialViewTest extends BaseModelTest {
         resumen.setCreditosTotales(3);
         resumen.setImporteTotal(60.0);
 
-        view.cargarResumen(resumen);
+        view.cargarResumenMicrocredencial(resumen);
 
         assertEquals(1, resumen.getMicrocredenciales().size());
         assertEquals(3, resumen.getCreditosTotales());
@@ -123,4 +124,3 @@ public class SolicitudMicrocredencialViewTest extends BaseModelTest {
         assertTrue(menuVuelto.get(), "Debe invocarse el callback de regreso al menú");
     }
 }
-

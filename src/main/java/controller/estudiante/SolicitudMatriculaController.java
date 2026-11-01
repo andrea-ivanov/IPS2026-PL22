@@ -3,7 +3,9 @@ package controller.estudiante;
 import model.matriculacion.MatriculacionModel;
 import model.matriculacion.OfertaCursoDTO;
 import model.matriculacion.OfertaGradoDTO;
+import model.matriculacion.OfertaMicrocredencialDTO;
 import model.matriculacion.ResumenSolicitudDTO;
+import model.matriculacion.ResumenSolicitudMicrocredencialDTO;
 import util.exception.ValidationException;
 import util.SwingUtil;
 import view.estudiante.SolicitudMatriculaView;
@@ -11,13 +13,14 @@ import view.estudiante.SolicitudMatriculaView;
 import javax.swing.*;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Controlador para la Solicitud de Matrícula (HU 35235 / Fase 4).
- * Coordina la lógica de negocio, validaciones en tiempo real y persistencia
- * transaccional.
+ * Controlador unificado para la Solicitud de Matrícula (HU 35235 y HU 35987).
+ * Coordina la lógica de negocio, validaciones en tiempo real y confirmación
+ * tanto para Asignaturas de Grados Oficiales como para Microcredenciales Universitarias.
  */
 public class SolicitudMatriculaController {
     private final SolicitudMatriculaView view;
@@ -26,54 +29,89 @@ public class SolicitudMatriculaController {
     private final Runnable onVolverMenu;
 
     private boolean actualizandoTabla = false;
-    private ResumenSolicitudDTO resumenActual;
+    private ResumenSolicitudDTO resumenGradoActual;
+    private ResumenSolicitudMicrocredencialDTO resumenMicroActual;
+
+    private List<String> ramasHabilitadas;
+    private List<OfertaMicrocredencialDTO> todasMicrocredenciales;
 
     public SolicitudMatriculaController(SolicitudMatriculaView view, MatriculacionModel model, String alumnoId,
-            Runnable onVolverMenu) {
+                                        Runnable onVolverMenu) {
         this.view = view;
         this.model = model != null ? model : new MatriculacionModel();
         this.alumnoId = alumnoId;
         this.onVolverMenu = onVolverMenu;
+        this.ramasHabilitadas = new ArrayList<>();
+        this.todasMicrocredenciales = new ArrayList<>();
     }
 
     public void initController() {
-        // 1. Cargar oferta de grados disponibles
+        // 1. Cargar oferta de grados y microcredenciales
         cargarGradosDisponibles();
+        cargarRamasYOfertaMicrocredenciales();
 
-        // 2. Escuchar cambio de grado para recargar dinámicamente las asignaturas
+        // 2. Conmutador de modo de matrícula (Grado / Microcredencial)
+        view.getRbModoGrado().addActionListener(e -> seleccionarModoGrado());
+        view.getRbModoMicrocredencial().addActionListener(e -> seleccionarModoMicrocredencial());
+
+        // 3. Listeners específicos de Grado
         view.getCbGrados().addActionListener(e -> SwingUtil.exceptionWrapper(this::cargarAsignaturasDelGradoSeleccionado));
-
-        // 3. Listener en la tabla para validación de convocatorias y cálculo en tiempo
-        // real
         view.getModelCursos().addTableModelListener(this::onTablaCursosModificada);
 
-        // 4. Navegación Paso 1 -> Menú Principal
+        // 4. Listeners específicos de Microcredenciales
+        view.getCbFiltroRama().addActionListener(e -> filtrarMicrocredencialesPorRama());
+        view.getModelMicrocredenciales().addTableModelListener(this::onTablaMicrocredencialesModificada);
+
+        // 5. Navegación Paso 1 -> Menú Principal
         view.getBtnVolverMenuDesdePaso1().addActionListener(e -> {
             if (onVolverMenu != null) {
                 onVolverMenu.run();
+            } else if (view.getFrame() != null) {
+                view.getFrame().dispose();
             }
         });
 
-        // 5. Navegación Paso 1 -> Paso 2 (Continuar al Resumen con validaciones de
-        // negocio)
+        // 6. Navegación Paso 1 -> Paso 2 (Continuar al Resumen con validaciones de negocio)
         view.getBtnContinuarPaso2().addActionListener(e -> SwingUtil.exceptionWrapper(this::validarYContinuarAlResumen));
 
-        // 6. Navegación Paso 2 -> Paso 1 (Modificar Asignaturas)
-        view.getBtnModificarAsignaturas().addActionListener(e -> view.mostrarPaso1());
+        // 7. Navegación Paso 2 -> Paso 1 (Modificar Selección)
+        view.getBtnModificarSeleccion().addActionListener(e -> view.mostrarPaso1());
 
-        // 7. Navegación Paso 2 -> Paso 3 (Proceder al Pago)
+        // 8. Navegación Paso 2 -> Paso 3 (Proceder al Pago)
         view.getBtnContinuarPaso3().addActionListener(e -> view.mostrarPaso3());
 
-        // 8. Navegación Paso 3 -> Paso 2 (Volver al Resumen)
+        // 9. Navegación Paso 3 -> Paso 2 (Volver al Resumen)
         view.getBtnVolverPaso2().addActionListener(e -> view.mostrarPaso2());
 
-        // 9. Confirmación final de la matrícula (Persistencia transaccional)
-        view.getBtnConfirmarMatricula().addActionListener(e -> confirmarSolicitudMatricula());
+        // 10. Confirmación final de la matrícula (Grado o Microcredencial)
+        view.getBtnConfirmarMatricula().addActionListener(e -> confirmarSolicitud());
 
-        // Iniciar en Paso 1
+        // Iniciar por defecto en Paso 1 y modo Grado
+        view.mostrarModoGrado();
         view.mostrarPaso1();
     }
 
+    public void seleccionarModoGrado() {
+        view.mostrarModoGrado();
+        desmarcarMicrocredenciales();
+        recalcularTotales();
+    }
+
+    public void seleccionarModoMicrocredencial() {
+        view.mostrarModoMicrocredencial();
+        desmarcarCursos();
+        recalcularTotales();
+    }
+
+    public void recargarOferta() {
+        cargarGradosDisponibles();
+        cargarRamasYOfertaMicrocredenciales();
+        view.mostrarPaso1();
+    }
+
+    // =========================================================================
+    // LÓGICA DE GRADO OFICIAL
+    // =========================================================================
     private void cargarGradosDisponibles() {
         view.getCbGrados().removeAllItems();
         List<OfertaGradoDTO> grados = model.getOfertaGradosDisponibles();
@@ -87,18 +125,13 @@ public class SolicitudMatriculaController {
         }
     }
 
-    public void recargarOferta() {
-        cargarGradosDisponibles();
-        view.mostrarPaso1();
-    }
-
     private void cargarAsignaturasDelGradoSeleccionado() {
         OfertaGradoDTO grado = (OfertaGradoDTO) view.getCbGrados().getSelectedItem();
         if (grado == null) {
             actualizandoTabla = true;
             view.getModelCursos().setRowCount(0);
             actualizandoTabla = false;
-            view.actualizarTotales(0, 0.0);
+            recalcularTotales();
             return;
         }
 
@@ -124,7 +157,7 @@ public class SolicitudMatriculaController {
         }
 
         actualizandoTabla = false;
-        view.actualizarTotales(0, 0.0);
+        recalcularTotales();
         view.getLblInfoEstudiante().setText("Se han cargado " + (cursos != null ? cursos.size() : 0) +
                 " asignaturas activas para " + grado.getNombre() + ".");
     }
@@ -162,23 +195,147 @@ public class SolicitudMatriculaController {
         recalcularTotales();
     }
 
-    private void recalcularTotales() {
+    private void desmarcarCursos() {
+        actualizandoTabla = true;
         DefaultTableModel tm = view.getModelCursos();
+        for (int i = 0; i < tm.getRowCount(); i++) {
+            tm.setValueAt(Boolean.FALSE, i, 0);
+        }
+        actualizandoTabla = false;
+    }
+
+    // =========================================================================
+    // LÓGICA DE MICROCREDENCIALES
+    // =========================================================================
+    private void cargarRamasYOfertaMicrocredenciales() {
+        ramasHabilitadas = model.getRamasHabilitadasPorEstudiante(alumnoId);
+
+        if (ramasHabilitadas == null || ramasHabilitadas.isEmpty()) {
+            view.getLblRamasHabilitadas().setText("<html><font color='#C0392B'><b>Sin ramas habilitadas:</b> "
+                    + "Para acceder a microcredenciales debe estar matriculado o haber finalizado un grado universitario.</font></html>");
+            view.getCbFiltroRama().removeAllItems();
+            view.getCbFiltroRama().addItem("Ninguna rama disponible");
+            todasMicrocredenciales = new ArrayList<>();
+            actualizarTablaMicrocredenciales(todasMicrocredenciales);
+            return;
+        }
+
+        String ramasStr = String.join(", ", ramasHabilitadas);
+        view.getLblRamasHabilitadas().setText("<html><b>Ramas habilitadas:</b> <font color='#0D6EFD'>" + ramasStr + "</font></html>");
+
+        view.getCbFiltroRama().removeAllItems();
+        view.getCbFiltroRama().addItem("Todas mis ramas habilitadas");
+        for (String rama : ramasHabilitadas) {
+            view.getCbFiltroRama().addItem(rama);
+        }
+
+        todasMicrocredenciales = model.getOfertaMicrocredenciales(ramasHabilitadas);
+        actualizarTablaMicrocredenciales(todasMicrocredenciales);
+    }
+
+    private void filtrarMicrocredencialesPorRama() {
+        if (todasMicrocredenciales == null) return;
+        String seleccion = (String) view.getCbFiltroRama().getSelectedItem();
+        if (seleccion == null || seleccion.startsWith("Todas")) {
+            actualizarTablaMicrocredenciales(todasMicrocredenciales);
+        } else {
+            List<OfertaMicrocredencialDTO> filtradas = new ArrayList<>();
+            for (OfertaMicrocredencialDTO mc : todasMicrocredenciales) {
+                if (seleccion.equalsIgnoreCase(mc.getRamaConocimiento())) {
+                    filtradas.add(mc);
+                }
+            }
+            actualizarTablaMicrocredenciales(filtradas);
+        }
+    }
+
+    private void actualizarTablaMicrocredenciales(List<OfertaMicrocredencialDTO> lista) {
+        actualizandoTabla = true;
+        DefaultTableModel tm = view.getModelMicrocredenciales();
+        tm.setRowCount(0);
+
+        if (lista != null) {
+            for (OfertaMicrocredencialDTO mc : lista) {
+                String plazasTexto = mc.getPlazasOcupadas() + " / " + mc.getPlazasOfertadas();
+                double precio = mc.getPrecio() > 0 ? mc.getPrecio() : mc.getCreditos() * MatriculacionModel.PRECIO_CREDITO;
+                tm.addRow(new Object[] {
+                        Boolean.FALSE,
+                        mc.getMicrocredencialId(),
+                        mc.getNombre(),
+                        mc.getRamaConocimiento(),
+                        mc.getCreditos(),
+                        plazasTexto,
+                        mc.getFechaFinMatriculacion() != null ? mc.getFechaFinMatriculacion() : "-",
+                        mc.getFechaInicio() != null ? mc.getFechaInicio() : "-",
+                        String.format("%.2f €", precio)
+                });
+            }
+        }
+
+        actualizandoTabla = false;
+        recalcularTotales();
+    }
+
+    private void onTablaMicrocredencialesModificada(TableModelEvent e) {
+        if (actualizandoTabla || e.getType() != TableModelEvent.UPDATE || e.getColumn() != 0) {
+            return;
+        }
+        recalcularTotales();
+    }
+
+    private void desmarcarMicrocredenciales() {
+        actualizandoTabla = true;
+        DefaultTableModel tm = view.getModelMicrocredenciales();
+        for (int i = 0; i < tm.getRowCount(); i++) {
+            tm.setValueAt(Boolean.FALSE, i, 0);
+        }
+        actualizandoTabla = false;
+    }
+
+    // =========================================================================
+    // CÁLCULO DE TOTALES UNIFICADO
+    // =========================================================================
+    private void recalcularTotales() {
         int totalCreditos = 0;
         double totalImporte = 0.0;
 
-        for (int i = 0; i < tm.getRowCount(); i++) {
-            Boolean checked = (Boolean) tm.getValueAt(i, 0);
-            if (Boolean.TRUE.equals(checked)) {
-                double cred = (Double) tm.getValueAt(i, 5);
-                totalCreditos += (int) cred;
-                totalImporte += cred * MatriculacionModel.PRECIO_CREDITO;
+        if (view.isModoGrado()) {
+            DefaultTableModel tm = view.getModelCursos();
+            for (int i = 0; i < tm.getRowCount(); i++) {
+                Boolean checked = (Boolean) tm.getValueAt(i, 0);
+                if (Boolean.TRUE.equals(checked)) {
+                    double cred = (Double) tm.getValueAt(i, 5);
+                    totalCreditos += (int) cred;
+                    totalImporte += cred * MatriculacionModel.PRECIO_CREDITO;
+                }
+            }
+        } else {
+            DefaultTableModel tm = view.getModelMicrocredenciales();
+            for (int i = 0; i < tm.getRowCount(); i++) {
+                Boolean checked = (Boolean) tm.getValueAt(i, 0);
+                if (Boolean.TRUE.equals(checked)) {
+                    double cred = (Double) tm.getValueAt(i, 4);
+                    totalCreditos += (int) cred;
+                    totalImporte += cred * MatriculacionModel.PRECIO_CREDITO;
+                }
             }
         }
+
         view.actualizarTotales(totalCreditos, totalImporte);
     }
 
+    // =========================================================================
+    // VALIDACIONES Y NAVEGACIÓN AL RESUMEN
+    // =========================================================================
     private void validarYContinuarAlResumen() {
+        if (view.isModoGrado()) {
+            validarGradoYContinuarAlResumen();
+        } else {
+            validarMicrocredencialYContinuarAlResumen();
+        }
+    }
+
+    private void validarGradoYContinuarAlResumen() {
         OfertaGradoDTO grado = (OfertaGradoDTO) view.getCbGrados().getSelectedItem();
         if (grado == null) {
             JOptionPane.showMessageDialog(view.getFrame(),
@@ -201,8 +358,7 @@ public class SolicitudMatriculaController {
             cursoIds.add(c.getCursoId());
         }
 
-        // Ejecutar validaciones integrales de negocio antes de permitir avanzar al
-        // resumen
+        // Ejecutar validaciones integrales de negocio
         try {
             model.validarSolicitudMatricula(alumnoId, grado.getGradoId(), anioAcademicoId, cursoIds);
         } catch (ValidationException ex) {
@@ -213,24 +369,66 @@ public class SolicitudMatriculaController {
             return;
         }
 
-        // Construir DTO de resumen
-        resumenActual = model.obtenerDatosEstudianteParaSolicitud(alumnoId, grado.getGradoId());
-        resumenActual.setAsignaturas(asignaturas);
+        resumenGradoActual = model.obtenerDatosEstudianteParaSolicitud(alumnoId, grado.getGradoId());
+        resumenGradoActual.setAsignaturas(asignaturas);
         int totalCreds = 0;
         double totalImporte = 0.0;
         for (OfertaCursoDTO c : asignaturas) {
             totalCreds += (int) c.getCreditos();
             totalImporte += c.getPrecio();
         }
-        resumenActual.setCreditosTotales(totalCreds);
-        resumenActual.setImporteTotal(totalImporte);
+        resumenGradoActual.setCreditosTotales(totalCreds);
+        resumenGradoActual.setImporteTotal(totalImporte);
 
-        view.cargarResumen(resumenActual);
+        view.cargarResumenGrado(resumenGradoActual);
         view.mostrarPaso2();
     }
 
-    private void confirmarSolicitudMatricula() {
-        if (resumenActual == null) {
+    private void validarMicrocredencialYContinuarAlResumen() {
+        List<OfertaMicrocredencialDTO> seleccionadas = view.getMicrocredencialesSeleccionadas();
+        if (seleccionadas.isEmpty()) {
+            JOptionPane.showMessageDialog(view.getFrame(),
+                    "Debe seleccionar al menos una microcredencial de la oferta para continuar.",
+                    "Sin microcredenciales seleccionadas", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int totalCreditos = 0;
+        double totalImporte = 0.0;
+        for (OfertaMicrocredencialDTO mc : seleccionadas) {
+            totalCreditos += (int) mc.getCreditos();
+            totalImporte += mc.getPrecio();
+        }
+
+        String nombreCompleto = model.obtenerNombreAlumno(alumnoId);
+        String cleanId = model.resolverAlumnoId(alumnoId);
+
+        resumenMicroActual = new ResumenSolicitudMicrocredencialDTO();
+        resumenMicroActual.setAlumnoId(cleanId);
+        resumenMicroActual.setNombreCompleto(nombreCompleto != null ? nombreCompleto : cleanId);
+        resumenMicroActual.setDni("-");
+        resumenMicroActual.setFechaSolicitud(LocalDate.now().toString());
+        resumenMicroActual.setMicrocredenciales(seleccionadas);
+        resumenMicroActual.setCreditosTotales(totalCreditos);
+        resumenMicroActual.setImporteTotal(totalImporte);
+
+        view.cargarResumenMicrocredencial(resumenMicroActual);
+        view.mostrarPaso2();
+    }
+
+    // =========================================================================
+    // CONFIRMACIÓN DE SOLICITUD Y PAGO
+    // =========================================================================
+    private void confirmarSolicitud() {
+        if (view.isModoGrado()) {
+            confirmarSolicitudGrado();
+        } else {
+            confirmarSolicitudMicrocredencial();
+        }
+    }
+
+    private void confirmarSolicitudGrado() {
+        if (resumenGradoActual == null) {
             JOptionPane.showMessageDialog(view.getFrame(),
                     "No se dispone de una solicitud consolidada para confirmar.",
                     "Error de Solicitud", JOptionPane.ERROR_MESSAGE);
@@ -238,12 +436,12 @@ public class SolicitudMatriculaController {
         }
 
         String metodoPago = view.getMetodoPagoSeleccionado();
-        resumenActual.setMetodoPago(metodoPago);
+        resumenGradoActual.setMetodoPago(metodoPago);
 
         Object[] opciones = new Object[] { "Sí", "No" };
         int confirmacion = JOptionPane.showOptionDialog(view.getFrame(),
                 "¿Está seguro de que desea confirmar la solicitud de matrícula por un importe de " +
-                        String.format("%.2f €", resumenActual.getImporteTotal()) +
+                        String.format("%.2f €", resumenGradoActual.getImporteTotal()) +
                         " mediante " + metodoPago + "?",
                 "Confirmar Solicitud de Matrícula",
                 JOptionPane.YES_NO_OPTION,
@@ -257,22 +455,21 @@ public class SolicitudMatriculaController {
         }
 
         try {
-            // Persistencia transaccional en base de datos
-            String matriculaId = model.registrarSolicitudMatricula(resumenActual);
+            String matriculaId = model.registrarSolicitudMatricula(resumenGradoActual);
 
             String mensajeExito;
-            if ("TARJETA".equalsIgnoreCase(metodoPago)) {
-                mensajeExito = "¡Matrícula registrada y pagada con éxito!\n\n" +
-                        "• Código de Matrícula asignado: " + matriculaId + "\n" +
+            if ("TARJETA".equals(metodoPago)) {
+                mensajeExito = "¡Matrícula confirmada y abonada con éxito!\n\n" +
+                        "• Código de Matrícula: " + matriculaId + "\n" +
                         "• Estado de matrícula: SOLICITADA\n" +
-                        "• Estado de asignaturas: PAGADA (Pago validado telemáticamente)\n" +
-                        "• Importe abonado: " + String.format("%.2f €", resumenActual.getImporteTotal());
+                        "• Asignaturas: PAGADA (pago validado por pasarela telemática)\n" +
+                        "• Importe total abonado: " + String.format("%.2f €", resumenGradoActual.getImporteTotal());
             } else {
                 mensajeExito = "¡Solicitud de matrícula registrada con éxito!\n\n" +
                         "• Código de Matrícula asignado: " + matriculaId + "\n" +
                         "• Estado de matrícula: SOLICITADA\n" +
                         "• Modalidad de pago: " + metodoPago + "\n" +
-                        "• Importe pendiente: " + String.format("%.2f €", resumenActual.getImporteTotal()) + "\n\n" +
+                        "• Importe pendiente: " + String.format("%.2f €", resumenGradoActual.getImporteTotal()) + "\n\n" +
                         "IMPORTANTE: Recuerde presentar el justificante de pago en secretaría\n" +
                         "para que sus asignaturas sean validadas definitivamente.";
             }
@@ -282,7 +479,6 @@ public class SolicitudMatriculaController {
                     "Matrícula Confirmada con Éxito",
                     JOptionPane.INFORMATION_MESSAGE);
 
-            // Regresar al menú principal tras el éxito
             if (onVolverMenu != null) {
                 onVolverMenu.run();
             }
@@ -300,7 +496,60 @@ public class SolicitudMatriculaController {
         }
     }
 
+    private void confirmarSolicitudMicrocredencial() {
+        if (resumenMicroActual == null) {
+            JOptionPane.showMessageDialog(view.getFrame(), "No hay una solicitud activa de microcredencial.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String metodoPago = view.getMetodoPagoSeleccionado();
+        resumenMicroActual.setMetodoPago(metodoPago);
+
+        Object[] opciones = new Object[] { "Sí", "No" };
+        int confirmacion = JOptionPane.showOptionDialog(view.getFrame(),
+                "¿Desea formalizar la solicitud de matrícula en las microcredenciales seleccionadas?\n\n"
+                        + "Total créditos: " + resumenMicroActual.getCreditosTotales() + " ECTS\n"
+                        + "Importe total: " + String.format("%.2f €", resumenMicroActual.getImporteTotal()) + "\n"
+                        + "Modalidad de pago: " + metodoPago + "\n\n"
+                        + "Recuerde que el pago debe quedar completado antes del inicio de las clases.",
+                "Confirmar Solicitud de Microcredencial",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                opciones,
+                opciones[0]);
+
+        if (confirmacion != 0) {
+            return;
+        }
+
+        String mensajeExito = "¡Solicitud registrada con éxito!\n\n"
+                + "Modalidad de pago: " + metodoPago + "\n"
+                + "Importe abonado/a abonar: " + String.format("%.2f €", resumenMicroActual.getImporteTotal()) + "\n\n"
+                + (metodoPago.equals("TARJETA")
+                ? "La transacción ha sido validada. Su plaza en la microcredencial queda confirmada."
+                : "Recuerde presentar el justificante de pago antes de la fecha de inicio del curso.");
+
+        JOptionPane.showMessageDialog(view.getFrame(), mensajeExito,
+                "Matrícula Solicitada", JOptionPane.INFORMATION_MESSAGE);
+
+        if (onVolverMenu != null) {
+            onVolverMenu.run();
+        } else if (view.getFrame() != null) {
+            view.getFrame().dispose();
+        }
+    }
+
     public SolicitudMatriculaView getView() {
         return view;
+    }
+
+    public List<String> getRamasHabilitadas() {
+        return ramasHabilitadas;
+    }
+
+    public List<OfertaMicrocredencialDTO> getTodasMicrocredenciales() {
+        return todasMicrocredenciales;
     }
 }
