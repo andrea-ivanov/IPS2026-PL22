@@ -8,6 +8,7 @@ import model.matriculacion.ResumenSolicitudDTO;
 import model.matriculacion.ResumenSolicitudMicrocredencialDTO;
 import util.exception.ValidationException;
 import util.SwingUtil;
+import view.comun.Estilo;
 import view.estudiante.SolicitudMatriculaView;
 
 import javax.swing.*;
@@ -185,12 +186,11 @@ public class SolicitudMatriculaController {
                 actualizandoTabla = true;
                 tm.setValueAt(Boolean.FALSE, row, 0);
                 actualizandoTabla = false;
-                JOptionPane.showMessageDialog(view.getFrame(),
+                Estilo.mostrarAviso(view.getFrame(),
                         "No es posible seleccionar la asignatura '" + nombre + "' (" + cursoId + "):\n" +
                                 "Ha consumido el límite máximo reglamentario de " + MatriculacionModel.MAX_CONVOCATORIAS
                                 + " convocatorias evaluadas.",
-                        "Límite de Convocatorias Agotado",
-                        JOptionPane.WARNING_MESSAGE);
+                        "Límite de Convocatorias Agotado");
                 recalcularTotales();
                 return;
             }
@@ -312,10 +312,10 @@ public class SolicitudMatriculaController {
                         actualizandoTabla = true;
                         tm.setValueAt(Boolean.FALSE, row, 0);
                         actualizandoTabla = false;
-                        JOptionPane.showMessageDialog(view.getFrame(),
+                        Estilo.mostrarAviso(view.getFrame(),
                                 "No es posible inscribirse en '" + tm.getValueAt(row, 2) + "':\n"
                                         + "No quedan plazas disponibles.",
-                                "Microcredencial Completa", JOptionPane.WARNING_MESSAGE);
+                                "Microcredencial Completa");
                         recalcularTotales();
                         return;
                     }
@@ -382,17 +382,17 @@ public class SolicitudMatriculaController {
     private void validarGradoYContinuarAlResumen() {
         OfertaGradoDTO grado = (OfertaGradoDTO) view.getCbGrados().getSelectedItem();
         if (grado == null) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarAviso(view.getFrame(),
                     "Debe seleccionar un grado oficial para matricularse.",
-                    "Grado no seleccionado", JOptionPane.WARNING_MESSAGE);
+                    "Grado no seleccionado");
             return;
         }
 
         List<OfertaCursoDTO> asignaturas = view.getAsignaturasSeleccionadas();
         if (asignaturas.isEmpty()) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarAviso(view.getFrame(),
                     "Debe marcar al menos una asignatura para poder continuar con la solicitud.",
-                    "Sin asignaturas seleccionadas", JOptionPane.WARNING_MESSAGE);
+                    "Sin asignaturas seleccionadas");
             return;
         }
 
@@ -406,10 +406,9 @@ public class SolicitudMatriculaController {
         try {
             model.validarSolicitudMatricula(alumnoId, grado.getGradoId(), anioAcademicoId, cursoIds);
         } catch (ValidationException ex) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarError(view.getFrame(),
                     ex.getMessage(),
-                    "Requisitos de Matrícula No Cumplidos",
-                    JOptionPane.ERROR_MESSAGE);
+                    "Requisitos de Matrícula No Cumplidos");
             return;
         }
 
@@ -433,9 +432,9 @@ public class SolicitudMatriculaController {
     private void validarMicrocredencialYContinuarAlResumen() {
         List<OfertaMicrocredencialDTO> seleccionadas = view.getMicrocredencialesSeleccionadas();
         if (seleccionadas.isEmpty()) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarAviso(view.getFrame(),
                     "Debe seleccionar al menos una microcredencial de la oferta para continuar.",
-                    "Sin microcredenciales seleccionadas", JOptionPane.WARNING_MESSAGE);
+                    "Sin microcredenciales seleccionadas");
             return;
         }
 
@@ -490,9 +489,9 @@ public class SolicitudMatriculaController {
 
     private void confirmarSolicitudGrado() {
         if (resumenGradoActual == null) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarError(view.getFrame(),
                     "No se dispone de una solicitud consolidada para confirmar.",
-                    "Error de Solicitud", JOptionPane.ERROR_MESSAGE);
+                    "Error de Solicitud");
             return;
         }
 
@@ -500,16 +499,12 @@ public class SolicitudMatriculaController {
         resumenGradoActual.setMetodoPago(metodoPago);
 
         Object[] opciones = new Object[] { "Sí", "No" };
-        int confirmacion = JOptionPane.showOptionDialog(view.getFrame(),
+        int confirmacion = Estilo.confirmar(view.getFrame(),
                 "¿Está seguro de que desea confirmar la solicitud de matrícula por un importe de " +
                         String.format("%.2f €", resumenGradoActual.getImporteTotal()) +
                         " mediante " + metodoPago + "?",
                 "Confirmar Solicitud de Matrícula",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                opciones,
-                opciones[0]);
+                opciones);
 
         if (confirmacion != 0) {
             return;
@@ -536,10 +531,9 @@ public class SolicitudMatriculaController {
                         "para que sus asignaturas sean validadas definitivamente.";
             }
 
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarMensaje(view.getFrame(),
                     mensajeExito,
-                    "Matrícula Confirmada con Éxito",
-                    JOptionPane.INFORMATION_MESSAGE);
+                    "Matrícula Confirmada con Éxito");
 
             if (onVolverMenu != null) {
                 onVolverMenu.run();
@@ -548,22 +542,20 @@ public class SolicitudMatriculaController {
             }
 
         } catch (ValidationException vex) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarError(view.getFrame(),
                     vex.getMessage(),
-                    "Error en la Validación de Matrícula",
-                    JOptionPane.ERROR_MESSAGE);
+                    "Error en la Validación de Matrícula");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarError(view.getFrame(),
                     "Ocurrió un error inesperado al registrar la matrícula:\n" + ex.getMessage(),
-                    "Error Transaccional",
-                    JOptionPane.ERROR_MESSAGE);
+                    "Error Transaccional");
         }
     }
 
     private void confirmarSolicitudMicrocredencial() {
         if (resumenMicroActual == null) {
-            JOptionPane.showMessageDialog(view.getFrame(), "No hay una solicitud activa de microcredencial.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            Estilo.mostrarError(view.getFrame(), "No hay una solicitud activa de microcredencial.",
+                    "Error");
             return;
         }
 
@@ -571,18 +563,14 @@ public class SolicitudMatriculaController {
         resumenMicroActual.setMetodoPago(metodoPago);
 
         Object[] opciones = new Object[] { "Sí", "No" };
-        int confirmacion = JOptionPane.showOptionDialog(view.getFrame(),
+        int confirmacion = Estilo.confirmar(view.getFrame(),
                 "¿Desea formalizar la solicitud de matrícula en las microcredenciales seleccionadas?\n\n"
                         + "Total créditos: " + resumenMicroActual.getCreditosTotales() + " ECTS\n"
                         + "Importe total: " + String.format("%.2f €", resumenMicroActual.getImporteTotal()) + "\n"
                         + "Modalidad de pago: " + metodoPago + "\n\n"
                         + "Recuerde que el pago debe quedar completado antes del inicio de las clases.",
                 "Confirmar Solicitud de Microcredencial",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                opciones,
-                opciones[0]);
+                opciones);
 
         if (confirmacion != 0) {
             return;
@@ -598,10 +586,9 @@ public class SolicitudMatriculaController {
                     ? "La transacción telemática ha sido validada. Su plaza queda confirmada (INSCRITA)."
                     : "Estado: SOLICITADA.\nRecuerde presentar el justificante de pago en secretaría antes del inicio del curso.");
 
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarMensaje(view.getFrame(),
                     mensajeExito,
-                    "Matrícula Solicitada con Éxito",
-                    JOptionPane.INFORMATION_MESSAGE);
+                    "Matrícula Solicitada con Éxito");
 
             if (onVolverMenu != null) {
                 onVolverMenu.run();
@@ -610,15 +597,13 @@ public class SolicitudMatriculaController {
             }
 
         } catch (ValidationException vex) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarAviso(view.getFrame(),
                     vex.getMessage(),
-                    "Requisitos No Cumplidos",
-                    JOptionPane.WARNING_MESSAGE);
+                    "Requisitos No Cumplidos");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarError(view.getFrame(),
                     "Ocurrió un error inesperado al registrar la microcredencial:\n" + ex.getMessage(),
-                    "Error Transaccional",
-                    JOptionPane.ERROR_MESSAGE);
+                    "Error Transaccional");
         }
     }
 
