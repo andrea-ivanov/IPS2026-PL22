@@ -8,6 +8,7 @@ import view.profesor.ProfesorView;
 import view.revisor.RevisorView;
 import java.awt.EventQueue;
 import javax.swing.JOptionPane;
+import javax.swing.UIManager;
 import java.time.LocalDate;
 
 import controller.admin.AdminOfertaController;
@@ -31,6 +32,13 @@ public class MainController {
     }
 
     public void initController() {
+        // Asegurar que todos los diálogos Swing muestren los botones en español en
+        // cualquier SO
+        UIManager.put("OptionPane.yesButtonText", "Sí");
+        UIManager.put("OptionPane.noButtonText", "No");
+        UIManager.put("OptionPane.okButtonText", "Aceptar");
+        UIManager.put("OptionPane.cancelButtonText", "Cancelar");
+
         actualizarEstadosPorFecha();
         cargarAlumnos();
 
@@ -41,20 +49,27 @@ public class MainController {
         view.getBtnRecargarBD().addActionListener(e -> SwingUtil.exceptionWrapper(this::recargarBaseDatos));
     }
 
-    /** Lo que el sistema actualiza solo segun la fecha actual: se hace al arrancar y al recargar la BD */
+    /**
+     * Lo que el sistema actualiza solo segun la fecha actual: se hace al arrancar y
+     * al recargar la BD
+     */
     private void actualizarEstadosPorFecha() {
-        // HU 35229: el sistema mantiene al día el estado de las matrículas en cada arranque,
-        // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA -> FINALIZADA al terminarlo)
+        // HU 35229: el sistema mantiene al día el estado de las matrículas en cada
+        // arranque,
+        // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA ->
+        // FINALIZADA al terminarlo)
         SwingUtil.exceptionWrapper(() -> new MatriculacionRepository(new Database())
                 .actualizarCicloVida(LocalDate.now().toString()));
-        // HU 35239: las actas abiertas cuya convocatoria ya ha terminado las cierra el sistema
+        // HU 35239: las actas abiertas cuya convocatoria ya ha terminado las cierra el
+        // sistema
         // (cierreAutomatico = 1); secretaria las consulta como avisos en su vista
         SwingUtil.exceptionWrapper(() -> new ActaRepository().cerrarActasVencidas(LocalDate.now().toString()));
     }
 
     /**
      * La BD es persistente: data.sql solo se carga sola si la BD no tiene tablas.
-     * Este boton la borra y la vuelve a cargar desde schema.sql y data.sql (se pierden los cambios hechos en la aplicacion)
+     * Este boton la borra y la vuelve a cargar desde schema.sql y data.sql (se
+     * pierden los cambios hechos en la aplicacion)
      */
     private void recargarBaseDatos() {
         int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
@@ -76,7 +91,8 @@ public class MainController {
     private void cargarAlumnos() {
         AlumnoRepository repo = new AlumnoRepository();
         view.getCbAlumnos().setModel(SwingUtil.getComboModelFromList(repo.getListaAlumnos()));
-        // se puede escribir parte del nombre, apellidos o UO para buscar el alumno (como el combo de profesores)
+        // se puede escribir parte del nombre, apellidos o UO para buscar el alumno
+        // (como el combo de profesores)
         ComboBuscable.hacerBuscable(view.getCbAlumnos());
     }
 

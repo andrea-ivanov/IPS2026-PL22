@@ -1,3 +1,4 @@
+
 package view.comun;
 
 import javax.swing.*;
@@ -10,9 +11,12 @@ import javax.swing.table.JTableHeader;
 import java.awt.*;
 
 /**
- * Estética común de todas las vistas (la de las vistas de Estudiante y Secretaría): fondo gris claro,
- * tarjetas blancas con borde redondeado, Tahoma, azul como color principal, tablas con filas alternas
- * y estados de color. Solo afecta al aspecto de los componentes, nunca a su comportamiento.
+ * Estética común de todas las vistas (la de las vistas de Estudiante y
+ * Secretaría): fondo gris claro,
+ * tarjetas blancas con borde redondeado, Tahoma, azul como color principal,
+ * tablas con filas alternas
+ * y estados de color. Solo afecta al aspecto de los componentes, nunca a su
+ * comportamiento.
  */
 public final class Estilo {
     public static final Color FONDO = new Color(248, 249, 250);
@@ -37,6 +41,8 @@ public final class Estilo {
     public static final Font NORMAL = new Font("Tahoma", Font.PLAIN, 12);
     public static final Font BOTON = new Font("Tahoma", Font.BOLD, 12);
 
+    private static final boolean ES_MAC = System.getProperty("os.name", "").toLowerCase().contains("mac");
+
     private Estilo() {
     }
 
@@ -45,7 +51,8 @@ public final class Estilo {
     // =========================================================================
 
     /**
-     * Centra la ventana con su tamaño normal (el que recupera al restaurarla) y la abre maximizada.
+     * Centra la ventana con su tamaño normal (el que recupera al restaurarla) y la
+     * abre maximizada.
      */
     public static void maximizarCentrado(JFrame frame) {
         frame.setLocationRelativeTo(null);
@@ -61,7 +68,8 @@ public final class Estilo {
     }
 
     /**
-     * Cabecera de una vista: sección en azul ("PANEL DE …") con el título debajo a la izquierda
+     * Cabecera de una vista: sección en azul ("PANEL DE …") con el título debajo a
+     * la izquierda
      * y los botones a la derecha.
      */
     public static JPanel cabecera(String seccion, JLabel titulo, JComponent... botones) {
@@ -94,7 +102,10 @@ public final class Estilo {
     // Tarjetas y textos
     // =========================================================================
 
-    /** Panel blanco con borde redondeado, como las tarjetas de la vista de Estudiante. */
+    /**
+     * Panel blanco con borde redondeado, como las tarjetas de la vista de
+     * Estudiante.
+     */
     public static JPanel tarjeta(LayoutManager layout) {
         JPanel panel = new JPanel(layout);
         panel.setBackground(TARJETA);
@@ -136,7 +147,10 @@ public final class Estilo {
     // Tarjeta de filtros (columna izquierda de los listados)
     // =========================================================================
 
-    /** Panel de filtros con su título; se rellena con addFiltro y se coloca con envolverFiltros. */
+    /**
+     * Panel de filtros con su título; se rellena con addFiltro y se coloca con
+     * envolverFiltros.
+     */
     public static JPanel panelFiltros(String titulo) {
         JPanel filterPanel = new JPanel();
         filterPanel.setLayout(new BoxLayout(filterPanel, BoxLayout.Y_AXIS));
@@ -168,7 +182,10 @@ public final class Estilo {
         panel.add(Box.createVerticalStrut(12));
     }
 
-    /** Tarjeta de filtros con ancho fijo y desplazamiento vertical si la ventana es baja. */
+    /**
+     * Tarjeta de filtros con ancho fijo y desplazamiento vertical si la ventana es
+     * baja.
+     */
     public static JComponent envolverFiltros(JPanel filterPanel, int ancho) {
         JPanel tarjeta = new TarjetaAnchoFijo();
         tarjeta.add(filterPanel, BorderLayout.NORTH);
@@ -183,7 +200,8 @@ public final class Estilo {
     }
 
     /**
-     * Tarjeta que dentro de un JScrollPane ocupa siempre el ancho visible (los textos largos se ajustan
+     * Tarjeta que dentro de un JScrollPane ocupa siempre el ancho visible (los
+     * textos largos se ajustan
      * en vez de ensanchar los filtros) y solo se desplaza en vertical.
      */
     private static class TarjetaAnchoFijo extends JPanel implements Scrollable {
@@ -215,13 +233,17 @@ public final class Estilo {
 
         @Override
         public boolean getScrollableTracksViewportHeight() {
+            // Si la ventana es alta la tarjeta llega hasta abajo; si es baja aparece la
+            // barra
             return getParent() instanceof JViewport && getParent().getHeight() > getPreferredSize().height;
         }
     }
 
     /**
-     * Da el estilo común a un diálogo de formulario ya construido: fondo gris claro, el formulario en una
-     * tarjeta blanca (etiquetas en negrita y campos con borde) y el panel de botones transparente.
+     * Da el estilo común a un diálogo de formulario ya construido: fondo gris
+     * claro, el formulario en una
+     * tarjeta blanca (etiquetas en negrita y campos con borde) y el panel de
+     * botones transparente.
      */
     public static void estilizarFormulario(JDialog dialog, JPanel formPanel, JPanel... panelesTransparentes) {
         JPanel contenido = (JPanel) dialog.getContentPane();
@@ -261,6 +283,21 @@ public final class Estilo {
     // Botones
     // =========================================================================
 
+    /**
+     * Asegura que el botón pinte correctamente su color de fondo en todos los
+     * sistemas operativos.
+     * En macOS, el Look and Feel nativo (Aqua) ignora setBackground a menos que se
+     * configure
+     * como opaco y use BasicButtonUI para renderizar los colores personalizados.
+     */
+    public static void prepararBoton(JButton boton) {
+        boton.setOpaque(true);
+        boton.setContentAreaFilled(true);
+        if (ES_MAC) {
+            boton.setUI(new javax.swing.plaf.basic.BasicButtonUI());
+        }
+    }
+
     /** Botón principal (azul). */
     public static JButton botonPrimario(String texto) {
         return estilizarPrimario(new JButton(texto));
@@ -292,6 +329,7 @@ public final class Estilo {
     }
 
     public static JButton estilizarSecundario(JButton boton) {
+        prepararBoton(boton);
         boton.setFont(BOTON);
         boton.setBackground(TARJETA);
         boton.setForeground(TEXTO);
@@ -301,8 +339,12 @@ public final class Estilo {
         return boton;
     }
 
-    /** Botón de color con texto blanco; al deshabilitarse se pinta en gris para que se note. */
+    /**
+     * Botón de color con texto blanco; al deshabilitarse se pinta en gris para que
+     * se note.
+     */
     private static JButton estilizarColor(JButton boton, Color fondo, Color borde) {
+        prepararBoton(boton);
         boton.setFont(BOTON);
         boton.setForeground(Color.WHITE);
         boton.setFocusPainted(false);
@@ -318,17 +360,20 @@ public final class Estilo {
         return boton;
     }
 
-    /** Botón de una fila de tabla ("Ver", "Ver / Gestionar"): blanco con borde y texto azul. */
+    /**
+     * Botón de una fila de tabla ("Ver", "Ver / Gestionar"): blanco con borde y
+     * texto azul.
+     */
     public static JButton botonFila(String texto) {
         return estilizarBotonFila(new JButton(texto));
     }
 
     public static JButton estilizarBotonFila(JButton button) {
+        prepararBoton(button);
         button.setFont(new Font("Tahoma", Font.BOLD, 11));
         button.setForeground(PRIMARIO);
         button.setBackground(TARJETA);
         button.setFocusPainted(false);
-        button.setOpaque(true);
         button.setBorder(new LineBorder(PRIMARIO, 1, true));
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return button;
@@ -363,8 +408,10 @@ public final class Estilo {
     }
 
     /**
-     * Tabla con filas alternas, cabecera gris, solo líneas horizontales y selección azul clara.
-     * Se aplica a nivel de tabla (renderers por defecto y cabecera), así que se mantiene aunque
+     * Tabla con filas alternas, cabecera gris, solo líneas horizontales y selección
+     * azul clara.
+     * Se aplica a nivel de tabla (renderers por defecto y cabecera), así que se
+     * mantiene aunque
      * después se cambie el modelo de la tabla.
      */
     public static void estilizarTabla(JTable tabla) {
@@ -388,9 +435,12 @@ public final class Estilo {
     }
 
     /**
-     * Tabla que, si sus columnas caben, se estira hasta llenar todo el ancho visible aunque se haya
-     * desactivado el redimensionado automático (SwingUtil.autoAdjustColumns ajusta las columnas a su
-     * contenido con AUTO_RESIZE_OFF). Si no caben, se desplaza en horizontal como antes.
+     * Tabla que, si sus columnas caben, se estira hasta llenar todo el ancho
+     * visible aunque se haya
+     * desactivado el redimensionado automático (SwingUtil.autoAdjustColumns ajusta
+     * las columnas a su
+     * contenido con AUTO_RESIZE_OFF). Si no caben, se desplaza en horizontal como
+     * antes.
      */
     public static JTable tablaQueLlena() {
         return new TablaQueLlena(null);
@@ -420,7 +470,8 @@ public final class Estilo {
         @Override
         public void doLayout() {
             if (getAutoResizeMode() == AUTO_RESIZE_OFF && getScrollableTracksViewportWidth()) {
-                // Reparte el ancho sobrante entre las columnas sin cambiar el modo elegido para la tabla
+                // Reparte el ancho sobrante entre las columnas sin cambiar el modo elegido para
+                // la tabla
                 autoResizeMode = AUTO_RESIZE_ALL_COLUMNS;
                 try {
                     super.doLayout();
@@ -529,7 +580,9 @@ public final class Estilo {
         }
     }
 
-    /** Columna de estado: el texto se muestra centrado y con el color del estado. */
+    /**
+     * Columna de estado: el texto se muestra centrado y con el color del estado.
+     */
     public static class RendererEstado extends RendererFilas {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
@@ -545,7 +598,10 @@ public final class Estilo {
         }
     }
 
-    /** Columna numérica centrada; si se indica, en rojo cuando vale 0 (p. ej. plazas libres). */
+    /**
+     * Columna numérica centrada; si se indica, en rojo cuando vale 0 (p. ej. plazas
+     * libres).
+     */
     public static class RendererNumero extends RendererFilas {
         private final boolean resaltarCero;
 

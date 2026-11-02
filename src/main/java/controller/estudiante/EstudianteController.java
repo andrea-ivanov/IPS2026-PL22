@@ -5,14 +5,15 @@ import util.SwingUtil;
 import view.estudiante.EstudianteView;
 import view.estudiante.MisMatriculasView;
 import view.estudiante.SolicitudMatriculaView;
+import view.estudiante.SolicitudMicrocredencialView;
 
 import java.awt.*;
 
 /**
  * Controlador de la vista principal del estudiante.
  * Gestiona la navegación fluida entre el menú de bienvenida, la consulta de
- * matrículas
- * y la solicitud de matrícula, todo en una única ventana centrada.
+ * matrículas, la solicitud de matrícula y la matriculación en microcredenciales,
+ * todo en una única ventana centrada.
  */
 public class EstudianteController {
     private EstudianteView view;
@@ -26,6 +27,9 @@ public class EstudianteController {
 
     private SolicitudMatriculaView solicitudMatriculaView;
     private SolicitudMatriculaController solicitudMatriculaController;
+
+    private SolicitudMicrocredencialView solicitudMicrocredencialView;
+    private SolicitudMicrocredencialController solicitudMicrocredencialController;
 
     public EstudianteController(EstudianteView view) {
         this(view, null, null, null);
@@ -62,6 +66,9 @@ public class EstudianteController {
 
         // 3. Opción 2: Solicitar Nueva Matrícula (se abre dentro de la misma ventana)
         view.getBtnSolicitarMatricula().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMatricula));
+
+        // 4. Opción 3: Solicitar Nueva Microcredencial (se abre dentro de la misma ventana)
+        view.getBtnSolicitarMicrocredencial().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMicrocredencial));
 
         // Mostrar menú inicial y centrar
         view.mostrarMenu();
@@ -123,5 +130,30 @@ public class EstudianteController {
             solicitudMatriculaController.recargarOferta();
         }
         view.mostrarSolicitud();
+    }
+
+    private void abrirSolicitudMicrocredencial() {
+        if (solicitudMicrocredencialView == null) {
+            solicitudMicrocredencialView = new SolicitudMicrocredencialView();
+            solicitudMicrocredencialController = new SolicitudMicrocredencialController(
+                    solicitudMicrocredencialView,
+                    matriculacionModel,
+                    uo,
+                    () -> {
+                        if (misMatriculasController != null) {
+                            misMatriculasController.refrescarTodo();
+                        }
+                        view.mostrarMenu();
+                    });
+            solicitudMicrocredencialController.initController();
+
+            view.getPanelMicrocredencialContainer().removeAll();
+            view.getPanelMicrocredencialContainer().add(solicitudMicrocredencialView.getPanelPrincipal(), BorderLayout.CENTER);
+            view.getPanelMicrocredencialContainer().revalidate();
+            view.getPanelMicrocredencialContainer().repaint();
+        } else {
+            solicitudMicrocredencialController.recargarOferta();
+        }
+        view.mostrarMicrocredencial();
     }
 }
