@@ -5,6 +5,7 @@ import view.admin.AdminOfertaView;
 import view.estudiante.EstudianteView;
 import view.secretario.SecretarioView; // Tu vista de secretario
 import view.profesor.ProfesorView;
+import view.revisor.RevisorView;
 import java.awt.EventQueue;
 import javax.swing.JOptionPane;
 import java.time.LocalDate;
@@ -13,6 +14,7 @@ import controller.admin.AdminOfertaController;
 import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
+import controller.revisor.RevisorController;
 import repository.ActaRepository;
 import repository.AlumnoRepository;
 import repository.MatriculacionRepository;
@@ -103,6 +105,9 @@ public class MainController {
             case "Estudiante":
                 abrirVistaEstudiante();
                 break;
+            case "Revisor externo":
+                abrirVistaRevisor();
+                break;
         }
     }
 
@@ -157,6 +162,14 @@ public class MainController {
         ProfesorController profController = new ProfesorController(profView);
         profController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         profController.initController();
+        view.getFrame().setVisible(false);
+    }
+
+    private void abrirVistaRevisor() {
+        RevisorView revisorView = new RevisorView();
+        RevisorController revisorController = new RevisorController(revisorView);
+        revisorController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
+        revisorController.initController();
         view.getFrame().setVisible(false);
     }
 
