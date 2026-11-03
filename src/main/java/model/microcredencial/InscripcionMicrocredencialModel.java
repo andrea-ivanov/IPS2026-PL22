@@ -1,11 +1,14 @@
 package model.microcredencial;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import model.anoacademico.AnoAcademicoModel;
+import model.matriculacion.GestionMatriculaModel;
 import model.matriculacion.MatriculacionModel;
 import repository.MicrocredencialRepository;
 import util.Database;
+import util.exception.ValidationException;
 
 /**
  * Lógica de negocio de la inscripción del alumno en microcredenciales (HU 35987, docs/DATABASE.md 6.10).
@@ -15,10 +18,12 @@ import util.Database;
  * - Precio = créditos * PRECIO_CREDITO
  */
 public class InscripcionMicrocredencialModel {
+	private Database db;
 	private MicrocredencialRepository repository;
 	private AnoAcademicoModel anoAcademicoModel;
 
 	public InscripcionMicrocredencialModel(Database db) {
+		this.db = db;
 		this.repository = new MicrocredencialRepository(db);
 		this.anoAcademicoModel = new AnoAcademicoModel(db);
 	}
@@ -35,5 +40,54 @@ public class InscripcionMicrocredencialModel {
 
 	private String anioActual() {
 		return anoAcademicoModel.buscarActual().getAnioAcademicoId();
+	}
+
+	/**
+	 * Inscribe al alumno en las microcredenciales indicadas, todas o ninguna. Cada una debe estar en su oferta de hoy.
+	 * Con tarjeta la inscripción queda INSCRITA y con el pago validado; con otro método queda SOLICITADA.
+	 * @throws ValidationException si la lista está vacía, el método de pago no es válido o alguna no es inscribible
+	 */
+	public void inscribir(String alumnoId, List<String> microcredencialIds, String metodoPago, String fechaHoy) {
+		if (microcredencialIds == null || microcredencialIds.isEmpty()) {
+			throw new ValidationException("Selecciona al menos una microcredencial");
+		}
+		if (metodoPago == null || !GestionMatriculaModel.METODOS_PAGO.contains(metodoPago)) {
+			throw new ValidationException("Debe seleccionar un método de pago");
+		}
+		String anio = anioActual();
+		List<OfertaMicrocredencialDTO> oferta = getOferta(alumnoId, fechaHoy);
+		boolean pagada = "TARJETA".equals(metodoPago);
+
+		// Primero se valida todo; después se guarda en una sola transacción
+		List<OfertaMicrocredencialDTO> elegidas = new ArrayList<>();
+		for (String id : microcredencialIds) {
+			OfertaMicrocredencialDTO mc = oferta.stream().filter(o -> o.getMicrocredencialId().equals(id))
+					.findFirst().orElse(null);
+			if (mc == null) {
+				throw new ValidationException(motivoNoInscribible(alumnoId, anio, id));
+			}
+			elegidas.add(mc);
+		}
+
+		db.enTransaccion(conn -> {
+			for (OfertaMicrocredencialDTO mc : elegidas) {
+				String matriculaId = repository.findMatriculaParaRama(alumnoId, anio, mc.getRamaConocimiento());
+				repository.insertarInscripcion(conn, matriculaId, anio, mc.getMicrocredencialId(), fechaHoy,
+						pagada ? "INSCRITA" : "SOLICITADA", mc.getPrecio(), metodoPago, fechaHoy, pagada ? 1 : 0);
+			}
+			return null;
+		});
+	}
+
+	private String motivoNoInscribible(String alumnoId, String anio, String id) {
+		OfertaMicrocredencialDTO info = repository.findNombreYPlazasLibres(id, anio);
+		String nombre = info != null ? info.getNombre() : id;
+		if (repository.existeInscripcion(alumnoId, id)) {
+			return "Ya estás inscrito en la microcredencial " + nombre;
+		}
+		if (info != null && info.getPlazasLibres() <= 0) {
+			return "La microcredencial " + nombre + " no tiene plazas libres";
+		}
+		return "La microcredencial " + nombre + " no está disponible para ti";
 	}
 }

@@ -243,12 +243,26 @@ public class SolicitudMicrocredencialController {
             return;
         }
 
+        // Guarda la inscripción; si el modelo la rechaza, exceptionWrapper muestra el motivo y no hay mensaje de éxito
+        List<String> ids = new ArrayList<>();
+        for (OfertaMicrocredencialDTO mc : resumenActual.getMicrocredenciales()) {
+            ids.add(mc.getMicrocredencialId());
+        }
+        boolean[] guardada = { false };
+        SwingUtil.exceptionWrapper(() -> {
+            inscripcionModel.inscribir(resumenActual.getAlumnoId(), ids, metodoPago, LocalDate.now().toString());
+            guardada[0] = true;
+        });
+        if (!guardada[0]) {
+            return;
+        }
+
         String mensajeExito = "¡Solicitud registrada con éxito!\n\n"
                 + "Modalidad de pago: " + metodoPago + "\n"
                 + "Importe abonado/a abonar: " + String.format("%.2f €", resumenActual.getImporteTotal()) + "\n\n"
                 + (metodoPago.equals("TARJETA")
                 ? "La transacción ha sido validada. Su plaza en la microcredencial queda confirmada."
-                : "Recuerde presentar el justificante de pago antes de la fecha de inicio del curso.");
+                : "Su plaza queda pendiente de validar el pago. Recuerde presentar el justificante de pago antes de la fecha de inicio del curso.");
 
         JOptionPane.showMessageDialog(view.getFrame(), mensajeExito,
                 "Matrícula Solicitada", JOptionPane.INFORMATION_MESSAGE);
