@@ -6,6 +6,7 @@ import view.estudiante.EstudianteView;
 import view.secretario.SecretarioView; // Tu vista de secretario
 import view.profesor.ProfesorView;
 import java.awt.EventQueue;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 import java.time.LocalDate;
@@ -15,6 +16,8 @@ import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
 import model.alumno.AlumnoModel;
+import model.profesor.ProfesorDTO;
+import model.profesor.ProfesorModel;
 import model.acta.ActaModel;
 import model.gestionmatricula.GestionMatriculaModel;
 import util.ComboBuscable;
@@ -40,10 +43,11 @@ public class MainController {
         UIManager.put("OptionPane.cancelButtonText", "Cancelar");
 
         actualizarEstadosPorFecha();
+        cargarProfesores();
         cargarAlumnos();
 
-        view.getCbRoles().addActionListener(e -> actualizarVisibilidadAlumno());
-        actualizarVisibilidadAlumno();
+        view.getCbRoles().addActionListener(e -> actualizarVisibilidadUsuario());
+        actualizarVisibilidadUsuario();
 
         view.getBtnAcceder().addActionListener(e -> SwingUtil.exceptionWrapper(this::gestionarAcceso));
         view.getBtnRecargarBD().addActionListener(e -> SwingUtil.exceptionWrapper(this::recargarBaseDatos));
@@ -82,9 +86,18 @@ public class MainController {
         db.createDatabase(false);
         db.loadDatabase();
         actualizarEstadosPorFecha();
+        cargarProfesores();
         cargarAlumnos();
         JOptionPane.showMessageDialog(view.getFrame(), "Base de datos recargada correctamente.", "Éxito",
                 JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void cargarProfesores() {
+        ProfesorModel profesorModel = new ProfesorModel(db);
+        view.getCbProfesores().setModel(
+                new DefaultComboBoxModel<>(profesorModel.getProfesores().toArray(new ProfesorDTO[0])));
+        // se puede escribir parte del nombre, apellidos o id para buscar el profesor (como el combo de alumnos)
+        ComboBuscable.hacerBuscable(view.getCbProfesores());
     }
 
     private void cargarAlumnos() {
@@ -95,9 +108,11 @@ public class MainController {
         ComboBuscable.hacerBuscable(view.getCbAlumnos());
     }
 
-    private void actualizarVisibilidadAlumno() {
-        boolean esEstudiante = "Estudiante".equals(view.getCbRoles().getSelectedItem());
-        view.getPanelAlumno().setVisible(esEstudiante);
+    /** Solo se ve la fila del usuario que corresponde al rol: el profesor o el alumno */
+    private void actualizarVisibilidadUsuario() {
+        Object rol = view.getCbRoles().getSelectedItem();
+        view.getPanelProfesor().setVisible("Profesor".equals(rol));
+        view.getPanelAlumno().setVisible("Estudiante".equals(rol));
         view.getFrame().revalidate();
         view.getFrame().repaint();
     }
@@ -170,8 +185,16 @@ public class MainController {
     }
 
     private void abrirVistaProfesor() {
+        // lo escrito tiene que corresponder a un único profesor de la lista
+        ProfesorDTO profesor = ComboBuscable.getSeleccion(view.getCbProfesores());
+        if (profesor == null) {
+            JOptionPane.showMessageDialog(view.getFrame(),
+                    "Escriba o seleccione un profesor de la lista (si hay varios que coinciden, elija uno).",
+                    "Seleccione un profesor", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         ProfesorView profView = new ProfesorView();
-        ProfesorController profController = new ProfesorController(profView, db);
+        ProfesorController profController = new ProfesorController(profView, db, profesor);
         profController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         profController.initController();
         view.getFrame().setVisible(false);

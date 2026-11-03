@@ -3,7 +3,6 @@ package view.profesor;
 import model.asignaciondocente.RolDocente;
 import model.grado.GradoDisplayDTO;
 import model.grupo.TipoGrupo;
-import model.profesor.ProfesorDTO;
 import view.comun.Estilo;
 
 import javax.swing.*;
@@ -18,8 +17,8 @@ public class ProfesorView {
     public static final String FILTRO_TODOS = "TODOS";
 
     private JFrame frame;
-    private JComboBox<ProfesorDTO> cbProfesores;
-    private JButton btnCargarAsignaciones;
+    // profesor que ha entrado desde la pantalla de inicio (lo rellena el controlador)
+    private JLabel lblProfesor;
     private JButton btnVolverInicio;
     private JComboBox<String> cbFiltroGrado;
     private JComboBox<String> cbFiltroCurso;
@@ -61,28 +60,8 @@ public class ProfesorView {
 
         btnVolverInicio = Estilo.botonSecundario("Volver al inicio");
         btnVolverInicio.setToolTipText("Volver a la pantalla de selección de rol");
-        JPanel panelProfesor = Estilo.cabecera("PANEL DE PROFESOR", new JLabel("Asignaciones Docentes y Propuestas"),
-                btnVolverInicio);
-
-        JPanel panelSelecProfesor = Estilo.tarjeta(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        panelSelecProfesor.setBorder(Estilo.bordeTarjeta(10, 14));
-        panelSelecProfesor.add(Estilo.etiqueta("Profesor"));
-        // se puede escribir para buscar (ComboBuscable, lo configura el controlador al cargar los profesores)
-        cbProfesores = new JComboBox<>();
-        Estilo.estilizarCampo(cbProfesores);
-        cbProfesores.setPreferredSize(new Dimension(360, 30));
-        panelSelecProfesor.add(cbProfesores);
-
-        // carga las dos pestañas (asignaciones y propuestas) del profesor elegido
-        btnCargarAsignaciones = Estilo.botonPrimario("Cargar profesor");
-        panelSelecProfesor.add(btnCargarAsignaciones);
-        panelSelecProfesor.add(Estilo.textoSecundario("Puede escribir en el desplegable para buscar un profesor"));
-
-        JPanel panelSur = new JPanel(new BorderLayout());
-        panelSur.setOpaque(false);
-        panelSur.setBorder(new EmptyBorder(10, 0, 0, 0));
-        panelSur.add(panelSelecProfesor, BorderLayout.CENTER);
-        panelProfesor.add(panelSur, BorderLayout.SOUTH);
+        lblProfesor = new JLabel("Asignaciones Docentes y Propuestas");
+        JPanel panelProfesor = Estilo.cabecera("PANEL DE PROFESOR", lblProfesor, btnVolverInicio);
         contenido.add(panelProfesor, BorderLayout.NORTH);
 
         JTabbedPane tabs = new JTabbedPane();
@@ -317,12 +296,8 @@ public class ProfesorView {
         return frame;
     }
 
-    public JComboBox<ProfesorDTO> getCbProfesores() {
-        return cbProfesores;
-    }
-
-    public JButton getBtnCargarAsignaciones() {
-        return btnCargarAsignaciones;
+    public JLabel getLblProfesor() {
+        return lblProfesor;
     }
 
     public JButton getBtnVolverInicio() {
