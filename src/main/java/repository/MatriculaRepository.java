@@ -243,19 +243,6 @@ public class MatriculaRepository {
 		return db.executeQueryPojo(OfertaCursoDTO.class, sql, gradoId);
 	}
 
-	/** dni, nombre, apellidos y email del alumno; nulo si no existe */
-	public Object[] findDatosAlumno(String alumnoId) {
-		List<Object[]> rows = db.executeQueryArray("SELECT dni, nombre, apellidos, email FROM Alumno WHERE alumnoId = ?",
-				alumnoId);
-		return rows != null && !rows.isEmpty() ? rows.get(0) : null;
-	}
-
-	/** Nombre del grado; nulo si no existe */
-	public String findNombreGrado(String gradoId) {
-		List<Object[]> rows = db.executeQueryArray("SELECT nombre FROM Grado WHERE gradoId = ?", gradoId);
-		return rows != null && !rows.isEmpty() && rows.get(0)[0] != null ? rows.get(0)[0].toString() : null;
-	}
-
 	// =========================================================================
 	// Registro de la solicitud (dentro de la transacción del modelo)
 	// =========================================================================

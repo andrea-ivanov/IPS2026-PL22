@@ -2,8 +2,12 @@ package model.anoacademico;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Date;
 
+import model.curso.EstadoCurso;
+import model.grado.EstadoGrado;
+import model.grado.GradoModel;
 import repository.AnoAcademicoRepository;
 import util.Database;
 import util.Util;
@@ -15,6 +19,9 @@ import util.exception.ValidationException;
  * Conecta con la tabla AnioAcademico de la base de datos.
  */
 public class AnoAcademicoModel {
+	/** Estado de grado heredado de la BD, equivalente a EN_EXTINCION (EstadoGrado no lo modela) */
+	private static final String ESTADO_GRADO_EXTINTO = "EXTINTO";
+
 	private Database db;
 	private AnoAcademicoRepository repository;
 
@@ -94,7 +101,11 @@ public class AnoAcademicoModel {
 			String inicio = Util.dateToIsoString(inicioAnio);
 			repository.insertar(conn, anioId, inicio, Util.dateToIsoString(finAnio),
 					Util.dateToIsoString(inicioMatriculacion), Util.dateToIsoString(finMatriculacion));
-			repository.actualizarEstadosAlIniciarAno(conn, inicio);
+			repository.actualizarGradosVigenciaCaducada(conn, inicio, GradoModel.ANIOS_VIGENCIA,
+					EstadoGrado.VIGENTE.name(), EstadoGrado.PENDIENTE_RENOVACION.name());
+			repository.actualizarCursosDeGradosEnEstados(conn,
+					Arrays.asList(EstadoGrado.EN_EXTINCION.name(), ESTADO_GRADO_EXTINTO),
+					EstadoCurso.ACTIVO.name(), EstadoCurso.INACTIVO.name());
 			return anioId;
 		});
 	}

@@ -137,7 +137,7 @@ public class CursoModel {
 	public void eliminarCurso(String gradoId, String cursoId, String anioAcademicoId) {
 		db.enTransaccion(conn -> {
 			comprobarEliminable(conn, gradoId, cursoId, anioAcademicoId);
-			cursoRepository.inactivarEnGrado(conn, gradoId, cursoId);
+			cursoRepository.actualizarEstadoEnGrado(conn, gradoId, cursoId, EstadoCurso.INACTIVO.name());
 			return null;
 		});
 	}

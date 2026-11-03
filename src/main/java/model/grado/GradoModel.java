@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
+import model.curso.EstadoCurso;
 import repository.GradoRepository;
 import util.Database;
 import util.exception.ResourceNotFoundException;
@@ -14,6 +15,9 @@ import util.exception.ValidationException;
  * Maneja validaciones de entrada y orquesta las transacciones; el SQL está en GradoRepository.
  */
 public class GradoModel {
+	/** Años de vigencia de un grado desde su fechaInicioVigencia, pasados los cuales debe renovarse */
+	public static final int ANIOS_VIGENCIA = 4;
+
 	private final Database db;
 	private final GradoRepository gradoRepository;
 
@@ -101,8 +105,8 @@ public class GradoModel {
 	public void eliminarGrado(String gradoId, String anioAcademicoId) {
 		db.enTransaccion(conn -> {
 			comprobarEliminable(conn, gradoId, anioAcademicoId);
-			gradoRepository.marcarEnExtincion(conn, gradoId);
-			gradoRepository.inactivarCursos(conn, gradoId);
+			gradoRepository.actualizarEstado(conn, gradoId, EstadoGrado.EN_EXTINCION.name());
+			gradoRepository.actualizarEstadoCursos(conn, gradoId, EstadoCurso.INACTIVO.name());
 			return null;
 		});
 	}

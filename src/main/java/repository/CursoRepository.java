@@ -116,8 +116,9 @@ public class CursoRepository {
 		return matriculas.intValue();
 	}
 
-	public void inactivarEnGrado(Connection conn, String gradoId, String cursoId) throws SQLException {
-		update(conn, "UPDATE GradoCurso SET estado = ? WHERE gradoId = ? AND cursoId = ?",
-				EstadoCurso.INACTIVO.name(), gradoId, cursoId);
+	/** Cambia el estado del curso solo en ese grado */
+	public void actualizarEstadoEnGrado(Connection conn, String gradoId, String cursoId, String estado)
+			throws SQLException {
+		update(conn, "UPDATE GradoCurso SET estado = ? WHERE gradoId = ? AND cursoId = ?", estado, gradoId, cursoId);
 	}
 }

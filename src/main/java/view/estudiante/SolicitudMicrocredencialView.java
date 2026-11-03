@@ -1,5 +1,6 @@
 package view.estudiante;
 
+import model.matriculacion.MatriculacionModel;
 import model.microcredencial.OfertaMicrocredencialDTO;
 import model.microcredencial.ResumenSolicitudMicrocredencialDTO;
 import view.comun.Estilo;
@@ -528,7 +529,7 @@ public class SolicitudMicrocredencialView {
                 String finMat = (String) modelMicrocredenciales.getValueAt(i, 6);
                 String iniCur = (String) modelMicrocredenciales.getValueAt(i, 7);
                 String precStr = (String) modelMicrocredenciales.getValueAt(i, 8);
-                double precio = creds * 20.0;
+                double precio = creds * MatriculacionModel.PRECIO_CREDITO;
                 try {
                     precio = Double.parseDouble(precStr.replace(" €", "").replace(",", "."));
                 } catch (Exception ignored) {
