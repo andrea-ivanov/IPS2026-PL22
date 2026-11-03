@@ -1,7 +1,7 @@
 package view.estudiante;
 
 import model.matriculacion.OfertaCursoDTO;
-import model.matriculacion.OfertaGradoDTO;
+import model.grado.GradoDisplayDTO;
 import model.matriculacion.ResumenSolicitudDTO;
 import view.comun.Estilo;
 
@@ -41,7 +41,7 @@ public class SolicitudMatriculaView {
     private JLabel lblPaso3;
 
     // --- Componentes Paso 1: Selección ---
-    private JComboBox<OfertaGradoDTO> cbGrados;
+    private JComboBox<GradoDisplayDTO> cbGrados;
     private JTable tableCursos;
     private DefaultTableModel modelCursos;
     private JLabel lblTotalCreditos;
@@ -200,9 +200,9 @@ public class SolicitudMatriculaView {
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
                     boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof OfertaGradoDTO) {
-                    OfertaGradoDTO g = (OfertaGradoDTO) value;
-                    setText(g.getGradoId() + " - " + g.getNombre() + " (" + g.getEstado() + ")");
+                if (value instanceof GradoDisplayDTO) {
+                    GradoDisplayDTO g = (GradoDisplayDTO) value;
+                    setText(g.getId() + " - " + g.getNombre() + " (" + g.getEstado() + ")");
                 }
                 return this;
             }
@@ -636,7 +636,7 @@ public class SolicitudMatriculaView {
         return panelPrincipal;
     }
 
-    public JComboBox<OfertaGradoDTO> getCbGrados() {
+    public JComboBox<GradoDisplayDTO> getCbGrados() {
         return cbGrados;
     }
 

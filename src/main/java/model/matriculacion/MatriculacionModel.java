@@ -1,5 +1,6 @@
 package model.matriculacion;
 
+import model.grado.GradoDisplayDTO;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -314,9 +315,9 @@ public class MatriculacionModel {
 	 * Solo incluye grados en estado 'VIGENTE' o 'PENDIENTE_RENOVACION',
 	 * excluyendo los grados 'EN_EXTINCION' y 'EXTINTO'.
 	 *
-	 * @return Lista de OfertaGradoDTO disponibles
+	 * @return Lista de GradoDisplayDTO disponibles
 	 */
-	public List<OfertaGradoDTO> getOfertaGradosDisponibles() {
+	public List<GradoDisplayDTO> getOfertaGradosDisponibles() {
 		return matriculaRepository.findGradosOfertados();
 	}
 
