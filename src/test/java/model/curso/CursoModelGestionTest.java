@@ -13,7 +13,6 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import model.fixtures.BaseModelTest;
-import repository.CursoRepository;
 import repository.MatriculacionRepository;
 import util.exception.ValidationException;
 
@@ -258,7 +257,7 @@ public class CursoModelGestionTest extends BaseModelTest {
 		@Test
 		@DisplayName("TF-01 Grado sin cursos: getCursosPorGrado devuelve una lista vacía")
 		public void testGetCursosPorGrado_SinCursos_ListaVacia() {
-			assertTrue(new CursoRepository(db).getCursosPorGrado("2").isEmpty());
+			assertTrue(new CursoModel(db).getCursosPorGrado("2").isEmpty());
 		}
 
 		@Test
