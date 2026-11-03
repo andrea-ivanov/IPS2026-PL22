@@ -8,7 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import model.alumno.AlumnoModel;
+import repository.AlumnoRepository;
 import repository.AnoAcademicoRepository;
+import repository.GradoRepository;
 import repository.MatriculaRepository;
 import util.Database;
 import util.UnexpectedException;
@@ -33,12 +35,16 @@ public class MatriculacionModel {
 	private AlumnoModel alumnoModel;
 	private AnoAcademicoRepository anoAcademicoRepository;
 	private MatriculaRepository matriculaRepository;
+	private AlumnoRepository alumnoRepository;
+	private GradoRepository gradoRepository;
 
 	public MatriculacionModel(Database db) {
 		this.db = db;
 		this.alumnoModel = new AlumnoModel(db);
 		this.anoAcademicoRepository = new AnoAcademicoRepository(db);
 		this.matriculaRepository = new MatriculaRepository(db);
+		this.alumnoRepository = new AlumnoRepository(db);
+		this.gradoRepository = new GradoRepository(db);
 	}
 
 	/**
@@ -545,7 +551,7 @@ public class MatriculacionModel {
 		resumen.setFechaSolicitud(LocalDate.now().toString());
 
 		if (cleanAlumnoId != null && !cleanAlumnoId.trim().isEmpty()) {
-			Object[] r = matriculaRepository.findDatosAlumno(cleanAlumnoId.trim());
+			Object[] r = alumnoRepository.findDatosAlumno(cleanAlumnoId.trim());
 			if (r != null) {
 				resumen.setDni(r[0] != null ? r[0].toString() : "");
 				String nom = r[1] != null ? r[1].toString() : "";
@@ -556,7 +562,7 @@ public class MatriculacionModel {
 		}
 
 		if (gradoId != null && !gradoId.trim().isEmpty()) {
-			String nombreGrado = matriculaRepository.findNombreGrado(gradoId.trim());
+			String nombreGrado = gradoRepository.findNombre(gradoId.trim());
 			if (nombreGrado != null) {
 				resumen.setNombreGrado(nombreGrado);
 			}

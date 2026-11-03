@@ -18,6 +18,13 @@ public class AlumnoRepository {
 		this.db = db;
 	}
 
+	/** dni, nombre, apellidos y email del alumno; nulo si no existe */
+	public Object[] findDatosAlumno(String alumnoId) {
+		List<Object[]> rows = db.executeQueryArray("SELECT dni, nombre, apellidos, email FROM Alumno WHERE alumnoId = ?",
+				alumnoId);
+		return rows != null && !rows.isEmpty() ? rows.get(0) : null;
+	}
+
     /**
      * Lista de alumnos para el combo del login con formato "UOxxxxx - Nombre Apellidos"
      * (con los apellidos se distinguen los alumnos que se llaman igual)

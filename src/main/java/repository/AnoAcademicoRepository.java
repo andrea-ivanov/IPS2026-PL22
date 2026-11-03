@@ -12,8 +12,6 @@ import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.anoacademico.AnoAcademico;
-import model.curso.EstadoCurso;
-import model.grado.EstadoGrado;
 import util.Database;
 import util.Util;
 
@@ -97,15 +95,28 @@ public class AnoAcademicoRepository {
 	}
 
 	/**
-	 * Efectos del inicio de un año: los grados VIGENTES con la vigencia de 4 años caducada pasan a
-	 * PENDIENTE_RENOVACION y los cursos de grados en extinción pasan a INACTIVO
+	 * Pasa de estado los grados cuya vigencia ha caducado en la fecha de inicio indicada (los que están en
+	 * estadoOrigen y llevan aniosVigencia años o más desde fechaInicioVigencia pasan a estadoDestino)
 	 */
-	public void actualizarEstadosAlIniciarAno(Connection conn, String inicio) throws SQLException {
-		update(conn, "UPDATE Grado SET estado = ? WHERE estado = ? AND date(fechaInicioVigencia, '+4 years') <= ?",
-				EstadoGrado.PENDIENTE_RENOVACION.name(), EstadoGrado.VIGENTE.name(), inicio);
+	public void actualizarGradosVigenciaCaducada(Connection conn, String inicio, int aniosVigencia,
+			String estadoOrigen, String estadoDestino) throws SQLException {
+		update(conn, "UPDATE Grado SET estado = ? WHERE estado = ? AND date(fechaInicioVigencia, ?) <= ?",
+				estadoDestino, estadoOrigen, "+" + aniosVigencia + " years", inicio);
+	}
+
+	/**
+	 * Cambia de estadoOrigen a estadoDestino los cursos de los grados que estén en alguno de los estados de grado
+	 * indicados
+	 */
+	public void actualizarCursosDeGradosEnEstados(Connection conn, List<String> estadosGrado, String estadoOrigen,
+			String estadoDestino) throws SQLException {
+		String marcas = String.join(", ", java.util.Collections.nCopies(estadosGrado.size(), "?"));
+		List<Object> params = new ArrayList<>();
+		params.add(estadoDestino);
+		params.add(estadoOrigen);
+		params.addAll(estadosGrado);
 		update(conn, "UPDATE GradoCurso SET estado = ? WHERE estado = ? "
-				+ "AND gradoId IN (SELECT gradoId FROM Grado WHERE estado IN ('EN_EXTINCION', 'EXTINTO'))",
-				EstadoCurso.INACTIVO.name(), EstadoCurso.ACTIVO.name());
+				+ "AND gradoId IN (SELECT gradoId FROM Grado WHERE estado IN (" + marcas + "))", params.toArray());
 	}
 
 	private Date mapearFecha(Object fechaObj) {

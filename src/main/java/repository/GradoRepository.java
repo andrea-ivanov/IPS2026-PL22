@@ -88,12 +88,19 @@ public class GradoRepository {
 		return matriculas.intValue();
 	}
 
-	public void marcarEnExtincion(Connection conn, String gradoId) throws SQLException {
-		update(conn, "UPDATE Grado SET estado = ? WHERE gradoId = ?", EstadoGrado.EN_EXTINCION.name(), gradoId);
+	/** Nombre del grado; nulo si no existe */
+	public String findNombre(String gradoId) {
+		List<Object[]> rows = db.executeQueryArray("SELECT nombre FROM Grado WHERE gradoId = ?", gradoId);
+		return rows != null && !rows.isEmpty() && rows.get(0)[0] != null ? rows.get(0)[0].toString() : null;
 	}
 
-	/** Pasa a INACTIVO todos los cursos del grado */
-	public void inactivarCursos(Connection conn, String gradoId) throws SQLException {
-		update(conn, "UPDATE GradoCurso SET estado = ? WHERE gradoId = ?", EstadoCurso.INACTIVO.name(), gradoId);
+	/** Cambia el estado del grado */
+	public void actualizarEstado(Connection conn, String gradoId, String estado) throws SQLException {
+		update(conn, "UPDATE Grado SET estado = ? WHERE gradoId = ?", estado, gradoId);
+	}
+
+	/** Cambia el estado de todos los cursos del grado */
+	public void actualizarEstadoCursos(Connection conn, String gradoId, String estado) throws SQLException {
+		update(conn, "UPDATE GradoCurso SET estado = ? WHERE gradoId = ?", estado, gradoId);
 	}
 }
