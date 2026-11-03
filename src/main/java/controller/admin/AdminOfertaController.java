@@ -9,13 +9,12 @@ import model.curso.CursoDisplayDTO;
 import model.curso.CursoEdicionDTO;
 import model.grado.GradoDisplayDTO;
 import model.matriculacion.MatriculacionDisplayDTO;
-import repository.AlumnoRepository;
-import repository.AnoAcademicoRepository;
+import model.anoacademico.AnoAcademicoModel;
 import repository.CursoRepository;
 import repository.GradoRepository;
 import repository.MatriculacionRepository;
 import model.profesor.ProfesorDTO;
-import repository.ProfesorRepository;
+import model.profesor.ProfesorModel;
 import util.Database;
 import util.SwingUtil;
 import util.exception.ValidationException;
@@ -28,6 +27,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -53,7 +53,7 @@ public class AdminOfertaController {
 	private GradoRepository gradoRepository;
 	private CursoRepository cursoRepository;
 	private MatriculacionRepository matriculacionRepository;
-	private AnoAcademicoRepository anoAcademicoRepository;
+	private AnoAcademicoModel anoAcademicoModel;
 
 	// Estado del Año Académico actual
 	private AnoAcademico anoAcademicoActual;
@@ -75,31 +75,20 @@ public class AdminOfertaController {
 		this.gradoRepository = new GradoRepository(db);
 		this.cursoRepository = new CursoRepository(db);
 		this.matriculacionRepository = new MatriculacionRepository(db);
-		this.anoAcademicoRepository = new AnoAcademicoRepository(db);
+		this.anoAcademicoModel = new AnoAcademicoModel(db);
 		this.initView();
 	}
 
 	public AdminOfertaController(AdminOfertaView view,
 			GradoRepository gradoRepository,
 			CursoRepository cursoRepository,
-			MatriculacionRepository matriculacionRepository,
-			AlumnoRepository alumnoRepository, Database db) {
-		this(view, gradoRepository, cursoRepository, matriculacionRepository, alumnoRepository,
-				new AnoAcademicoRepository(db), db);
-	}
-
-	public AdminOfertaController(AdminOfertaView view,
-			GradoRepository gradoRepository,
-			CursoRepository cursoRepository,
-			MatriculacionRepository matriculacionRepository,
-			AlumnoRepository alumnoRepository,
-			AnoAcademicoRepository anoAcademicoRepository, Database db) {
+			MatriculacionRepository matriculacionRepository, Database db) {
 		this.view = view;
 		this.db = db;
 		this.gradoRepository = gradoRepository;
 		this.cursoRepository = cursoRepository;
 		this.matriculacionRepository = matriculacionRepository;
-		this.anoAcademicoRepository = anoAcademicoRepository;
+		this.anoAcademicoModel = new AnoAcademicoModel(db);
 		this.initView();
 	}
 
@@ -261,7 +250,7 @@ public class AdminOfertaController {
 	}
 
 	private void cargarCoordinadores(CursoFormDialog form) {
-		for (ProfesorDTO profesor : new ProfesorRepository(db).getProfesores()) {
+		for (ProfesorDTO profesor : new ProfesorModel(db).getProfesores()) {
 			form.getCbCoordinador().addItem(profesor.toString());
 		}
 	}
@@ -317,8 +306,8 @@ public class AdminOfertaController {
 	}
 
 	public void cargarAnoAcademicoActual() {
-		if (anoAcademicoRepository != null) {
-			this.anoAcademicoActual = anoAcademicoRepository.getAnoAcademicoActual();
+		if (anoAcademicoModel != null) {
+			this.anoAcademicoActual = anoAcademicoModel.buscarActual();
 			if (anoAcademicoActual != null) {
 				view.actualizarAnoAcademico(anoAcademicoActual.getAnoAcademicoDisplay());
 				view.actualizarPeriodoMatriculacion(anoAcademicoActual.getPeriodoMatriculacionDisplay());
@@ -327,7 +316,7 @@ public class AdminOfertaController {
 	}
 
 	private void onNuevoAnoAcademico() {
-		anoAcademicoRepository.validarAnoAnteriorTerminado();
+		anoAcademicoModel.validarAnoAnteriorTerminado(LocalDate.now().toString());
 
 		AnoAcademicoFormDialog form = new AnoAcademicoFormDialog(view.getFrame());
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
@@ -336,7 +325,7 @@ public class AdminOfertaController {
 			Date inicioMatriculacion = parsearFechaInput(form.getTxtInicioMatriculacion().getText());
 			Date finMatriculacion = parsearFechaInput(form.getTxtFinMatriculacion().getText());
 
-			String anioId = anoAcademicoRepository.validarNuevoAnoAcademico(inicioAnio, finAnio, inicioMatriculacion,
+			String anioId = anoAcademicoModel.validarNuevoAnoAcademico(LocalDate.now().toString(), inicioAnio, finAnio, inicioMatriculacion,
 					finMatriculacion);
 
 			int confirm = JOptionPane.showConfirmDialog(form.getDialog(),
@@ -348,7 +337,7 @@ public class AdminOfertaController {
 				return;
 			}
 
-			anoAcademicoRepository.iniciarNuevoAnoAcademico(inicioAnio, finAnio, inicioMatriculacion, finMatriculacion);
+			anoAcademicoModel.iniciarNuevoAnoAcademico(LocalDate.now().toString(), inicioAnio, finAnio, inicioMatriculacion, finMatriculacion);
 			form.cerrar();
 			JOptionPane.showMessageDialog(view.getFrame(), "Año académico " + anioId + " configurado correctamente.",
 					"Configurar Nuevo Año Académico", JOptionPane.INFORMATION_MESSAGE);

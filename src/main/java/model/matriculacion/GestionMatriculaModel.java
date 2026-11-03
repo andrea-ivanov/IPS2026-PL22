@@ -12,6 +12,7 @@ import java.util.Map;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
+import repository.AnoAcademicoRepository;
 import util.Database;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
@@ -66,9 +67,11 @@ public class GestionMatriculaModel {
 	private static final String SQL_ORDEN_GRUPO = "ORDER BY c.nombre, g.tipo DESC, g.grupoCodigo ";
 
 	private Database db;
+	private AnoAcademicoRepository anoAcademicoRepository;
 
 	public GestionMatriculaModel(Database db) {
 		this.db = db;
+		this.anoAcademicoRepository = new AnoAcademicoRepository(db);
 	}
 
 	// =========================================================================
@@ -202,11 +205,7 @@ public class GestionMatriculaModel {
 	 * Años académicos, del más reciente al más antiguo.
 	 */
 	public List<String> getAniosAcademicos() {
-		List<String> anios = new ArrayList<>();
-		for (Object[] fila : db.executeQueryArray("SELECT anioAcademicoId FROM AnioAcademico ORDER BY anioAcademicoId DESC")) {
-			anios.add(fila[0].toString());
-		}
-		return anios;
+		return anoAcademicoRepository.findAllIds();
 	}
 
 	/**
@@ -214,10 +213,7 @@ public class GestionMatriculaModel {
 	 * o el más antiguo si todavía no ha empezado ninguno. Nulo si no hay años.
 	 */
 	public String getAnioAcademicoActual(String fechaHoy) {
-		List<Object[]> result = db.executeQueryArray("SELECT anioAcademicoId FROM AnioAcademico "
-				+ "ORDER BY CASE WHEN fechaInicio <= ? THEN 0 ELSE 1 END, "
-				+ "CASE WHEN fechaInicio <= ? THEN fechaInicio END DESC, fechaInicio LIMIT 1", fechaHoy, fechaHoy);
-		return result.isEmpty() ? null : result.get(0)[0].toString();
+		return anoAcademicoRepository.findEnCursoId(fechaHoy);
 	}
 
 	// =========================================================================
