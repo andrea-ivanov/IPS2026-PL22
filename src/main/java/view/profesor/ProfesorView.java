@@ -40,6 +40,10 @@ public class ProfesorView {
     private JLabel lblProfesorPropuesta;
     private JButton btnEnviarPropuesta;
     private JTable tabPropuestas;
+    // Pestaña de microcredenciales (HU 35988)
+    private JLabel lblProfesorMicrocredencial;
+    private JButton btnProponerMicrocredencial;
+    private JTable tabMicrocredenciales;
 
     public ProfesorView() {
         initialize();
@@ -85,6 +89,7 @@ public class ProfesorView {
         Estilo.estilizarPestanas(tabs);
         tabs.addTab("  Mis asignaciones  ", createAsignacionesPanel());
         tabs.addTab("  Proponer asignatura  ", createPropuestasPanel());
+        tabs.addTab("  Microcredenciales  ", createMicrocredencialesPanel());
         contenido.add(tabs, BorderLayout.CENTER);
     }
 
@@ -245,6 +250,37 @@ public class ProfesorView {
         return panel;
     }
 
+    /**
+     * Pestaña de la HU 35988: botón para proponer una microcredencial (abre MicrocredencialFormDialog)
+     * y listado "Mis microcredenciales" con su estado
+     */
+    private JPanel createMicrocredencialesPanel() {
+        JPanel panel = panelPestana();
+
+        JPanel panelAcciones = Estilo.tarjeta(new BorderLayout(20, 0));
+        panelAcciones.setBorder(Estilo.bordeTarjeta(14, 18));
+        panelAcciones.add(Estilo.tituloTarjeta("Nueva microcredencial"), BorderLayout.WEST);
+        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        panelBotones.setOpaque(false);
+        lblProfesorMicrocredencial = Estilo.textoSecundario("Carga un profesor para proponer microcredenciales");
+        lblProfesorMicrocredencial.setFont(Estilo.ETIQUETA);
+        panelBotones.add(lblProfesorMicrocredencial);
+        btnProponerMicrocredencial = Estilo.botonPrimario("Proponer microcredencial");
+        btnProponerMicrocredencial.setEnabled(false);
+        panelBotones.add(btnProponerMicrocredencial);
+        panelAcciones.add(panelBotones, BorderLayout.EAST);
+        panel.add(panelAcciones, BorderLayout.NORTH);
+
+        JPanel panelMisMicrocredenciales = Estilo.tarjeta(new BorderLayout(0, 10));
+        panelMisMicrocredenciales.add(Estilo.tituloTarjeta("Mis microcredenciales"), BorderLayout.NORTH);
+        tabMicrocredenciales = Estilo.tablaQueLlena();
+        Estilo.estilizarTabla(tabMicrocredenciales);
+        tabMicrocredenciales.setDefaultEditor(Object.class, null);
+        panelMisMicrocredenciales.add(Estilo.scrollTabla(tabMicrocredenciales), BorderLayout.CENTER);
+        panel.add(panelMisMicrocredenciales, BorderLayout.CENTER);
+        return panel;
+    }
+
     private static JPanel panelPestana() {
         JPanel panel = new JPanel(new BorderLayout(0, 12));
         panel.setBackground(Estilo.FONDO);
@@ -363,5 +399,17 @@ public class ProfesorView {
 
     public JTable getTabPropuestas() {
         return tabPropuestas;
+    }
+
+    public JLabel getLblProfesorMicrocredencial() {
+        return lblProfesorMicrocredencial;
+    }
+
+    public JButton getBtnProponerMicrocredencial() {
+        return btnProponerMicrocredencial;
+    }
+
+    public JTable getTabMicrocredenciales() {
+        return tabMicrocredenciales;
     }
 }
