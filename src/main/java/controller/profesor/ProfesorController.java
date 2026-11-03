@@ -6,19 +6,26 @@ import model.acta.CalificacionActaDisplayDTO;
 import model.acta.EstadoActa;
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
 import model.grado.GradoDisplayDTO;
+import model.microcredencial.MicrocredencialDisplayDTO;
+import model.microcredencial.MicrocredencialModel;
 import model.profesor.ProfesorDTO;
 import model.propuesta.PropuestaDisplayDTO;
 import repository.ActaRepository;
+import repository.AnoAcademicoRepository;
+import repository.MicrocredencialRepository;
 import repository.ProfesorRepository;
 import repository.PropuestaRepository;
 import util.ComboBuscable;
 import util.SwingUtil;
 import util.exception.ValidationException;
+import view.profesor.MicrocredencialFormDialog;
 import view.profesor.ProfesorView;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import java.awt.event.WindowAdapter;
@@ -38,6 +45,8 @@ public class ProfesorController {
     private ProfesorRepository repository;
     private ActaRepository actaRepository;
     private PropuestaRepository propuestaRepository;
+    private MicrocredencialRepository microcredencialRepository;
+    private AnoAcademicoRepository anoAcademicoRepository;
     private String profesorId;
     // asignaciones del profesor seleccionado, sin filtrar: los filtros se aplican sobre esta lista
     private List<AsignacionDocenteDisplayDTO> asignaciones = new ArrayList<>();
@@ -54,6 +63,8 @@ public class ProfesorController {
         this.repository = new ProfesorRepository();
         this.actaRepository = new ActaRepository();
         this.propuestaRepository = new PropuestaRepository();
+        this.microcredencialRepository = new MicrocredencialRepository();
+        this.anoAcademicoRepository = new AnoAcademicoRepository();
         this.initView();
     }
 
@@ -86,6 +97,8 @@ public class ProfesorController {
         view.getBtnGuardarNotas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> guardarNotas()));
         view.getBtnCerrarActa().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cerrarActa()));
         view.getBtnEnviarPropuesta().addActionListener(e -> SwingUtil.exceptionWrapper(() -> enviarPropuesta()));
+        view.getBtnProponerMicrocredencial()
+                .addActionListener(e -> SwingUtil.exceptionWrapper(() -> proponerMicrocredencial()));
     }
 
     private void cargarAsignaciones() {
@@ -100,6 +113,7 @@ public class ProfesorController {
         cargarCombosFiltro();
         aplicarFiltros();
         cargarPropuestas();
+        cargarMicrocredenciales();
     }
 
     /** Rellena los combos de grado y curso solo con los valores de las asignaciones del profesor */
@@ -320,6 +334,73 @@ public class ProfesorController {
         view.getTxtCreditosPropuesta().setText("");
         view.getTxtDescripcionPropuesta().setText("");
         view.getListGradosPropuesta().clearSelection();
+    }
+
+    // =========================================================================
+    // HU 35988: propuestas de microcredenciales
+    // =========================================================================
+
+    /** Listado "Mis microcredenciales" del profesor cargado, con su estado */
+    private void cargarMicrocredenciales() {
+        List<MicrocredencialDisplayDTO> microcredenciales = microcredencialRepository.getMicrocredenciales(profesorId);
+        view.getLblProfesorMicrocredencial().setText("Microcredenciales de " + view.getCbProfesores().getSelectedItem()
+                + (microcredenciales.isEmpty() ? ": todavía no ha propuesto ninguna" : ""));
+        TableModel tmodel = SwingUtil.getTableModelFromPojos(microcredenciales,
+                new String[] { "microcredencialId", "anioAcademicoId", "nombre", "ramaConocimiento", "creditos", "plazas",
+                        "inicioMatriculacion", "finMatriculacion", "inicioImparticion", "finImparticion",
+                        "fechaPropuesta", "estado" });
+        ((DefaultTableModel) tmodel).setColumnIdentifiers(
+                new String[] { "Código", "Año", "Nombre", "Rama", "Créditos", "Plazas", "Inicio matrícula",
+                        "Fin matrícula", "Inicio impartición", "Fin impartición", "Propuesta", "Estado" });
+        view.getTabMicrocredenciales().setModel(tmodel);
+        SwingUtil.autoAdjustColumns(view.getTabMicrocredenciales());
+        view.getBtnProponerMicrocredencial().setEnabled(true);
+    }
+
+    /**
+     * Abre el formulario; al guardar se valida todo y se crea como PROPUESTA en el año académico actual.
+     * Si algo no es válido se muestra el error y el formulario sigue abierto
+     */
+    private void proponerMicrocredencial() {
+        if (profesorId == null)
+            throw new ValidationException("Carga primero un profesor");
+        String anioAcademicoId = anoAcademicoRepository.getAnoAcademicoActual().getAnioAcademicoId();
+        MicrocredencialFormDialog form = new MicrocredencialFormDialog(view.getFrame());
+        // el fin de la matriculacion se recalcula al escribir el inicio
+        form.getTxtInicioMatriculacion().getDocument().addDocumentListener(new DocumentListener() {
+            private void actualizar() {
+                form.getTxtFinMatriculacion().setText(
+                        MicrocredencialModel.calcularFinMatriculacion(form.getTxtInicioMatriculacion().getText()));
+            }
+
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                actualizar();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                actualizar();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                actualizar();
+            }
+        });
+        form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+            String nombre = form.getTxtNombre().getText();
+            String id = microcredencialRepository.crearMicrocredencial(profesorId, anioAcademicoId, nombre,
+                    (String) form.getCbRama().getSelectedItem(), form.getTxtPlazas().getText(),
+                    form.getTxtCreditos().getText(), form.getTxtInicioMatriculacion().getText(),
+                    form.getTxtInicioImparticion().getText(), form.getTxtFinImparticion().getText(),
+                    LocalDate.now().toString());
+            form.cerrar();
+            JOptionPane.showMessageDialog(view.getFrame(), "Microcredencial " + nombre.trim() + " propuesta correctamente ("
+                    + id + ", PROPUESTA).", "Proponer microcredencial", JOptionPane.INFORMATION_MESSAGE);
+            cargarMicrocredenciales();
+        }));
+        form.mostrar();
     }
 
     private ActaDisplayDTO getActaSeleccionada() {
