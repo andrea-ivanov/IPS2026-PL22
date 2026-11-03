@@ -53,7 +53,8 @@ public class MicrocredencialFormDialog {
 		txtPlazas = new JTextField(24);
 		formPanel.add(txtPlazas);
 
-		formPanel.add(new JLabel("Créditos (máx. " + formatearMaximo() + "):"));
+		formPanel.add(new JLabel("Créditos (máx. "
+				+ MicrocredencialModel.formatearCreditos(MicrocredencialModel.MAX_CREDITOS_MICROCREDENCIAL) + "):"));
 		txtCreditos = new JTextField(24);
 		formPanel.add(txtCreditos);
 
@@ -88,11 +89,6 @@ public class MicrocredencialFormDialog {
 		Estilo.estilizarFormulario(dialog, formPanel, btnPanel);
 		dialog.pack();
 		dialog.setLocationRelativeTo(owner);
-	}
-
-	private static String formatearMaximo() {
-		double max = MicrocredencialModel.MAX_CREDITOS_MICROCREDENCIAL;
-		return max == Math.floor(max) ? String.valueOf((long) max) : String.valueOf(max);
 	}
 
 	public void mostrar() {
