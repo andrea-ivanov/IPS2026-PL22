@@ -60,19 +60,26 @@ public class InscripcionMicrocredencialModel {
 
 		// Primero se valida todo; después se guarda en una sola transacción
 		List<OfertaMicrocredencialDTO> elegidas = new ArrayList<>();
+		List<String> matriculaIds = new ArrayList<>();
 		for (String id : microcredencialIds) {
 			OfertaMicrocredencialDTO mc = oferta.stream().filter(o -> o.getMicrocredencialId().equals(id))
 					.findFirst().orElse(null);
 			if (mc == null) {
 				throw new ValidationException(motivoNoInscribible(alumnoId, anio, id));
 			}
+			String matriculaId = repository.findMatriculaParaRama(alumnoId, anio, mc.getRamaConocimiento());
+			if (matriculaId == null) {
+				throw new ValidationException("No tienes una matrícula activa en la rama " + mc.getRamaConocimiento()
+						+ " para inscribirte en la microcredencial " + mc.getNombre());
+			}
 			elegidas.add(mc);
+			matriculaIds.add(matriculaId);
 		}
 
 		db.enTransaccion(conn -> {
-			for (OfertaMicrocredencialDTO mc : elegidas) {
-				String matriculaId = repository.findMatriculaParaRama(alumnoId, anio, mc.getRamaConocimiento());
-				repository.insertarInscripcion(conn, matriculaId, anio, mc.getMicrocredencialId(), fechaHoy,
+			for (int i = 0; i < elegidas.size(); i++) {
+				OfertaMicrocredencialDTO mc = elegidas.get(i);
+				repository.insertarInscripcion(conn, matriculaIds.get(i), anio, mc.getMicrocredencialId(), fechaHoy,
 						pagada ? "INSCRITA" : "SOLICITADA", mc.getPrecio(), metodoPago, fechaHoy, pagada ? 1 : 0);
 			}
 			return null;
