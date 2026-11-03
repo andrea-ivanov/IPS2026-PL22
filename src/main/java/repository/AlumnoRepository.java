@@ -10,10 +10,6 @@ import util.Database;
 public class AlumnoRepository {
 	private final Database db;
 
-	public AlumnoRepository() {
-		this(new Database());
-	}
-
 	public AlumnoRepository(Database db) {
 		this.db = db;
 	}

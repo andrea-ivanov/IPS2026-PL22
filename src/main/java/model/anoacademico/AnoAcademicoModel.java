@@ -24,10 +24,6 @@ import util.exception.ValidationException;
 public class AnoAcademicoModel {
 	private Database db;
 
-	public AnoAcademicoModel() {
-		this.db = new Database();
-	}
-
 	public AnoAcademicoModel(Database db) {
 		this.db = db;
 	}

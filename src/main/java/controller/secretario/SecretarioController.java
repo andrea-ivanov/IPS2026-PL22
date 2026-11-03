@@ -9,6 +9,7 @@ import model.matriculacion.SituacionSecretaria;
 import repository.ActaRepository;
 import repository.MatriculacionRepository;
 import view.secretario.SecretarioView;
+import util.Database;
 import util.Paginacion;
 import util.SwingUtil;
 
@@ -36,15 +37,17 @@ public class SecretarioController {
     private SecretarioView view;
     private final Paginacion paginacionMatriculas = new Paginacion(FILAS_POR_PAGINA);
     private final Paginacion paginacionGrupos = new Paginacion(FILAS_POR_PAGINA);
-    private final MatriculacionRepository repository = new MatriculacionRepository();
-    private final ActaRepository actaRepository = new ActaRepository();
+    private final MatriculacionRepository repository;
+    private final ActaRepository actaRepository;
     // Evita recargar la tabla mientras se rellenan los desplegables de filtros
     private boolean cargandoFiltros = false;
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
     private Runnable onVolverInicio = () -> { };
 
-    public SecretarioController(SecretarioView view) {
+    public SecretarioController(SecretarioView view, Database db) {
         this.view = view;
+        this.repository = new MatriculacionRepository(db);
+        this.actaRepository = new ActaRepository(db);
         this.initView();
     }
 

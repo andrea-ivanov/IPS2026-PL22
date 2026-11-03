@@ -20,10 +20,6 @@ public class MatriculacionRepository {
 	private MatriculacionModel matriculacionModel;
 	private GestionMatriculaModel gestionModel;
 
-	public MatriculacionRepository() {
-		this(new Database());
-	}
-
 	public MatriculacionRepository(Database db) {
 		this.matriculacionModel = new MatriculacionModel(db);
 		this.gestionModel = new GestionMatriculaModel(db);

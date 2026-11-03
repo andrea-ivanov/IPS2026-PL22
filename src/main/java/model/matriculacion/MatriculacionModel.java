@@ -32,10 +32,6 @@ public class MatriculacionModel {
 
 	private Database db;
 
-	public MatriculacionModel() {
-		this.db = new Database();
-	}
-
 	public MatriculacionModel(Database db) {
 		this.db = db;
 	}

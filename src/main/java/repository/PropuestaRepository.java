@@ -13,10 +13,6 @@ import util.Database;
 public class PropuestaRepository {
 	private PropuestaModel propuestaModel;
 
-	public PropuestaRepository() {
-		this(new Database());
-	}
-
 	public PropuestaRepository(Database db) {
 		this.propuestaModel = new PropuestaModel(db);
 	}

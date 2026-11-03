@@ -23,9 +23,11 @@ import util.SwingUtil;
 
 public class MainController {
     private MainView view;
+    private final Database db;
 
-    public MainController(MainView view) {
+    public MainController(MainView view, Database db) {
         this.view = view;
+        this.db = db;
         this.initView();
     }
 
@@ -56,12 +58,12 @@ public class MainController {
         // arranque,
         // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA ->
         // FINALIZADA al terminarlo)
-        SwingUtil.exceptionWrapper(() -> new MatriculacionRepository(new Database())
+        SwingUtil.exceptionWrapper(() -> new MatriculacionRepository(db)
                 .actualizarCicloVida(LocalDate.now().toString()));
         // HU 35239: las actas abiertas cuya convocatoria ya ha terminado las cierra el
         // sistema
         // (cierreAutomatico = 1); secretaria las consulta como avisos en su vista
-        SwingUtil.exceptionWrapper(() -> new ActaRepository().cerrarActasVencidas(LocalDate.now().toString()));
+        SwingUtil.exceptionWrapper(() -> new ActaRepository(db).cerrarActasVencidas(LocalDate.now().toString()));
     }
 
     /**
@@ -77,7 +79,6 @@ public class MainController {
         if (confirm != JOptionPane.YES_OPTION)
             return;
 
-        Database db = new Database();
         db.createDatabase(false);
         db.loadDatabase();
         actualizarEstadosPorFecha();
@@ -87,7 +88,7 @@ public class MainController {
     }
 
     private void cargarAlumnos() {
-        AlumnoRepository repo = new AlumnoRepository();
+        AlumnoRepository repo = new AlumnoRepository(db);
         view.getCbAlumnos().setModel(SwingUtil.getComboModelFromList(repo.getListaAlumnos()));
         // se puede escribir parte del nombre, apellidos o UO para buscar el alumno
         // (como el combo de profesores)
@@ -144,7 +145,7 @@ public class MainController {
             }
         }
         EstudianteView estudianteView = new EstudianteView();
-        EstudianteController estudianteController = new EstudianteController(estudianteView, uo, nombre, () -> {
+        EstudianteController estudianteController = new EstudianteController(estudianteView, db, uo, nombre, () -> {
             view.getFrame().setLocationRelativeTo(null);
             view.getFrame().setVisible(true);
         });
@@ -154,7 +155,7 @@ public class MainController {
 
     private void abrirVistaAdministrador() {
         AdminOfertaView adminView = new AdminOfertaView();
-        AdminOfertaController adminController = new AdminOfertaController(adminView);
+        AdminOfertaController adminController = new AdminOfertaController(adminView, db);
         adminController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         adminController.initController();
         view.getFrame().setVisible(false);
@@ -162,7 +163,7 @@ public class MainController {
 
     private void abrirVistaSecretario() {
         SecretarioView secView = new SecretarioView();
-        SecretarioController secController = new SecretarioController(secView);
+        SecretarioController secController = new SecretarioController(secView, db);
         secController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         secController.initController();
         view.getFrame().setVisible(false);
@@ -170,7 +171,7 @@ public class MainController {
 
     private void abrirVistaProfesor() {
         ProfesorView profView = new ProfesorView();
-        ProfesorController profController = new ProfesorController(profView);
+        ProfesorController profController = new ProfesorController(profView, db);
         profController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         profController.initController();
         view.getFrame().setVisible(false);
@@ -185,8 +186,9 @@ public class MainController {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
+                    Database db = new Database();
                     MainView vistaPrincipal = new MainView();
-                    MainController controladorPrincipal = new MainController(vistaPrincipal);
+                    MainController controladorPrincipal = new MainController(vistaPrincipal, db);
                     controladorPrincipal.initController();
                 } catch (Exception e) {
                     e.printStackTrace();

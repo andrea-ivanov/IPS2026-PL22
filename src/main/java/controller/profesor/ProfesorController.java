@@ -16,6 +16,7 @@ import repository.MicrocredencialRepository;
 import repository.ProfesorRepository;
 import repository.PropuestaRepository;
 import util.ComboBuscable;
+import util.Database;
 import util.SwingUtil;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
@@ -59,13 +60,13 @@ public class ProfesorController {
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
     private Runnable onVolverInicio = () -> { };
 
-    public ProfesorController(ProfesorView view) {
+    public ProfesorController(ProfesorView view, Database db) {
         this.view = view;
-        this.repository = new ProfesorRepository();
-        this.actaRepository = new ActaRepository();
-        this.propuestaRepository = new PropuestaRepository();
-        this.microcredencialRepository = new MicrocredencialRepository();
-        this.anoAcademicoRepository = new AnoAcademicoRepository();
+        this.repository = new ProfesorRepository(db);
+        this.actaRepository = new ActaRepository(db);
+        this.propuestaRepository = new PropuestaRepository(db);
+        this.microcredencialRepository = new MicrocredencialRepository(db);
+        this.anoAcademicoRepository = new AnoAcademicoRepository(db);
         this.initView();
     }
 

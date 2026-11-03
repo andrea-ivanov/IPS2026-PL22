@@ -17,10 +17,6 @@ public class CursoRepository {
 	private final CursoModel cursoModel;
 	private Database db;
 
-	public CursoRepository() {
-		this(new Database());
-	}
-
 	public CursoRepository(Database db) {
 		this.db = db;
 		this.cursoModel = new CursoModel(db);

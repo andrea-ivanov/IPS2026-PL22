@@ -12,10 +12,6 @@ import util.Database;
 public class MicrocredencialRepository {
 	private MicrocredencialModel microcredencialModel;
 
-	public MicrocredencialRepository() {
-		this(new Database());
-	}
-
 	public MicrocredencialRepository(Database db) {
 		this.microcredencialModel = new MicrocredencialModel(db);
 	}
