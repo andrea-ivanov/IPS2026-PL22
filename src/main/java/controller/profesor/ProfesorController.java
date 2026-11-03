@@ -12,7 +12,6 @@ import model.profesor.ProfesorDTO;
 import model.propuesta.PropuestaDisplayDTO;
 import repository.ActaRepository;
 import repository.AnoAcademicoRepository;
-import repository.MicrocredencialRepository;
 import repository.ProfesorRepository;
 import repository.PropuestaRepository;
 import util.ComboBuscable;
@@ -47,7 +46,7 @@ public class ProfesorController {
     private ProfesorRepository repository;
     private ActaRepository actaRepository;
     private PropuestaRepository propuestaRepository;
-    private MicrocredencialRepository microcredencialRepository;
+    private MicrocredencialModel microcredencialModel;
     private AnoAcademicoRepository anoAcademicoRepository;
     private String profesorId;
     // asignaciones del profesor seleccionado, sin filtrar: los filtros se aplican sobre esta lista
@@ -65,7 +64,7 @@ public class ProfesorController {
         this.repository = new ProfesorRepository(db);
         this.actaRepository = new ActaRepository(db);
         this.propuestaRepository = new PropuestaRepository(db);
-        this.microcredencialRepository = new MicrocredencialRepository(db);
+        this.microcredencialModel = new MicrocredencialModel(db);
         this.anoAcademicoRepository = new AnoAcademicoRepository(db);
         this.initView();
     }
@@ -344,7 +343,7 @@ public class ProfesorController {
 
     /** Listado "Mis microcredenciales" del profesor cargado, con su estado */
     private void cargarMicrocredenciales() {
-        List<MicrocredencialDisplayDTO> microcredenciales = microcredencialRepository.getMicrocredenciales(profesorId);
+        List<MicrocredencialDisplayDTO> microcredenciales = microcredencialModel.getMicrocredenciales(profesorId);
         view.getLblProfesorMicrocredencial().setText("Microcredenciales de " + view.getCbProfesores().getSelectedItem()
                 + (microcredenciales.isEmpty() ? ": todavía no ha propuesto ninguna" : ""));
         TableModel tmodel = SwingUtil.getTableModelFromPojos(microcredenciales,
@@ -397,7 +396,7 @@ public class ProfesorController {
         });
         form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
             String nombre = form.getTxtNombre().getText();
-            String id = microcredencialRepository.crearMicrocredencial(profesorId, anioAcademicoId, nombre,
+            String id = microcredencialModel.crearMicrocredencial(profesorId, anioAcademicoId, nombre,
                     (String) form.getCbRama().getSelectedItem(), form.getTxtPlazas().getText(),
                     form.getTxtCreditos().getText(), form.getTxtInicioMatriculacion().getText(),
                     form.getTxtInicioImparticion().getText(), form.getTxtFinImparticion().getText(),

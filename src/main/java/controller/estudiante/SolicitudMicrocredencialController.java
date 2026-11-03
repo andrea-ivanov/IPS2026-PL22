@@ -1,8 +1,9 @@
 package controller.estudiante;
 
 import model.matriculacion.MatriculacionModel;
-import model.matriculacion.OfertaMicrocredencialDTO;
-import model.matriculacion.ResumenSolicitudMicrocredencialDTO;
+import model.microcredencial.InscripcionMicrocredencialModel;
+import model.microcredencial.OfertaMicrocredencialDTO;
+import model.microcredencial.ResumenSolicitudMicrocredencialDTO;
 import util.SwingUtil;
 import view.estudiante.SolicitudMicrocredencialView;
 
@@ -24,6 +25,7 @@ import java.util.List;
 public class SolicitudMicrocredencialController {
     private final SolicitudMicrocredencialView view;
     private final MatriculacionModel model;
+    private final InscripcionMicrocredencialModel inscripcionModel;
     private final String alumnoId;
     private final Runnable onVolverMenu;
 
@@ -33,9 +35,11 @@ public class SolicitudMicrocredencialController {
     private ResumenSolicitudMicrocredencialDTO resumenActual;
 
     public SolicitudMicrocredencialController(SolicitudMicrocredencialView view, MatriculacionModel model,
+                                            InscripcionMicrocredencialModel inscripcionModel,
                                             String alumnoId, Runnable onVolverMenu) {
         this.view = view;
         this.model = model;
+        this.inscripcionModel = inscripcionModel;
         this.alumnoId = alumnoId;
         this.onVolverMenu = onVolverMenu;
         this.ramasHabilitadas = new ArrayList<>();
@@ -85,13 +89,14 @@ public class SolicitudMicrocredencialController {
     }
 
     private void cargarRamasYOferta() {
-        // Consultar ramas de conocimiento en las que el alumno está o ha estado matriculado
-        ramasHabilitadas = model.getRamasHabilitadasPorEstudiante(alumnoId);
+        // Ramas de los grados con matrícula no cancelada del alumno en el año actual
+        String cleanId = model.resolverAlumnoId(alumnoId);
+        ramasHabilitadas = inscripcionModel.getRamasHabilitadas(cleanId);
 
         if (ramasHabilitadas == null || ramasHabilitadas.isEmpty()) {
-            // Caso alumno sin grados previos ni activos: advertencia visible
+            // Caso alumno sin matrícula no cancelada este año: advertencia visible
             view.getLblRamasHabilitadas().setText("<html><font color='#C0392B'><b>Sin ramas habilitadas:</b> "
-                    + "Para acceder a microcredenciales debe estar matriculado o haber finalizado un grado universitario.</font></html>");
+                    + "Para acceder a microcredenciales debe tener una matrícula no cancelada en un grado este año.</font></html>");
             view.getCbFiltroRama().removeAllItems();
             view.getCbFiltroRama().addItem("Ninguna rama disponible");
             todasMicrocredenciales = new ArrayList<>();
@@ -110,7 +115,7 @@ public class SolicitudMicrocredencialController {
         }
 
         // Consultar oferta compatible
-        todasMicrocredenciales = model.getOfertaMicrocredenciales(ramasHabilitadas);
+        todasMicrocredenciales = inscripcionModel.getOferta(cleanId, LocalDate.now().toString());
         actualizarTablaConLista(todasMicrocredenciales);
     }
 
@@ -122,7 +127,7 @@ public class SolicitudMicrocredencialController {
         } else {
             List<OfertaMicrocredencialDTO> filtradas = new ArrayList<>();
             for (OfertaMicrocredencialDTO mc : todasMicrocredenciales) {
-                if (seleccion.equalsIgnoreCase(mc.getRamaConocimiento())) {
+                if (seleccion.equals(mc.getRamaConocimiento())) {
                     filtradas.add(mc);
                 }
             }
@@ -137,18 +142,16 @@ public class SolicitudMicrocredencialController {
 
         if (lista != null) {
             for (OfertaMicrocredencialDTO mc : lista) {
-                String plazasTexto = mc.getPlazasOcupadas() + " / " + mc.getPlazasOfertadas();
-                double precio = mc.getPrecio() > 0 ? mc.getPrecio() : mc.getCreditos() * MatriculacionModel.PRECIO_CREDITO;
                 tm.addRow(new Object[] {
                         Boolean.FALSE,
                         mc.getMicrocredencialId(),
                         mc.getNombre(),
                         mc.getRamaConocimiento(),
                         mc.getCreditos(),
-                        plazasTexto,
-                        mc.getFechaFinMatriculacion() != null ? mc.getFechaFinMatriculacion() : "-",
-                        mc.getFechaInicio() != null ? mc.getFechaInicio() : "-",
-                        String.format("%.2f €", precio)
+                        String.valueOf(mc.getPlazasLibres()),
+                        mc.getFinMatriculacion(),
+                        mc.getInicioImparticion(),
+                        String.format("%.2f €", mc.getPrecio())
                 });
             }
         }
@@ -192,7 +195,7 @@ public class SolicitudMicrocredencialController {
         int totalCreditos = 0;
         double totalImporte = 0.0;
         for (OfertaMicrocredencialDTO mc : seleccionadas) {
-            totalCreditos += (int) mc.getCreditos();
+            totalCreditos += mc.getCreditos().intValue();
             totalImporte += mc.getPrecio();
         }
 
