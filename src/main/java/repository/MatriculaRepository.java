@@ -15,7 +15,7 @@ import model.gestionmatricula.MatriculaSecretariaDTO;
 import model.matriculacion.CalificacionDisplayDTO;
 import model.matriculacion.MatriculacionDisplayDTO;
 import model.matriculacion.OfertaCursoDTO;
-import model.matriculacion.OfertaGradoDTO;
+import model.grado.GradoDisplayDTO;
 import util.Database;
 
 /**
@@ -225,12 +225,12 @@ public class MatriculaRepository {
 	// =========================================================================
 
 	/** Grados VIGENTE o PENDIENTE_RENOVACION, por nombre */
-	public List<OfertaGradoDTO> findGradosOfertados() {
-		String sql = "SELECT gradoId, nombre, facultad, ramaConocimiento, estado "
+	public List<GradoDisplayDTO> findGradosOfertados() {
+		String sql = "SELECT gradoId AS id, nombre, facultad, ramaConocimiento AS rama, estado "
 				+ "FROM Grado "
 				+ "WHERE estado IN ('VIGENTE', 'PENDIENTE_RENOVACION') "
 				+ "ORDER BY nombre ASC";
-		return db.executeQueryPojo(OfertaGradoDTO.class, sql);
+		return db.executeQueryPojo(GradoDisplayDTO.class, sql);
 	}
 
 	/** Cursos ACTIVO del grado, por año y nombre (sin precio ni convocatorias, que calcula el modelo) */

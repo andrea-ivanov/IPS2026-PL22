@@ -1,8 +1,7 @@
 package view.estudiante;
 
 import model.matriculacion.OfertaCursoDTO;
-import model.matriculacion.OfertaGradoDTO;
-import model.matriculacion.OfertaMicrocredencialDTO;
+import model.grado.GradoDisplayDTO;
 import model.matriculacion.ResumenSolicitudDTO;
 import model.matriculacion.ResumenSolicitudMicrocredencialDTO;
 import view.comun.Estilo;
@@ -20,11 +19,14 @@ import java.util.List;
 
 /**
  * Vista unificada de Solicitud de Matrícula (HU 35235 y HU 35987).
- * Integra tanto la matrícula en Grados Oficiales como en Microcredenciales Universitarias
+ * Integra tanto la matrícula en Grados Oficiales como en Microcredenciales
+ * Universitarias
  * en una interfaz coherente de 3 pasos (Asistente de Matrícula):
- * - Paso 1: Selector de tipo de matrícula (Grado / Microcredenciales) y tabla de oferta con checkboxes y cálculo en vivo.
+ * - Paso 1: Selector de tipo de matrícula (Grado / Microcredenciales) y tabla
+ * de oferta con checkboxes y cálculo en vivo.
  * - Paso 2: Resumen previo consolidado antes de confirmar.
- * - Paso 3: Selección de modalidad de pago (Tarjeta, Transferencia, Carta de pago) y confirmación ("Sí" / "No").
+ * - Paso 3: Selección de modalidad de pago (Tarjeta, Transferencia, Carta de
+ * pago) y confirmación ("Sí" / "No").
  */
 public class SolicitudMatriculaView {
     public static final String PASO_SELECCION = "PASO_SELECCION";
@@ -44,15 +46,8 @@ public class SolicitudMatriculaView {
     private JLabel lblPaso2;
     private JLabel lblPaso3;
 
-    // --- Componentes Paso 1: Selector de Modo ---
-    private JRadioButton rbModoGrado;
-    private JRadioButton rbModoMicrocredencial;
-    private ButtonGroup grupoModoMatricula;
-    private CardLayout cardLayoutModos;
-    private JPanel panelContenidoModos;
-
-    // --- Componentes Paso 1: Modo Grado ---
-    private JComboBox<OfertaGradoDTO> cbGrados;
+    // --- Componentes Paso 1: Selección ---
+    private JComboBox<GradoDisplayDTO> cbGrados;
     private JTable tableCursos;
     private DefaultTableModel modelCursos;
     private JLabel lblInfoEstudiante;
@@ -215,7 +210,8 @@ public class SolicitudMatriculaView {
         panelSelectorTipo.add(rbModoMicrocredencial);
         panel.add(panelSelectorTipo, BorderLayout.NORTH);
 
-        // Centro: CardLayout para conmutar entre vista de Grado y vista de Microcredenciales
+        // Centro: CardLayout para conmutar entre vista de Grado y vista de
+        // Microcredenciales
         cardLayoutModos = new CardLayout();
         panelContenidoModos = new JPanel(cardLayoutModos);
         panelContenidoModos.setOpaque(false);
@@ -303,9 +299,9 @@ public class SolicitudMatriculaView {
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
                     boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof OfertaGradoDTO) {
-                    OfertaGradoDTO g = (OfertaGradoDTO) value;
-                    setText(g.getGradoId() + " - " + g.getNombre() + " (" + g.getEstado() + ")");
+                if (value instanceof GradoDisplayDTO) {
+                    GradoDisplayDTO g = (GradoDisplayDTO) value;
+                    setText(g.getId() + " - " + g.getNombre() + " (" + g.getEstado() + ")");
                 }
                 return this;
             }
@@ -327,7 +323,8 @@ public class SolicitudMatriculaView {
                 new LineBorder(new Color(222, 226, 230), 1, true),
                 new EmptyBorder(8, 8, 8, 8)));
 
-        String[] columnas = { "Seleccionar", "Código", "Asignatura", "Curso", "Itinerario", "Créditos", "Convocatorias", "Precio (€)" };
+        String[] columnas = { "Seleccionar", "Código", "Asignatura", "Curso", "Itinerario", "Créditos", "Convocatorias",
+                "Precio (€)" };
         modelCursos = new DefaultTableModel(columnas, 0) {
             @Override
             public Class<?> getColumnClass(int col) {
@@ -792,14 +789,20 @@ public class SolicitudMatriculaView {
     }
 
     public void cargarResumenGrado(ResumenSolicitudDTO resumen) {
-        if (resumen == null) return;
-        lblResumenEstudiante.setText("<html><b>Estudiante:</b> " + (resumen.getNombreCompleto() != null ? resumen.getNombreCompleto() : "")
-                + " &nbsp;|&nbsp; <b>DNI:</b> " + (resumen.getDni() != null ? resumen.getDni() : "")
-                + " &nbsp;|&nbsp; <b>Identificador:</b> " + (resumen.getAlumnoId() != null ? resumen.getAlumnoId() : "") + "</html>");
-        lblResumenGradoOTipo.setText("<html><b>Grado solicitado:</b> " + (resumen.getNombreGrado() != null ? resumen.getNombreGrado() : "")
-                + " (" + (resumen.getGradoId() != null ? resumen.getGradoId() : "") + ")</html>");
-        lblResumenAnioOFecha.setText("<html><b>Año Académico:</b> " + (resumen.getAnioAcademicoId() != null ? resumen.getAnioAcademicoId() : "")
-                + " &nbsp;|&nbsp; <b>Fecha de solicitud:</b> " + (resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : "") + "</html>");
+        if (resumen == null)
+            return;
+        lblResumenEstudiante.setText(
+                "<html><b>Estudiante:</b> " + (resumen.getNombreCompleto() != null ? resumen.getNombreCompleto() : "")
+                        + " &nbsp;|&nbsp; <b>DNI:</b> " + (resumen.getDni() != null ? resumen.getDni() : "")
+                        + " &nbsp;|&nbsp; <b>Identificador:</b> "
+                        + (resumen.getAlumnoId() != null ? resumen.getAlumnoId() : "") + "</html>");
+        lblResumenGradoOTipo.setText(
+                "<html><b>Grado solicitado:</b> " + (resumen.getNombreGrado() != null ? resumen.getNombreGrado() : "")
+                        + " (" + (resumen.getGradoId() != null ? resumen.getGradoId() : "") + ")</html>");
+        lblResumenAnioOFecha.setText("<html><b>Año Académico:</b> "
+                + (resumen.getAnioAcademicoId() != null ? resumen.getAnioAcademicoId() : "")
+                + " &nbsp;|&nbsp; <b>Fecha de solicitud:</b> "
+                + (resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : "") + "</html>");
 
         modelResumen.setRowCount(0);
         if (resumen.getAsignaturas() != null) {
@@ -818,59 +821,113 @@ public class SolicitudMatriculaView {
         lblPagoImporteFinal.setText(String.format("Importe definitivo a abonar: %.2f €", resumen.getImporteTotal()));
     }
 
-    public void cargarResumenMicrocredencial(ResumenSolicitudMicrocredencialDTO resumen) {
-        if (resumen == null) return;
-        lblResumenEstudiante.setText("<html><b>Estudiante:</b> " + (resumen.getNombreCompleto() != null ? resumen.getNombreCompleto() : "")
-                + " &nbsp;|&nbsp; <b>DNI:</b> " + (resumen.getDni() != null ? resumen.getDni() : "")
-                + " &nbsp;|&nbsp; <b>Identificador:</b> " + (resumen.getAlumnoId() != null ? resumen.getAlumnoId() : "") + "</html>");
-        lblResumenGradoOTipo.setText("<html><b>Modalidad:</b> Microcredenciales Universitarias de Especialización</html>");
-        lblResumenAnioOFecha.setText("<html><b>Fecha de solicitud:</b> " + (resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : "") + "</html>");
-
-        modelResumen.setRowCount(0);
-        if (resumen.getMicrocredenciales() != null) {
-            for (OfertaMicrocredencialDTO mc : resumen.getMicrocredenciales()) {
-                modelResumen.addRow(new Object[] {
-                        mc.getMicrocredencialId(),
-                        mc.getNombre(),
-                        mc.getRamaConocimiento(),
-                        mc.getCreditos(),
-                        String.format("%.2f €", mc.getPrecio())
-                });
-            }
-        }
-        lblResumenCreditosTotales.setText(String.format("Créditos totales: %d ECTS", resumen.getCreditosTotales()));
-        lblResumenImporteTotal.setText(String.format("Importe Total a Pagar: %.2f €", resumen.getImporteTotal()));
-        lblPagoImporteFinal.setText(String.format("Importe definitivo a abonar: %.2f €", resumen.getImporteTotal()));
+    // Getters
+    public JFrame getFrame() {
+        return frame;
     }
 
-    // Compatibilidad para tests existentes
-    public void cargarResumen(ResumenSolicitudDTO resumen) {
-        cargarResumenGrado(resumen);
+    public JPanel getPanelPrincipal() {
+        return panelPrincipal;
+    }
+
+    public JComboBox<GradoDisplayDTO> getCbGrados() {
+        return cbGrados;
     }
 
     // Getters
-    public JFrame getFrame() { return frame; }
-    public JPanel getPanelPrincipal() { return panelPrincipal; }
-    public JRadioButton getRbModoGrado() { return rbModoGrado; }
-    public JRadioButton getRbModoMicrocredencial() { return rbModoMicrocredencial; }
-    public JComboBox<OfertaGradoDTO> getCbGrados() { return cbGrados; }
-    public JTable getTableCursos() { return tableCursos; }
-    public DefaultTableModel getModelCursos() { return modelCursos; }
-    public JLabel getLblInfoEstudiante() { return lblInfoEstudiante; }
-    public JLabel getLblRamasHabilitadas() { return lblRamasHabilitadas; }
-    public JComboBox<String> getCbFiltroRama() { return cbFiltroRama; }
-    public JTable getTableMicrocredenciales() { return tableMicrocredenciales; }
-    public DefaultTableModel getModelMicrocredenciales() { return modelMicrocredenciales; }
-    public JButton getBtnContinuarPaso2() { return btnContinuarPaso2; }
-    public JButton getBtnVolverMenuDesdePaso1() { return btnVolverMenuDesdePaso1; }
-    public JButton getBtnModificarAsignaturas() { return btnModificarSeleccion; }
-    public JButton getBtnModificarSeleccion() { return btnModificarSeleccion; }
-    public JButton getBtnContinuarPaso3() { return btnContinuarPaso3; }
-    public JButton getBtnVolverPaso2() { return btnVolverPaso2; }
-    public JButton getBtnConfirmarMatricula() { return btnConfirmarMatricula; }
-    public JRadioButton getRbTarjeta() { return rbTarjeta; }
-    public JRadioButton getRbTransferencia() { return rbTransferencia; }
-    public JRadioButton getRbCartaPago() { return rbCartaPago; }
-    public JTable getTableResumen() { return tableResumen; }
-    public DefaultTableModel getModelResumen() { return modelResumen; }
+    public JFrame getFrame() {
+        return frame;
+    }
+
+    public JPanel getPanelPrincipal() {
+        return panelPrincipal;
+    }
+
+    public JRadioButton getRbModoGrado() {
+        return rbModoGrado;
+    }
+
+    public JRadioButton getRbModoMicrocredencial() {
+        return rbModoMicrocredencial;
+    }
+
+    public JComboBox<OfertaGradoDTO> getCbGrados() {
+        return cbGrados;
+    }
+
+    public JTable getTableCursos() {
+        return tableCursos;
+    }
+
+    public DefaultTableModel getModelCursos() {
+        return modelCursos;
+    }
+
+    public JLabel getLblInfoEstudiante() {
+        return lblInfoEstudiante;
+    }
+
+    public JLabel getLblRamasHabilitadas() {
+        return lblRamasHabilitadas;
+    }
+
+    public JComboBox<String> getCbFiltroRama() {
+        return cbFiltroRama;
+    }
+
+    public JTable getTableMicrocredenciales() {
+        return tableMicrocredenciales;
+    }
+
+    public DefaultTableModel getModelMicrocredenciales() {
+        return modelMicrocredenciales;
+    }
+
+    public JButton getBtnContinuarPaso2() {
+        return btnContinuarPaso2;
+    }
+
+    public JButton getBtnVolverMenuDesdePaso1() {
+        return btnVolverMenuDesdePaso1;
+    }
+
+    public JButton getBtnModificarAsignaturas() {
+        return btnModificarSeleccion;
+    }
+
+    public JButton getBtnModificarSeleccion() {
+        return btnModificarSeleccion;
+    }
+
+    public JButton getBtnContinuarPaso3() {
+        return btnContinuarPaso3;
+    }
+
+    public JButton getBtnVolverPaso2() {
+        return btnVolverPaso2;
+    }
+
+    public JButton getBtnConfirmarMatricula() {
+        return btnConfirmarMatricula;
+    }
+
+    public JRadioButton getRbTarjeta() {
+        return rbTarjeta;
+    }
+
+    public JRadioButton getRbTransferencia() {
+        return rbTransferencia;
+    }
+
+    public JRadioButton getRbCartaPago() {
+        return rbCartaPago;
+    }
+
+    public JTable getTableResumen() {
+        return tableResumen;
+    }
+
+    public DefaultTableModel getModelResumen() {
+        return modelResumen;
+    }
 }

@@ -2,8 +2,7 @@ package controller.estudiante;
 
 import model.matriculacion.MatriculacionModel;
 import model.matriculacion.OfertaCursoDTO;
-import model.matriculacion.OfertaGradoDTO;
-import model.matriculacion.OfertaMicrocredencialDTO;
+import model.grado.GradoDisplayDTO;
 import model.matriculacion.ResumenSolicitudDTO;
 import model.matriculacion.ResumenSolicitudMicrocredencialDTO;
 import util.exception.ValidationException;
@@ -119,9 +118,9 @@ public class SolicitudMatriculaController {
     // =========================================================================
     private void cargarGradosDisponibles() {
         view.getCbGrados().removeAllItems();
-        List<OfertaGradoDTO> grados = model.getOfertaGradosDisponibles();
+        List<GradoDisplayDTO> grados = model.getOfertaGradosDisponibles();
         if (grados != null && !grados.isEmpty()) {
-            for (OfertaGradoDTO g : grados) {
+            for (GradoDisplayDTO g : grados) {
                 view.getCbGrados().addItem(g);
             }
             cargarAsignaturasDelGradoSeleccionado();
@@ -131,7 +130,7 @@ public class SolicitudMatriculaController {
     }
 
     private void cargarAsignaturasDelGradoSeleccionado() {
-        OfertaGradoDTO grado = (OfertaGradoDTO) view.getCbGrados().getSelectedItem();
+        GradoDisplayDTO grado = (GradoDisplayDTO) view.getCbGrados().getSelectedItem();
         if (grado == null) {
             actualizandoTabla = true;
             view.getModelCursos().setRowCount(0);
@@ -144,7 +143,7 @@ public class SolicitudMatriculaController {
         DefaultTableModel tm = view.getModelCursos();
         tm.setRowCount(0);
 
-        List<OfertaCursoDTO> cursos = model.getOfertaCursosPorGrado(grado.getGradoId(), alumnoId);
+        List<OfertaCursoDTO> cursos = model.getOfertaCursosPorGrado(grado.getId(), alumnoId);
         if (cursos != null) {
             for (OfertaCursoDTO c : cursos) {
                 double precio = c.getPrecio() > 0 ? c.getPrecio() : c.getCreditos() * MatriculacionModel.PRECIO_CREDITO;
@@ -256,7 +255,8 @@ public class SolicitudMatriculaController {
     }
 
     private boolean coincideRama(String r1, String r2) {
-        if (r1 == null || r2 == null) return false;
+        if (r1 == null || r2 == null)
+            return false;
         String n1 = java.text.Normalizer.normalize(r1, java.text.Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "").toLowerCase().trim();
         String n2 = java.text.Normalizer.normalize(r2, java.text.Normalizer.Form.NFD)
@@ -372,15 +372,7 @@ public class SolicitudMatriculaController {
     // VALIDACIONES Y NAVEGACIÓN AL RESUMEN
     // =========================================================================
     private void validarYContinuarAlResumen() {
-        if (view.isModoGrado()) {
-            validarGradoYContinuarAlResumen();
-        } else {
-            validarMicrocredencialYContinuarAlResumen();
-        }
-    }
-
-    private void validarGradoYContinuarAlResumen() {
-        OfertaGradoDTO grado = (OfertaGradoDTO) view.getCbGrados().getSelectedItem();
+        GradoDisplayDTO grado = (GradoDisplayDTO) view.getCbGrados().getSelectedItem();
         if (grado == null) {
             Estilo.mostrarAviso(view.getFrame(),
                     "Debe seleccionar un grado oficial para matricularse.",
@@ -404,7 +396,7 @@ public class SolicitudMatriculaController {
 
         // Ejecutar validaciones integrales de negocio
         try {
-            model.validarSolicitudMatricula(alumnoId, grado.getGradoId(), anioAcademicoId, cursoIds);
+            model.validarSolicitudMatricula(alumnoId, grado.getId(), anioAcademicoId, cursoIds);
         } catch (ValidationException ex) {
             Estilo.mostrarError(view.getFrame(),
                     ex.getMessage(),
@@ -412,8 +404,9 @@ public class SolicitudMatriculaController {
             return;
         }
 
-        resumenGradoActual = model.obtenerDatosEstudianteParaSolicitud(alumnoId, grado.getGradoId());
-        resumenGradoActual.setAsignaturas(asignaturas);
+        // Construir DTO de resumen
+        resumenActual = model.obtenerDatosEstudianteParaSolicitud(alumnoId, grado.getId());
+        resumenActual.setAsignaturas(asignaturas);
         int totalCreds = 0;
         double totalImporte = 0.0;
         for (OfertaCursoDTO c : asignaturas) {
@@ -583,8 +576,8 @@ public class SolicitudMatriculaController {
                     + "• Modalidad de pago: " + metodoPago + "\n"
                     + "• Importe: " + String.format("%.2f €", resumenMicroActual.getImporteTotal()) + "\n\n"
                     + ("TARJETA".equalsIgnoreCase(metodoPago)
-                    ? "La transacción telemática ha sido validada. Su plaza queda confirmada (INSCRITA)."
-                    : "Estado: SOLICITADA.\nRecuerde presentar el justificante de pago en secretaría antes del inicio del curso.");
+                            ? "La transacción telemática ha sido validada. Su plaza queda confirmada (INSCRITA)."
+                            : "Estado: SOLICITADA.\nRecuerde presentar el justificante de pago en secretaría antes del inicio del curso.");
 
             Estilo.mostrarMensaje(view.getFrame(),
                     mensajeExito,
