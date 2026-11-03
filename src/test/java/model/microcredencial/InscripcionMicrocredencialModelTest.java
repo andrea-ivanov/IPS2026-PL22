@@ -1,7 +1,9 @@
 package model.microcredencial;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -11,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import model.matriculacion.MatriculacionModel;
 import util.Database;
+import util.exception.ValidationException;
 
 /**
  * Pruebas de la HU 35987: ramas habilitadas y oferta de microcredenciales del alumno
@@ -164,5 +167,112 @@ public class InscripcionMicrocredencialModelTest {
 		db.executeUpdate("INSERT INTO MatriculaMicrocredencial VALUES ('M1','2026-2027','MC1','2026-11-01',"
 				+ "'SOLICITADA',NULL,NULL,60,NULL,NULL,0,NULL)");
 		assertEquals(List.of("MC6"), ids(model.getOferta("AL1", HOY)));
+	}
+
+	/** Con otra matrícula de la misma rama, estar inscrito desde cualquiera de ellas excluye la microcredencial */
+	@Test
+	public void testOfertaExcluyeInscritoDesdeOtraMatricula() {
+		db.executeBatch(new String[] {
+				"INSERT INTO Grado VALUES ('G4','Ingenieria Civil','Escuela de Ingenieria','Ingenieria y Arquitectura',"
+						+ "'VIGENTE','2024-09-01')",
+				"INSERT INTO Matricula VALUES ('M6','AL1','G4','2026-2027','2026-07-10','ACTIVA',NULL,NULL)",
+				"INSERT INTO MatriculaMicrocredencial VALUES ('M6','2026-2027','MC1','2026-11-01',"
+						+ "'SOLICITADA',NULL,NULL,60,NULL,NULL,0,NULL)"
+		});
+		assertEquals(List.of("MC6"), ids(model.getOferta("AL1", HOY)));
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.inscribir("AL1", List.of("MC1"), "TARJETA", HOY));
+		assertTrue(e.getMessage().contains("Ya estás inscrito"));
+	}
+
+	// //////////////////////////////////////////////
+	// Inscripción
+	// //////////////////////////////////////////////
+
+	private List<Object[]> filas(String alumnoId) {
+		return db.executeQueryArray("SELECT mm.microcredencialId, mm.matriculaId, mm.estado, mm.pagoValidado, "
+				+ "mm.metodoPago, mm.fechaPago, mm.fechaSolicitud, mm.importe, mm.nota, mm.motivoCancelacion, "
+				+ "mm.fechaBaja FROM MatriculaMicrocredencial mm JOIN Matricula m ON m.matriculaId = mm.matriculaId "
+				+ "WHERE m.alumnoId = ? ORDER BY mm.microcredencialId", alumnoId);
+	}
+
+	private int totalFilas() {
+		return ((Number) db.executeQueryArray("SELECT COUNT(*) FROM MatriculaMicrocredencial").get(0)[0]).intValue();
+	}
+
+	@Test
+	public void testInscribirConTarjetaQuedaInscrita() {
+		model.inscribir("AL1", List.of("MC1"), "TARJETA", HOY);
+		List<Object[]> filas = filas("AL1");
+		assertEquals(1, filas.size());
+		Object[] f = filas.get(0);
+		assertEquals("MC1", f[0]);
+		assertEquals("M1", f[1]);
+		assertEquals("INSCRITA", f[2]);
+		assertEquals(1, ((Number) f[3]).intValue());
+		assertEquals("TARJETA", f[4]);
+		assertEquals(HOY, f[5]);
+		assertEquals(HOY, f[6]);
+		assertEquals(3 * MatriculacionModel.PRECIO_CREDITO, ((Number) f[7]).doubleValue(), 0.001);
+		assertEquals(null, f[8]);
+		assertEquals(null, f[9]);
+		assertEquals(null, f[10]);
+	}
+
+	@Test
+	public void testInscribirConTransferenciaQuedaSolicitada() {
+		model.inscribir("AL1", List.of("MC1"), "TRANSFERENCIA", HOY);
+		Object[] f = filas("AL1").get(0);
+		assertEquals("SOLICITADA", f[2]);
+		assertEquals(0, ((Number) f[3]).intValue());
+		assertEquals("TRANSFERENCIA", f[4]);
+		assertEquals(HOY, f[5]);
+	}
+
+	@Test
+	public void testInscribirVarias() {
+		model.inscribir("AL1", List.of("MC1", "MC6"), "TARJETA", HOY);
+		assertEquals(2, filas("AL1").size());
+	}
+
+	@Test
+	public void testInscribirSinPlazasNoGuardaNinguna() {
+		int antes = totalFilas();
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.inscribir("AL1", List.of("MC1", "MC5"), "TARJETA", HOY));
+		assertTrue(e.getMessage().contains("Microcredencial 5"));
+		assertTrue(e.getMessage().contains("plazas"));
+		assertEquals(antes, totalFilas());
+	}
+
+	@Test
+	public void testInscribirYaInscritoFalla() {
+		model.inscribir("AL1", List.of("MC1"), "TARJETA", HOY);
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.inscribir("AL1", List.of("MC1"), "TARJETA", HOY));
+		assertTrue(e.getMessage().contains("Ya estás inscrito"));
+	}
+
+	@Test
+	public void testInscribirFueraDePeriodoORamaFalla() {
+		assertThrows(ValidationException.class, () -> model.inscribir("AL1", List.of("MC3"), "TARJETA", HOY));
+		assertThrows(ValidationException.class, () -> model.inscribir("AL1", List.of("MC4"), "TARJETA", HOY));
+		assertTrue(filas("AL1").isEmpty());
+	}
+
+	@Test
+	public void testInscribirListaVaciaFalla() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.inscribir("AL1", List.of(), "TARJETA", HOY));
+		assertTrue(e.getMessage().contains("Selecciona al menos una microcredencial"));
+	}
+
+	@Test
+	public void testInscribirMetodoPagoNoValido() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.inscribir("AL1", List.of("MC1"), "BIZUM", HOY));
+		assertTrue(e.getMessage().contains("Debe seleccionar un método de pago"));
+		assertFalse(db.executeQueryArray("SELECT 1 FROM MatriculaMicrocredencial WHERE matriculaId = 'M1'")
+				.iterator().hasNext());
 	}
 }

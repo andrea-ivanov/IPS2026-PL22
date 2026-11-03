@@ -94,7 +94,8 @@ public class MicrocredencialRepository {
 	/**
 	 * Microcredenciales que el alumno puede solicitar ese año (docs/DATABASE.md, HU 35987): ACEPTADAS, de la rama
 	 * del grado de una matrícula suya no cancelada, con fechaHoy dentro del periodo de matriculación, con plazas
-	 * libres (solo cuentan las inscripciones pagadas) y en las que no está ya inscrito. Ordenadas por rama y nombre.
+	 * libres (solo cuentan las inscripciones pagadas) y en las que no está ya inscrito desde ninguna de sus
+	 * matrículas. Ordenadas por rama y nombre.
 	 */
 	public List<OfertaMicrocredencialDTO> findOferta(String alumnoId, String anioAcademicoId, String fechaHoy,
 			double precioCredito) {
@@ -112,10 +113,58 @@ public class MicrocredencialRepository {
 						+ "AND mc.estado = 'ACEPTADA' "
 						+ "AND ? BETWEEN mc.inicioMatriculacion AND mc.finMatriculacion "
 						+ "AND NOT EXISTS (SELECT 1 FROM MatriculaMicrocredencial x "
-						+ "WHERE x.microcredencialId = mc.microcredencialId AND x.matriculaId = m.matriculaId) "
+						+ "JOIN Matricula xm ON xm.matriculaId = x.matriculaId "
+						+ "WHERE x.microcredencialId = mc.microcredencialId AND xm.alumnoId = m.alumnoId) "
 						+ "AND (SELECT COUNT(*) FROM MatriculaMicrocredencial x "
 						+ "WHERE x.microcredencialId = mc.microcredencialId AND x.pagoValidado = 1) < mc.plazas "
 						+ "ORDER BY mc.ramaConocimiento, mc.nombre",
 				precioCredito, alumnoId, anioAcademicoId, fechaHoy);
+	}
+
+	// =========================================================================
+	// Inscripción del alumno (HU 35987)
+	// =========================================================================
+
+	/**
+	 * matriculaId de la primera matrícula no cancelada del alumno en ese año cuyo grado es de esa rama;
+	 * null si no hay
+	 */
+	public String findMatriculaParaRama(String alumnoId, String anioAcademicoId, String rama) {
+		List<Object[]> rows = db.executeQueryArray("SELECT m.matriculaId FROM Matricula m "
+				+ "JOIN Grado g ON g.gradoId = m.gradoId "
+				+ "WHERE m.alumnoId = ? AND m.anioAcademicoId = ? AND m.estado <> 'CANCELADA' "
+				+ "AND g.ramaConocimiento = ? ORDER BY m.matriculaId LIMIT 1",
+				alumnoId, anioAcademicoId, rama);
+		return rows.isEmpty() ? null : (String) rows.get(0)[0];
+	}
+
+	/** Si el alumno ya tiene una inscripción en la microcredencial desde cualquiera de sus matrículas */
+	public boolean existeInscripcion(String alumnoId, String microcredencialId) {
+		return !db.executeQueryArray("SELECT 1 FROM MatriculaMicrocredencial x "
+				+ "JOIN Matricula m ON m.matriculaId = x.matriculaId "
+				+ "WHERE m.alumnoId = ? AND x.microcredencialId = ?",
+				alumnoId, microcredencialId).isEmpty();
+	}
+
+	/** Nombre y plazas libres (solo cuentan las pagadas) de una microcredencial; null si no existe */
+	public OfertaMicrocredencialDTO findNombreYPlazasLibres(String microcredencialId, String anioAcademicoId) {
+		List<OfertaMicrocredencialDTO> rows = db.executeQueryPojo(OfertaMicrocredencialDTO.class,
+				"SELECT mc.microcredencialId, mc.nombre, mc.plazas, "
+						+ "mc.plazas - (SELECT COUNT(*) FROM MatriculaMicrocredencial x "
+						+ "WHERE x.microcredencialId = mc.microcredencialId AND x.pagoValidado = 1) AS plazasLibres "
+						+ "FROM Microcredencial mc WHERE mc.microcredencialId = ? AND mc.anioAcademicoId = ?",
+				microcredencialId, anioAcademicoId);
+		return rows.isEmpty() ? null : rows.get(0);
+	}
+
+	/** Inserta una inscripción (dentro de la transacción del modelo); nota, motivo y baja quedan nulos */
+	public void insertarInscripcion(Connection conn, String matriculaId, String anioAcademicoId,
+			String microcredencialId, String fechaHoy, String estado, double importe, String metodoPago,
+			String fechaPago, int pagoValidado) throws SQLException {
+		update(conn, "INSERT INTO MatriculaMicrocredencial (matriculaId, anioAcademicoId, microcredencialId, "
+				+ "fechaSolicitud, estado, importe, metodoPago, fechaPago, pagoValidado) "
+				+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				matriculaId, anioAcademicoId, microcredencialId, fechaHoy, estado, importe, metodoPago, fechaPago,
+				pagoValidado);
 	}
 }
