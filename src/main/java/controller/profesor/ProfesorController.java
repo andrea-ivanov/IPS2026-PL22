@@ -13,7 +13,6 @@ import model.anoacademico.AnoAcademicoModel;
 import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
 import model.propuesta.PropuestaDisplayDTO;
-import util.ComboBuscable;
 import util.Database;
 import util.SwingUtil;
 import util.exception.ResourceNotFoundException;
@@ -23,7 +22,6 @@ import view.profesor.ProfesorView;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
-import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
@@ -47,6 +45,8 @@ public class ProfesorController {
     private PropuestaModel propuestaModel;
     private MicrocredencialModel microcredencialModel;
     private AnoAcademicoModel anoAcademicoModel;
+    // profesor que ha entrado desde la pantalla de inicio
+    private ProfesorDTO profesor;
     private String profesorId;
     // asignaciones del profesor seleccionado, sin filtrar: los filtros se aplican sobre esta lista
     private List<AsignacionDocenteDisplayDTO> asignaciones = new ArrayList<>();
@@ -58,8 +58,10 @@ public class ProfesorController {
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
     private Runnable onVolverInicio = () -> { };
 
-    public ProfesorController(ProfesorView view, Database db) {
+    public ProfesorController(ProfesorView view, Database db, ProfesorDTO profesor) {
         this.view = view;
+        this.profesor = profesor;
+        this.profesorId = profesor.getProfesorId();
         this.profesorModel = new ProfesorModel(db);
         this.actaModel = new ActaModel(db);
         this.propuestaModel = new PropuestaModel(db);
@@ -81,10 +83,6 @@ public class ProfesorController {
                 onVolverInicio.run();
             }
         });
-        view.getBtnCargarAsignaciones().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarAsignaciones()));
-        // Enter en el combo de profesores (despues de escribir o elegir) tambien carga sus asignaciones
-        ((JTextField) view.getCbProfesores().getEditor().getEditorComponent())
-                .addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarAsignaciones()));
         view.getCbFiltroGrado().addActionListener(e -> aplicarFiltros());
         view.getCbFiltroCurso().addActionListener(e -> aplicarFiltros());
         view.getCbFiltroTipo().addActionListener(e -> aplicarFiltros());
@@ -99,16 +97,12 @@ public class ProfesorController {
         view.getBtnEnviarPropuesta().addActionListener(e -> SwingUtil.exceptionWrapper(() -> enviarPropuesta()));
         view.getBtnProponerMicrocredencial()
                 .addActionListener(e -> SwingUtil.exceptionWrapper(() -> proponerMicrocredencial()));
+        // el profesor ya viene elegido de la pantalla de inicio: se cargan sus pestañas al abrir
+        SwingUtil.exceptionWrapper(() -> cargarAsignaciones());
     }
 
+    /** Carga las tres pestañas (asignaciones, propuestas y microcredenciales) del profesor */
     private void cargarAsignaciones() {
-        // en el combo se puede escribir: solo vale si el texto corresponde a un profesor de la lista
-        ProfesorDTO seleccionado = ComboBuscable.getSeleccion(view.getCbProfesores());
-        if (seleccionado == null)
-            throw new ValidationException("Selecciona un profesor de la lista");
-        view.getCbProfesores().setSelectedItem(seleccionado);
-        profesorId = seleccionado.getProfesorId();
-
         asignaciones = profesorModel.getAsignacionesDocentes(profesorId);
         cargarCombosFiltro();
         aplicarFiltros();
@@ -280,7 +274,7 @@ public class ProfesorController {
         view.getListGradosPropuesta().setListData(grados.toArray(new GradoDisplayDTO[0]));
 
         List<PropuestaDisplayDTO> propuestas = propuestaModel.getPropuestas(profesorId);
-        view.getLblProfesorPropuesta().setText("Propuestas de " + view.getCbProfesores().getSelectedItem()
+        view.getLblProfesorPropuesta().setText("Propuestas de " + profesor
                 + (propuestas.isEmpty() ? ": todavía no ha enviado ninguna" : ""));
         TableModel tmodel = SwingUtil.getTableModelFromPojos(propuestas,
                 new String[] { "propuestaId", "grado", "nombre", "anio", "creditos", "fechaPropuesta", "estado" });
@@ -296,8 +290,6 @@ public class ProfesorController {
      * al confirmar se crea una propuesta PENDIENTE por grado elegido (o ninguna si alguna falla)
      */
     private void enviarPropuesta() {
-        if (profesorId == null)
-            throw new ValidationException("Carga primero un profesor");
         List<GradoDisplayDTO> gradosSelec = view.getListGradosPropuesta().getSelectedValuesList();
         List<String> gradoIds = new ArrayList<>();
         for (GradoDisplayDTO g : gradosSelec)
@@ -343,7 +335,7 @@ public class ProfesorController {
     /** Listado "Mis microcredenciales" del profesor cargado, con su estado */
     private void cargarMicrocredenciales() {
         List<MicrocredencialDisplayDTO> microcredenciales = microcredencialModel.getMicrocredenciales(profesorId);
-        view.getLblProfesorMicrocredencial().setText("Microcredenciales de " + view.getCbProfesores().getSelectedItem()
+        view.getLblProfesorMicrocredencial().setText("Microcredenciales de " + profesor
                 + (microcredenciales.isEmpty() ? ": todavía no ha propuesto ninguna" : ""));
         TableModel tmodel = SwingUtil.getTableModelFromPojos(microcredenciales,
                 new String[] { "microcredencialId", "anioAcademicoId", "nombre", "ramaConocimiento", "creditos", "plazas",
@@ -362,8 +354,6 @@ public class ProfesorController {
      * Si algo no es válido se muestra el error y el formulario sigue abierto
      */
     private void proponerMicrocredencial() {
-        if (profesorId == null)
-            throw new ValidationException("Carga primero un profesor");
         String anioAcademicoId;
         try {
             anioAcademicoId = anoAcademicoModel.buscarActual().getAnioAcademicoId();
@@ -416,8 +406,8 @@ public class ProfesorController {
     }
 
     private void initView() {
-        view.getCbProfesores().setModel(new DefaultComboBoxModel<>(profesorModel.getProfesores().toArray(new ProfesorDTO[0])));
-        ComboBuscable.hacerBuscable(view.getCbProfesores());
+        view.getLblProfesor().setText(profesor.getNombre() + " " + profesor.getApellidos() + " ("
+                + profesor.getProfesorId() + ")");
         view.getFrame().setVisible(true);
     }
 }
