@@ -137,6 +137,15 @@ public class MicrocredencialModelTest {
 				"2027-02-01", "2027-02-22", "2027-04-16", HOY));
 	}
 
+	/** El nombre admite hasta MAX_NOMBRE caracteres, sin contar los espacios de los extremos */
+	@Test
+	public void testLongitudNombre() {
+		String maximo = "N".repeat(MicrocredencialModel.MAX_NOMBRE);
+		assertError("no puede superar los 150 caracteres",
+				() -> crear(maximo + "X", RAMA, "30", "3", "2027-02-01", "2027-02-22", "2027-04-16"));
+		assertEquals("MC053", crear(" " + maximo + " ", RAMA, "30", "3", "2027-02-01", "2027-02-22", "2027-04-16"));
+	}
+
 	/** Solo las cinco ramas oficiales, escritas sin tildes */
 	@Test
 	public void testRamaNoValida() {

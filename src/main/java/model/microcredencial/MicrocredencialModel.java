@@ -183,7 +183,7 @@ public class MicrocredencialModel {
 	}
 
 	/** 15 en lugar de 15.0 */
-	private static String formatearCreditos(double creditos) {
+	public static String formatearCreditos(double creditos) {
 		return creditos == Math.floor(creditos) ? String.valueOf((long) creditos) : String.valueOf(creditos);
 	}
 

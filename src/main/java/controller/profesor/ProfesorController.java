@@ -17,6 +17,7 @@ import repository.ProfesorRepository;
 import repository.PropuestaRepository;
 import util.ComboBuscable;
 import util.SwingUtil;
+import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
 import view.profesor.MicrocredencialFormDialog;
 import view.profesor.ProfesorView;
@@ -364,7 +365,12 @@ public class ProfesorController {
     private void proponerMicrocredencial() {
         if (profesorId == null)
             throw new ValidationException("Carga primero un profesor");
-        String anioAcademicoId = anoAcademicoRepository.getAnoAcademicoActual().getAnioAcademicoId();
+        String anioAcademicoId;
+        try {
+            anioAcademicoId = anoAcademicoRepository.getAnoAcademicoActual().getAnioAcademicoId();
+        } catch (ResourceNotFoundException e) {
+            throw new ValidationException("No hay ningún año académico configurado");
+        }
         MicrocredencialFormDialog form = new MicrocredencialFormDialog(view.getFrame());
         // el fin de la matriculacion se recalcula al escribir el inicio
         form.getTxtInicioMatriculacion().getDocument().addDocumentListener(new DocumentListener() {
