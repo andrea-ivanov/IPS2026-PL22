@@ -1,17 +1,12 @@
 package model.microcredencial;
 
-import static util.DbUtil.update;
 import static util.Util.parsearCreditos;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
-import org.apache.commons.dbutils.QueryRunner;
-import org.apache.commons.dbutils.handlers.ScalarHandler;
-
+import repository.MicrocredencialRepository;
 import util.Database;
 import util.exception.ValidationException;
 
@@ -33,9 +28,11 @@ public class MicrocredencialModel {
 	private static final String PREFIJO_ID = "MC";
 
 	private Database db;
+	private MicrocredencialRepository repository;
 
 	public MicrocredencialModel(Database db) {
 		this.db = db;
+		this.repository = new MicrocredencialRepository(db);
 	}
 
 	// =========================================================================
@@ -46,14 +43,7 @@ public class MicrocredencialModel {
 	 * Microcredenciales del profesor ("Mis microcredenciales"), de la más reciente a la más antigua.
 	 */
 	public List<MicrocredencialDisplayDTO> getMicrocredenciales(String profesorId) {
-		return db.executeQueryPojo(MicrocredencialDisplayDTO.class,
-				"SELECT microcredencialId, anioAcademicoId, nombre, ramaConocimiento, CAST(creditos AS REAL) AS creditos, "
-						+ "plazas, inicioMatriculacion, finMatriculacion, inicioImparticion, finImparticion, "
-						+ "fechaPropuesta, estado "
-						+ "FROM Microcredencial "
-						+ "WHERE profesorId = ? "
-						+ "ORDER BY fechaPropuesta DESC, microcredencialId DESC",
-				profesorId);
+		return repository.findByProfesor(profesorId);
 	}
 
 	/**
@@ -89,14 +79,10 @@ public class MicrocredencialModel {
 		String finMat = calcularFinMatriculacion(inicioMat);
 
 		return db.enTransaccion(conn -> {
-			String microcredencialId = String.format("%s%03d", PREFIJO_ID, siguienteNumero(conn));
-			update(conn, "INSERT INTO Microcredencial (microcredencialId, anioAcademicoId, profesorId, nombre, "
-					+ "ramaConocimiento, creditos, plazas, inicioMatriculacion, finMatriculacion, inicioImparticion, "
-					+ "finImparticion, estado, fechaPropuesta, cierreAutomatico) "
-					+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
-					microcredencialId, anioAcademicoId, profesorId, nombreLimpio, rama, valorCreditos, valorPlazas,
-					inicioMat, finMat, inicioImparticion.trim(), finImparticion.trim(),
-					EstadoMicrocredencial.PROPUESTA.name(), fechaHoy);
+			String microcredencialId = String.format("%s%03d", PREFIJO_ID, repository.siguienteNumero(conn));
+			repository.insertar(conn, microcredencialId, anioAcademicoId, profesorId, nombreLimpio, rama,
+					valorCreditos, valorPlazas, inicioMat, finMat, inicioImparticion.trim(), finImparticion.trim(),
+					fechaHoy);
 			return microcredencialId;
 		});
 	}
@@ -149,7 +135,7 @@ public class MicrocredencialModel {
 			throw new ValidationException("El fin de la impartición debe ser posterior a su inicio");
 		}
 
-		if (existeNombreEnAnio(anioAcademicoId, nombreLimpio)) {
+		if (repository.existeNombreEnAnio(anioAcademicoId, nombreLimpio)) {
 			throw new ValidationException("Ya existe una microcredencial llamada '" + nombreLimpio + "' en el año "
 					+ anioAcademicoId);
 		}
@@ -185,23 +171,6 @@ public class MicrocredencialModel {
 	/** 15 en lugar de 15.0 */
 	public static String formatearCreditos(double creditos) {
 		return creditos == Math.floor(creditos) ? String.valueOf((long) creditos) : String.valueOf(creditos);
-	}
-
-	/**
-	 * Nombre repetido en el año académico, sin distinguir mayúsculas y en cualquier estado:
-	 * la restricción uq_microcredencial_nombre incluye también las rechazadas
-	 */
-	private boolean existeNombreEnAnio(String anioAcademicoId, String nombre) {
-		return !db.executeQueryArray("SELECT 1 FROM Microcredencial "
-				+ "WHERE anioAcademicoId = ? AND LOWER(TRIM(nombre)) = LOWER(?)",
-				anioAcademicoId, nombre).isEmpty();
-	}
-
-	/** Número de la siguiente microcredencial: MC053 si la última es MC052 */
-	private int siguienteNumero(Connection conn) throws SQLException {
-		Number max = new QueryRunner().query(conn, "SELECT MAX(CAST(SUBSTR(microcredencialId, 3) AS INTEGER)) "
-				+ "FROM Microcredencial WHERE microcredencialId LIKE 'MC%'", new ScalarHandler<Number>());
-		return max == null ? 1 : max.intValue() + 1;
 	}
 
 	private void validarObligatorio(String valor, String mensaje) {

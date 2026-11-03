@@ -1,6 +1,7 @@
 package controller.estudiante;
 
 import model.matriculacion.MatriculacionModel;
+import model.microcredencial.InscripcionMicrocredencialModel;
 import util.Database;
 import util.SwingUtil;
 import view.estudiante.EstudianteView;
@@ -25,6 +26,7 @@ public class EstudianteController {
     private MisMatriculasView misMatriculasView;
     private MisMatriculasController misMatriculasController;
     private MatriculacionModel matriculacionModel;
+    private InscripcionMicrocredencialModel inscripcionMicrocredencialModel;
 
     private SolicitudMatriculaView solicitudMatriculaView;
     private SolicitudMatriculaController solicitudMatriculaController;
@@ -50,6 +52,7 @@ public class EstudianteController {
         this.nombre = nombre;
         this.onVolverLogin = onVolverLogin;
         this.matriculacionModel = new MatriculacionModel(db);
+        this.inscripcionMicrocredencialModel = new InscripcionMicrocredencialModel(db);
         if ((this.nombre == null || this.nombre.trim().isEmpty()) && this.uo != null) {
             this.nombre = this.matriculacionModel.obtenerNombreAlumno(this.uo);
         }
@@ -139,6 +142,7 @@ public class EstudianteController {
             solicitudMicrocredencialController = new SolicitudMicrocredencialController(
                     solicitudMicrocredencialView,
                     matriculacionModel,
+                    inscripcionMicrocredencialModel,
                     uo,
                     () -> {
                         if (misMatriculasController != null) {

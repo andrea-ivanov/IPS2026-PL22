@@ -2,6 +2,7 @@ package view.estudiante;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -12,15 +13,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import controller.estudiante.SolicitudMicrocredencialController;
-import model.fixtures.BaseModelTest;
 import model.matriculacion.MatriculacionModel;
-import model.matriculacion.OfertaMicrocredencialDTO;
-import model.matriculacion.ResumenSolicitudMicrocredencialDTO;
+import model.microcredencial.InscripcionMicrocredencialModel;
+import model.microcredencial.OfertaMicrocredencialDTO;
+import model.microcredencial.ResumenSolicitudMicrocredencialDTO;
+import util.Database;
 
 /**
  * Pruebas unitarias para la Vista y Controlador de Solicitud de Microcredenciales (HU 35987).
+ * Datos propios: el alumno AL0001 tiene matrícula este año en un grado de Ingenieria y Arquitectura y hay una
+ * microcredencial ACEPTADA de esa rama con la matriculación abierta hoy (el controlador usa la fecha del sistema).
  */
-public class SolicitudMicrocredencialViewTest extends BaseModelTest {
+public class SolicitudMicrocredencialViewTest {
+    private static Database db = new Database("jdbc:sqlite:TestDB.db?foreign_keys=true");
     private SolicitudMicrocredencialView view;
     private SolicitudMicrocredencialController controller;
     private MatriculacionModel model;
@@ -28,11 +33,30 @@ public class SolicitudMicrocredencialViewTest extends BaseModelTest {
 
     @BeforeEach
     public void setUpView() {
+        db.createDatabase(false);
+        loadCleanDatabase(db);
         menuVuelto = new AtomicBoolean(false);
         view = new SolicitudMicrocredencialView();
         model = new MatriculacionModel(db);
-        controller = new SolicitudMicrocredencialController(view, model, "AL0001", () -> menuVuelto.set(true));
+        controller = new SolicitudMicrocredencialController(view, model, new InscripcionMicrocredencialModel(db),
+                "AL0001", () -> menuVuelto.set(true));
         controller.initController();
+    }
+
+    private static void loadCleanDatabase(Database db) {
+        LocalDate hoy = LocalDate.now();
+        db.executeBatch(new String[] {
+                "INSERT INTO AnioAcademico VALUES ('2026-2027','2026-09-01','2027-08-31','2026-07-01','2026-09-30')",
+                "INSERT INTO Grado VALUES ('G1','Ingenieria Informatica','Escuela de Ingenieria',"
+                        + "'Ingenieria y Arquitectura','VIGENTE','2024-09-01')",
+                "INSERT INTO Alumno VALUES ('AL0001','10000001A','Juan','Perez','al0001@uni.es')",
+                "INSERT INTO Profesor VALUES ('P001','20000001A','Ana','Garcia','p001@uni.es')",
+                "INSERT INTO Matricula VALUES ('M1','AL0001','G1','2026-2027','2026-07-10','ACTIVA',NULL,NULL)",
+                "INSERT INTO Microcredencial VALUES ('MC001','2026-2027','P001','Inteligencia Artificial Aplicada',"
+                        + "'Ingenieria y Arquitectura',3,30,'" + hoy.minusDays(1) + "','" + hoy.plusDays(7) + "','"
+                        + hoy.plusDays(10) + "','" + hoy.plusDays(60) + "','ACEPTADA','" + hoy.minusDays(5) + "','"
+                        + hoy.minusDays(2) + "',NULL,NULL,NULL,0)"
+        });
     }
 
     @AfterEach
@@ -81,6 +105,7 @@ public class SolicitudMicrocredencialViewTest extends BaseModelTest {
     @Test
     @DisplayName("HU35987: Cálculo en vivo a 20.0 € por crédito")
     public void testCalculoEnVivoCreditosEImporte() {
+        assertEquals(1, view.getModelMicrocredenciales().getRowCount(), "Debe ofertarse la microcredencial abierta hoy");
         if (view.getModelMicrocredenciales().getRowCount() > 0) {
             view.getModelMicrocredenciales().setValueAt(Boolean.TRUE, 0, 0);
 
@@ -103,8 +128,19 @@ public class SolicitudMicrocredencialViewTest extends BaseModelTest {
         resumen.setFechaSolicitud("2026-10-29");
 
         List<OfertaMicrocredencialDTO> lista = new ArrayList<>();
-        lista.add(new OfertaMicrocredencialDTO("MC001", "Inteligencia Artificial Aplicada", "Desc",
-                "Ingenieria y Arquitectura", 3.0, 30, 10, "2026-09-01", "2026-11-15", "2026-11-20", "2027-01-30"));
+        OfertaMicrocredencialDTO mc = new OfertaMicrocredencialDTO();
+        mc.setMicrocredencialId("MC001");
+        mc.setNombre("Inteligencia Artificial Aplicada");
+        mc.setRamaConocimiento("Ingenieria y Arquitectura");
+        mc.setCreditos(3.0);
+        mc.setPlazas(30);
+        mc.setPlazasLibres(20);
+        mc.setInicioMatriculacion("2026-11-01");
+        mc.setFinMatriculacion("2026-11-15");
+        mc.setInicioImparticion("2026-11-20");
+        mc.setFinImparticion("2027-01-30");
+        mc.setPrecio(60.0);
+        lista.add(mc);
         resumen.setMicrocredenciales(lista);
         resumen.setCreditosTotales(3);
         resumen.setImporteTotal(60.0);
