@@ -254,6 +254,8 @@ public class SolicitudMicrocredencialController {
             guardada[0] = true;
         });
         if (!guardada[0]) {
+            // Rechazada: se recarga la oferta para que desaparezcan las microcredenciales que ya no son inscribibles
+            recargarOferta();
             return;
         }
 
