@@ -1,6 +1,7 @@
 package controller.estudiante;
 
 import model.matriculacion.MatriculacionModel;
+import util.Database;
 import util.SwingUtil;
 import view.estudiante.EstudianteView;
 import view.estudiante.MisMatriculasView;
@@ -11,7 +12,8 @@ import java.awt.*;
 /**
  * Controlador de la vista principal del estudiante.
  * Gestiona la navegación fluida entre el menú de bienvenida, la consulta de
- * matrículas y la solicitud unificada de matrícula (grados y microcredenciales),
+ * matrículas y la solicitud unificada de matrícula (grados y
+ * microcredenciales),
  * todo en una única ventana centrada.
  */
 public class EstudianteController {
@@ -27,24 +29,27 @@ public class EstudianteController {
     private SolicitudMatriculaView solicitudMatriculaView;
     private SolicitudMatriculaController solicitudMatriculaController;
 
-    public EstudianteController(EstudianteView view) {
-        this(view, null, null, null);
+    private SolicitudMicrocredencialView solicitudMicrocredencialView;
+    private SolicitudMicrocredencialController solicitudMicrocredencialController;
+
+    public EstudianteController(EstudianteView view, Database db) {
+        this(view, db, null, null, null);
     }
 
-    public EstudianteController(EstudianteView view, String uo) {
-        this(view, uo, null, null);
+    public EstudianteController(EstudianteView view, Database db, String uo) {
+        this(view, db, uo, null, null);
     }
 
-    public EstudianteController(EstudianteView view, String uo, Runnable onVolverLogin) {
-        this(view, uo, null, onVolverLogin);
+    public EstudianteController(EstudianteView view, Database db, String uo, Runnable onVolverLogin) {
+        this(view, db, uo, null, onVolverLogin);
     }
 
-    public EstudianteController(EstudianteView view, String uo, String nombre, Runnable onVolverLogin) {
+    public EstudianteController(EstudianteView view, Database db, String uo, String nombre, Runnable onVolverLogin) {
         this.view = view;
         this.uo = uo;
         this.nombre = nombre;
         this.onVolverLogin = onVolverLogin;
-        this.matriculacionModel = new MatriculacionModel();
+        this.matriculacionModel = new MatriculacionModel(db);
         if ((this.nombre == null || this.nombre.trim().isEmpty()) && this.uo != null) {
             this.nombre = this.matriculacionModel.obtenerNombreAlumno(this.uo);
         }
@@ -61,10 +66,12 @@ public class EstudianteController {
         view.getBtnMisMatriculas().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirConsultaMatriculas));
 
         // 3. Opción 2: Solicitar Nueva Matrícula (Grado Oficial)
-        view.getBtnSolicitarMatricula().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMatricula));
+        view.getBtnSolicitarMatricula()
+                .addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMatricula));
 
         // 4. Opción 3: Solicitar Nueva Microcredencial (Microcredenciales)
-        view.getBtnSolicitarMicrocredencial().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMicrocredencial));
+        view.getBtnSolicitarMicrocredencial()
+                .addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMicrocredencial));
 
         // Mostrar menú inicial y centrar
         view.mostrarMenu();
@@ -87,8 +94,7 @@ public class EstudianteController {
                     misMatriculasView,
                     matriculacionModel,
                     uo,
-                    () -> view.mostrarMenu()
-            );
+                    () -> view.mostrarMenu());
             misMatriculasController.initController();
 
             view.getPanelConsultaContainer().removeAll();

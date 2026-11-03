@@ -16,10 +16,6 @@ public class GradoRepository {
 	private final GradoModel gradoModel;
 	private Database db;
 
-	public GradoRepository() {
-		this(new Database());
-	}
-
 	public GradoRepository(Database db) {
 		this.db = db;
 		this.gradoModel = new GradoModel(db);

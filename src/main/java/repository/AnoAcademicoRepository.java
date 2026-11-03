@@ -14,10 +14,6 @@ import util.Database;
 public class AnoAcademicoRepository {
     private final AnoAcademicoModel anoAcademicoModel;
 
-    public AnoAcademicoRepository() {
-        this(new Database());
-    }
-
     public AnoAcademicoRepository(Database db) {
         this.anoAcademicoModel = new AnoAcademicoModel(db);
     }

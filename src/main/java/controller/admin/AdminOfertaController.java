@@ -16,6 +16,7 @@ import repository.GradoRepository;
 import repository.MatriculacionRepository;
 import model.profesor.ProfesorDTO;
 import repository.ProfesorRepository;
+import util.Database;
 import util.SwingUtil;
 import util.exception.ValidationException;
 
@@ -48,6 +49,7 @@ public class AdminOfertaController {
 	private Runnable onVolverInicio = () -> { };
 
 	// Repositorios de acceso a datos
+	private final Database db;
 	private GradoRepository gradoRepository;
 	private CursoRepository cursoRepository;
 	private MatriculacionRepository matriculacionRepository;
@@ -67,12 +69,13 @@ public class AdminOfertaController {
 	private String cursoActualId;
 	private String cursoActualNombre;
 
-	public AdminOfertaController(AdminOfertaView view) {
+	public AdminOfertaController(AdminOfertaView view, Database db) {
 		this.view = view;
-		this.gradoRepository = new GradoRepository();
-		this.cursoRepository = new CursoRepository();
-		this.matriculacionRepository = new MatriculacionRepository();
-		this.anoAcademicoRepository = new AnoAcademicoRepository();
+		this.db = db;
+		this.gradoRepository = new GradoRepository(db);
+		this.cursoRepository = new CursoRepository(db);
+		this.matriculacionRepository = new MatriculacionRepository(db);
+		this.anoAcademicoRepository = new AnoAcademicoRepository(db);
 		this.initView();
 	}
 
@@ -80,9 +83,9 @@ public class AdminOfertaController {
 			GradoRepository gradoRepository,
 			CursoRepository cursoRepository,
 			MatriculacionRepository matriculacionRepository,
-			AlumnoRepository alumnoRepository) {
+			AlumnoRepository alumnoRepository, Database db) {
 		this(view, gradoRepository, cursoRepository, matriculacionRepository, alumnoRepository,
-				new AnoAcademicoRepository());
+				new AnoAcademicoRepository(db), db);
 	}
 
 	public AdminOfertaController(AdminOfertaView view,
@@ -90,8 +93,9 @@ public class AdminOfertaController {
 			CursoRepository cursoRepository,
 			MatriculacionRepository matriculacionRepository,
 			AlumnoRepository alumnoRepository,
-			AnoAcademicoRepository anoAcademicoRepository) {
+			AnoAcademicoRepository anoAcademicoRepository, Database db) {
 		this.view = view;
+		this.db = db;
 		this.gradoRepository = gradoRepository;
 		this.cursoRepository = cursoRepository;
 		this.matriculacionRepository = matriculacionRepository;
@@ -257,7 +261,7 @@ public class AdminOfertaController {
 	}
 
 	private void cargarCoordinadores(CursoFormDialog form) {
-		for (ProfesorDTO profesor : new ProfesorRepository().getProfesores()) {
+		for (ProfesorDTO profesor : new ProfesorRepository(db).getProfesores()) {
 			form.getCbCoordinador().addItem(profesor.toString());
 		}
 	}

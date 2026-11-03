@@ -23,10 +23,6 @@ import util.exception.ValidationException;
 public class CursoModel {
 	private Database db;
 
-	public CursoModel() {
-		this.db = new Database();
-	}
-
 	public CursoModel(Database db) {
 		this.db = db;
 	}

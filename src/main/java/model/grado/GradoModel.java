@@ -22,10 +22,6 @@ import util.exception.ValidationException;
 public class GradoModel {
 	private Database db;
 
-	public GradoModel() {
-		this.db = new Database();
-	}
-
 	public GradoModel(Database db) {
 		this.db = db;
 	}

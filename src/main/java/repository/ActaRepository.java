@@ -14,10 +14,6 @@ import util.Database;
 public class ActaRepository {
 	private ActaModel actaModel;
 
-	public ActaRepository() {
-		this(new Database());
-	}
-
 	public ActaRepository(Database db) {
 		this.actaModel = new ActaModel(db);
 	}

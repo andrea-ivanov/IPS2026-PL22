@@ -40,7 +40,7 @@ public class SolicitudMatriculaController {
     public SolicitudMatriculaController(SolicitudMatriculaView view, MatriculacionModel model, String alumnoId,
             Runnable onVolverMenu) {
         this.view = view;
-        this.model = model != null ? model : new MatriculacionModel();
+        this.model = model;
         this.alumnoId = alumnoId;
         this.onVolverMenu = onVolverMenu;
         this.ramasHabilitadas = new ArrayList<>();
