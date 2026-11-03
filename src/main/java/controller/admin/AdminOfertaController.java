@@ -10,8 +10,8 @@ import model.curso.CursoEdicionDTO;
 import model.grado.GradoDisplayDTO;
 import model.matriculacion.MatriculacionDisplayDTO;
 import model.anoacademico.AnoAcademicoModel;
-import repository.CursoRepository;
-import repository.GradoRepository;
+import model.curso.CursoModel;
+import model.grado.GradoModel;
 import repository.MatriculacionRepository;
 import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
@@ -48,10 +48,10 @@ public class AdminOfertaController {
 	//Boton de volver inicio
 	private Runnable onVolverInicio = () -> { };
 
-	// Repositorios de acceso a datos
+	// Modelos y repositorios de acceso a datos
 	private final Database db;
-	private GradoRepository gradoRepository;
-	private CursoRepository cursoRepository;
+	private GradoModel gradoModel;
+	private CursoModel cursoModel;
 	private MatriculacionRepository matriculacionRepository;
 	private AnoAcademicoModel anoAcademicoModel;
 
@@ -72,21 +72,21 @@ public class AdminOfertaController {
 	public AdminOfertaController(AdminOfertaView view, Database db) {
 		this.view = view;
 		this.db = db;
-		this.gradoRepository = new GradoRepository(db);
-		this.cursoRepository = new CursoRepository(db);
+		this.gradoModel = new GradoModel(db);
+		this.cursoModel = new CursoModel(db);
 		this.matriculacionRepository = new MatriculacionRepository(db);
 		this.anoAcademicoModel = new AnoAcademicoModel(db);
 		this.initView();
 	}
 
 	public AdminOfertaController(AdminOfertaView view,
-			GradoRepository gradoRepository,
-			CursoRepository cursoRepository,
+			GradoModel gradoModel,
+			CursoModel cursoModel,
 			MatriculacionRepository matriculacionRepository, Database db) {
 		this.view = view;
 		this.db = db;
-		this.gradoRepository = gradoRepository;
-		this.cursoRepository = cursoRepository;
+		this.gradoModel = gradoModel;
+		this.cursoModel = cursoModel;
 		this.matriculacionRepository = matriculacionRepository;
 		this.anoAcademicoModel = new AnoAcademicoModel(db);
 		this.initView();
@@ -171,7 +171,7 @@ public class AdminOfertaController {
 		GradoFormDialog form = new GradoFormDialog(view.getFrame());
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
 			String nombre = form.getTxtNombre().getText();
-			gradoRepository.crearGrado(nombre, form.getTxtFacultad().getText(), form.getTxtRama().getText(),
+			gradoModel.crearGrado(nombre, form.getTxtFacultad().getText(), form.getTxtRama().getText(),
 					getAnioActualId());
 			form.cerrar();
 			JOptionPane.showMessageDialog(view.getFrame(), "Grado " + nombre.trim() + " añadido correctamente.",
@@ -186,7 +186,7 @@ public class AdminOfertaController {
 		cargarCoordinadores(form);
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
 			String nombre = form.getTxtNombre().getText();
-			cursoRepository.crearCurso(gradoActualId, nombre, form.getTxtCreditos().getText(),
+			cursoModel.crearCurso(gradoActualId, nombre, form.getTxtCreditos().getText(),
 					form.getTxtAnio().getText(), extraerProfesorId((String) form.getCbCoordinador().getSelectedItem()),
 					form.getTxtItinerario().getText());
 			form.cerrar();
@@ -208,7 +208,7 @@ public class AdminOfertaController {
 		}
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
 			String nombre = form.getTxtNombre().getText();
-			gradoRepository.modificarGrado(gradoActualId, nombre, form.getTxtFacultad().getText(),
+			gradoModel.modificarGrado(gradoActualId, nombre, form.getTxtFacultad().getText(),
 					form.getTxtRama().getText());
 			form.cerrar();
 			JOptionPane.showMessageDialog(view.getFrame(), "Grado " + nombre.trim() + " modificado correctamente.",
@@ -221,7 +221,7 @@ public class AdminOfertaController {
 	}
 
 	private void onModificarCurso() {
-		CursoEdicionDTO datos = cursoRepository.buscarDatosEdicion(gradoActualId, cursoActualId);
+		CursoEdicionDTO datos = cursoModel.buscarDatosEdicion(gradoActualId, cursoActualId);
 		CursoFormDialog form = new CursoFormDialog(view.getFrame(), "Modificar curso");
 		cargarCoordinadores(form);
 		form.getCbCoordinador().setSelectedIndex(-1);
@@ -235,11 +235,11 @@ public class AdminOfertaController {
 		form.getTxtCreditos().setText(datos.getCreditos());
 		form.getTxtAnio().setText(datos.getAnio());
 		form.deshabilitarNoEditables();
-		if (cursoRepository.contarGradosDelCurso(cursoActualId) > 1) {
+		if (cursoModel.contarGradosDelCurso(cursoActualId) > 1) {
 			form.mostrarAvisoCreditos();
 		}
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
-			cursoRepository.modificarCurso(gradoActualId, cursoActualId, form.getTxtAnio().getText(),
+			cursoModel.modificarCurso(gradoActualId, cursoActualId, form.getTxtAnio().getText(),
 					form.getTxtItinerario().getText(), form.getTxtCreditos().getText());
 			form.cerrar();
 			JOptionPane.showMessageDialog(view.getFrame(), "Curso " + cursoActualNombre + " modificado correctamente.",
@@ -257,7 +257,7 @@ public class AdminOfertaController {
 
 	private void onEliminarGrado() {
 		String anioActualId = getAnioActualId();
-		gradoRepository.validarEliminacion(gradoActualId, anioActualId);
+		gradoModel.validarEliminacion(gradoActualId, anioActualId);
 
 		int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
 				"¿Desea eliminar el grado " + gradoActualNombre + "?\n"
@@ -267,7 +267,7 @@ public class AdminOfertaController {
 			return;
 		}
 
-		gradoRepository.eliminarGrado(gradoActualId, anioActualId);
+		gradoModel.eliminarGrado(gradoActualId, anioActualId);
 		JOptionPane.showMessageDialog(view.getFrame(), "Grado " + gradoActualNombre + " eliminado correctamente.",
 				"Eliminar grado", JOptionPane.INFORMATION_MESSAGE);
 		cargarGrados();
@@ -276,7 +276,7 @@ public class AdminOfertaController {
 
 	private void onEliminarCurso() {
 		String anioActualId = getAnioActualId();
-		cursoRepository.validarEliminacion(gradoActualId, cursoActualId, anioActualId);
+		cursoModel.validarEliminacion(gradoActualId, cursoActualId, anioActualId);
 
 		int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
 				"¿Desea eliminar el curso " + cursoActualNombre + " del grado " + gradoActualNombre + "?\n"
@@ -286,7 +286,7 @@ public class AdminOfertaController {
 			return;
 		}
 
-		cursoRepository.eliminarCurso(gradoActualId, cursoActualId, anioActualId);
+		cursoModel.eliminarCurso(gradoActualId, cursoActualId, anioActualId);
 		JOptionPane.showMessageDialog(view.getFrame(), "Curso " + cursoActualNombre + " eliminado correctamente.",
 				"Eliminar curso", JOptionPane.INFORMATION_MESSAGE);
 		cargarCursosDeGrado(gradoActualId, gradoActualNombre);
@@ -369,14 +369,14 @@ public class AdminOfertaController {
 	}
 
 	public void cargarGrados() {
-		todosLosGrados = gradoRepository.getTodosLosGrados();
+		todosLosGrados = gradoModel.getTodosLosGrados();
 		aplicarFiltrosGrados();
 	}
 
 	public void cargarCursosDeGrado(String idGrado, String nombreGrado) {
 		this.gradoActualId = idGrado;
 		this.gradoActualNombre = nombreGrado;
-		todosLosCursos = cursoRepository.getCursosPorGrado(idGrado);
+		todosLosCursos = cursoModel.getCursosPorGrado(idGrado);
 		aplicarFiltrosCursos();
 	}
 
