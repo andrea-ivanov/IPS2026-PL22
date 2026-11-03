@@ -16,7 +16,7 @@ import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
 import model.alumno.AlumnoModel;
-import repository.ActaRepository;
+import model.acta.ActaModel;
 import repository.MatriculacionRepository;
 import util.ComboBuscable;
 import util.Database;
@@ -64,7 +64,7 @@ public class MainController {
         // HU 35239: las actas abiertas cuya convocatoria ya ha terminado las cierra el
         // sistema
         // (cierreAutomatico = 1); secretaria las consulta como avisos en su vista
-        SwingUtil.exceptionWrapper(() -> new ActaRepository(db).cerrarActasVencidas(LocalDate.now().toString()));
+        SwingUtil.exceptionWrapper(() -> new ActaModel(db).cerrarActasVencidas(LocalDate.now().toString()));
     }
 
     /**
