@@ -15,9 +15,8 @@ import controller.admin.AdminOfertaController;
 import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
-import controller.revisor.RevisorController;
+import model.alumno.AlumnoModel;
 import repository.ActaRepository;
-import repository.AlumnoRepository;
 import repository.MatriculacionRepository;
 import util.ComboBuscable;
 import util.Database;
@@ -90,8 +89,8 @@ public class MainController {
     }
 
     private void cargarAlumnos() {
-        AlumnoRepository repo = new AlumnoRepository(db);
-        view.getCbAlumnos().setModel(SwingUtil.getComboModelFromList(repo.getListaAlumnos()));
+        AlumnoModel alumnoModel = new AlumnoModel(db);
+        view.getCbAlumnos().setModel(SwingUtil.getComboModelFromList(alumnoModel.getListaAlumnos()));
         // se puede escribir parte del nombre, apellidos o UO para buscar el alumno
         // (como el combo de profesores)
         ComboBuscable.hacerBuscable(view.getCbAlumnos());

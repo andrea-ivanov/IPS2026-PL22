@@ -11,6 +11,8 @@ import java.util.List;
 
 import org.apache.commons.dbutils.DbUtils;
 
+import model.alumno.AlumnoModel;
+import repository.AnoAcademicoRepository;
 import util.Database;
 import util.UnexpectedException;
 import util.exception.ValidationException;
@@ -31,9 +33,13 @@ public class MatriculacionModel {
 	public static final double NOTA_APROBADO = 5.0;
 
 	private Database db;
+	private AlumnoModel alumnoModel;
+	private AnoAcademicoRepository anoAcademicoRepository;
 
 	public MatriculacionModel(Database db) {
 		this.db = db;
+		this.alumnoModel = new AlumnoModel(db);
+		this.anoAcademicoRepository = new AnoAcademicoRepository(db);
 	}
 
 	/**
@@ -67,35 +73,7 @@ public class MatriculacionModel {
 	 * @return Identificador exacto en la tabla Alumno
 	 */
 	public String resolverAlumnoId(String uoOrId) {
-		if (uoOrId == null || uoOrId.trim().isEmpty()) {
-			return "";
-		}
-		String clean = uoOrId.trim();
-		if (clean.contains(" - ")) {
-			clean = clean.split(" - ")[0].trim();
-		}
-		// 1. Coincidencia directa
-		List<Object[]> r1 = db.executeQueryArray("SELECT alumnoId FROM Alumno WHERE alumnoId = ?", clean);
-		if (r1 != null && !r1.isEmpty() && r1.get(0)[0] != null) {
-			return r1.get(0)[0].toString();
-		}
-		// 2. Si empieza por UO / uo, probar con AL
-		if (clean.toUpperCase().startsWith("UO")) {
-			String alt = "AL" + clean.substring(2);
-			List<Object[]> r2 = db.executeQueryArray("SELECT alumnoId FROM Alumno WHERE alumnoId = ?", alt);
-			if (r2 != null && !r2.isEmpty() && r2.get(0)[0] != null) {
-				return r2.get(0)[0].toString();
-			}
-		}
-		// 3. Si empieza por AL / al, probar con UO
-		if (clean.toUpperCase().startsWith("AL")) {
-			String alt = "UO" + clean.substring(2);
-			List<Object[]> r3 = db.executeQueryArray("SELECT alumnoId FROM Alumno WHERE alumnoId = ?", alt);
-			if (r3 != null && !r3.isEmpty() && r3.get(0)[0] != null) {
-				return r3.get(0)[0].toString();
-			}
-		}
-		return clean;
+		return alumnoModel.resolverAlumnoId(uoOrId);
 	}
 
 	/**
@@ -106,18 +84,7 @@ public class MatriculacionModel {
 	 * @return Nombre del estudiante, o cadena vacía si no se encuentra
 	 */
 	public String obtenerNombreAlumno(String uoOrId) {
-		if (uoOrId != null && uoOrId.contains(" - ")) {
-			String[] parts = uoOrId.split(" - ", 2);
-			if (parts.length > 1 && !parts[1].trim().isEmpty()) {
-				return parts[1].trim();
-			}
-		}
-		String idReal = resolverAlumnoId(uoOrId);
-		List<Object[]> rows = db.executeQueryArray("SELECT nombre FROM Alumno WHERE alumnoId = ?", idReal);
-		if (rows != null && !rows.isEmpty() && rows.get(0)[0] != null) {
-			return rows.get(0)[0].toString();
-		}
-		return "";
+		return alumnoModel.obtenerNombreAlumno(uoOrId);
 	}
 
 	/**
@@ -539,17 +506,13 @@ public class MatriculacionModel {
 	 * @return Identificador del año académico (p. ej. "2026-2027")
 	 */
 	public String getAnioAcademicoActual() {
-		String sqlVigente = "SELECT anioAcademicoId FROM AnioAcademico "
-				+ "WHERE date('now') BETWEEN fechaInicio AND fechaFin LIMIT 1";
-		List<Object[]> rows = db.executeQueryArray(sqlVigente);
-		if (rows != null && !rows.isEmpty() && rows.get(0)[0] != null) {
-			return rows.get(0)[0].toString();
+		String vigente = anoAcademicoRepository.findVigenteId();
+		if (vigente != null) {
+			return vigente;
 		}
-
-		String sqlMasReciente = "SELECT anioAcademicoId FROM AnioAcademico ORDER BY fechaInicio DESC LIMIT 1";
-		List<Object[]> rowsReciente = db.executeQueryArray(sqlMasReciente);
-		if (rowsReciente != null && !rowsReciente.isEmpty() && rowsReciente.get(0)[0] != null) {
-			return rowsReciente.get(0)[0].toString();
+		String reciente = anoAcademicoRepository.findActualId();
+		if (reciente != null) {
+			return reciente;
 		}
 		return "2026-2027";
 	}

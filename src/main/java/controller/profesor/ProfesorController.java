@@ -8,11 +8,11 @@ import model.asignaciondocente.AsignacionDocenteDisplayDTO;
 import model.grado.GradoDisplayDTO;
 import model.microcredencial.MicrocredencialDisplayDTO;
 import model.microcredencial.MicrocredencialModel;
+import model.anoacademico.AnoAcademicoModel;
 import model.profesor.ProfesorDTO;
+import model.profesor.ProfesorModel;
 import model.propuesta.PropuestaDisplayDTO;
 import repository.ActaRepository;
-import repository.AnoAcademicoRepository;
-import repository.ProfesorRepository;
 import repository.PropuestaRepository;
 import util.ComboBuscable;
 import util.Database;
@@ -43,11 +43,11 @@ public class ProfesorController {
     private static final int COLUMNA_NOTA = 4;
 
     private ProfesorView view;
-    private ProfesorRepository repository;
+    private ProfesorModel profesorModel;
     private ActaRepository actaRepository;
     private PropuestaRepository propuestaRepository;
     private MicrocredencialModel microcredencialModel;
-    private AnoAcademicoRepository anoAcademicoRepository;
+    private AnoAcademicoModel anoAcademicoModel;
     private String profesorId;
     // asignaciones del profesor seleccionado, sin filtrar: los filtros se aplican sobre esta lista
     private List<AsignacionDocenteDisplayDTO> asignaciones = new ArrayList<>();
@@ -61,11 +61,11 @@ public class ProfesorController {
 
     public ProfesorController(ProfesorView view, Database db) {
         this.view = view;
-        this.repository = new ProfesorRepository(db);
+        this.profesorModel = new ProfesorModel(db);
         this.actaRepository = new ActaRepository(db);
         this.propuestaRepository = new PropuestaRepository(db);
         this.microcredencialModel = new MicrocredencialModel(db);
-        this.anoAcademicoRepository = new AnoAcademicoRepository(db);
+        this.anoAcademicoModel = new AnoAcademicoModel(db);
         this.initView();
     }
 
@@ -110,7 +110,7 @@ public class ProfesorController {
         view.getCbProfesores().setSelectedItem(seleccionado);
         profesorId = seleccionado.getProfesorId();
 
-        asignaciones = repository.getAsignacionesDocentes(profesorId);
+        asignaciones = profesorModel.getAsignacionesDocentes(profesorId);
         cargarCombosFiltro();
         aplicarFiltros();
         cargarPropuestas();
@@ -367,7 +367,7 @@ public class ProfesorController {
             throw new ValidationException("Carga primero un profesor");
         String anioAcademicoId;
         try {
-            anioAcademicoId = anoAcademicoRepository.getAnoAcademicoActual().getAnioAcademicoId();
+            anioAcademicoId = anoAcademicoModel.buscarActual().getAnioAcademicoId();
         } catch (ResourceNotFoundException e) {
             throw new ValidationException("No hay ningún año académico configurado");
         }
@@ -417,7 +417,7 @@ public class ProfesorController {
     }
 
     private void initView() {
-        view.getCbProfesores().setModel(new DefaultComboBoxModel<>(repository.getProfesores().toArray(new ProfesorDTO[0])));
+        view.getCbProfesores().setModel(new DefaultComboBoxModel<>(profesorModel.getProfesores().toArray(new ProfesorDTO[0])));
         ComboBuscable.hacerBuscable(view.getCbProfesores());
         view.getFrame().setVisible(true);
     }
