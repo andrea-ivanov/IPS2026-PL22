@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import model.anoacademico.AnoAcademicoModel;
-import model.matriculacion.GestionMatriculaModel;
+import model.gestionmatricula.GestionMatriculaModel;
 import model.matriculacion.MatriculacionModel;
 import repository.MicrocredencialRepository;
 import util.Database;
