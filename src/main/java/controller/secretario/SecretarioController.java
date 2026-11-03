@@ -6,7 +6,7 @@ import model.matriculacion.GrupoConsultaDTO;
 import model.matriculacion.GrupoPlazasDTO;
 import model.matriculacion.MatriculaSecretariaDTO;
 import model.matriculacion.SituacionSecretaria;
-import repository.ActaRepository;
+import model.acta.ActaModel;
 import repository.MatriculacionRepository;
 import view.secretario.SecretarioView;
 import util.Database;
@@ -38,7 +38,7 @@ public class SecretarioController {
     private final Paginacion paginacionMatriculas = new Paginacion(FILAS_POR_PAGINA);
     private final Paginacion paginacionGrupos = new Paginacion(FILAS_POR_PAGINA);
     private final MatriculacionRepository repository;
-    private final ActaRepository actaRepository;
+    private final ActaModel actaModel;
     // Evita recargar la tabla mientras se rellenan los desplegables de filtros
     private boolean cargandoFiltros = false;
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
@@ -47,7 +47,7 @@ public class SecretarioController {
     public SecretarioController(SecretarioView view, Database db) {
         this.view = view;
         this.repository = new MatriculacionRepository(db);
-        this.actaRepository = new ActaRepository(db);
+        this.actaModel = new ActaModel(db);
         this.initView();
     }
 
@@ -496,7 +496,7 @@ public class SecretarioController {
      * es una notificacion para secretaria (Acta.cierreAutomatico = 1). El cierre lo hace MainController al arrancar
      */
     private void mostrarActasCerradas() {
-        List<Object[]> actas = actaRepository.getActasCerradasAutomaticamente();
+        List<Object[]> actas = actaModel.getActasCerradasAutomaticamente();
         if (actas.isEmpty()) {
             JOptionPane.showMessageDialog(view.getFrame(), "No hay actas cerradas por el sistema.",
                     "Actas cerradas por el sistema", JOptionPane.INFORMATION_MESSAGE);

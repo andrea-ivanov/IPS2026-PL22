@@ -2,6 +2,7 @@ package controller.profesor;
 
 import model.acta.ActaDisplayDTO;
 import model.acta.ActaModel;
+import model.propuesta.PropuestaModel;
 import model.acta.CalificacionActaDisplayDTO;
 import model.acta.EstadoActa;
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
@@ -12,8 +13,6 @@ import model.anoacademico.AnoAcademicoModel;
 import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
 import model.propuesta.PropuestaDisplayDTO;
-import repository.ActaRepository;
-import repository.PropuestaRepository;
 import util.ComboBuscable;
 import util.Database;
 import util.SwingUtil;
@@ -44,8 +43,8 @@ public class ProfesorController {
 
     private ProfesorView view;
     private ProfesorModel profesorModel;
-    private ActaRepository actaRepository;
-    private PropuestaRepository propuestaRepository;
+    private ActaModel actaModel;
+    private PropuestaModel propuestaModel;
     private MicrocredencialModel microcredencialModel;
     private AnoAcademicoModel anoAcademicoModel;
     private String profesorId;
@@ -62,8 +61,8 @@ public class ProfesorController {
     public ProfesorController(ProfesorView view, Database db) {
         this.view = view;
         this.profesorModel = new ProfesorModel(db);
-        this.actaRepository = new ActaRepository(db);
-        this.propuestaRepository = new PropuestaRepository(db);
+        this.actaModel = new ActaModel(db);
+        this.propuestaModel = new PropuestaModel(db);
         this.microcredencialModel = new MicrocredencialModel(db);
         this.anoAcademicoModel = new AnoAcademicoModel(db);
         this.initView();
@@ -174,7 +173,7 @@ public class ProfesorController {
             actas = new ArrayList<>();
         } else {
             asignacionSelec = asignacionesFiltradas.get(fila);
-            actas = actaRepository.getActasCurso(asignacionSelec.getCursoId());
+            actas = actaModel.getActasCurso(asignacionSelec.getCursoId());
         }
 
         List<String> opciones = new ArrayList<>();
@@ -199,7 +198,7 @@ public class ProfesorController {
         }
 
         boolean editable = ActaModel.puedeEditarNotas(asignacionSelec.getRolDocente(), acta.getEstadoActa());
-        List<CalificacionActaDisplayDTO> notas = actaRepository.getCalificaciones(acta.getCursoId(),
+        List<CalificacionActaDisplayDTO> notas = actaModel.getCalificaciones(acta.getCursoId(),
                 acta.getAnioAcademicoId(), acta.getTipoConvocatoria());
 
         DefaultTableModel model = new DefaultTableModel(new String[] { "Matrícula", "Cód. Alumno", "Alumno", "DNI", "Nota" }, 0) {
@@ -240,7 +239,7 @@ public class ProfesorController {
             Object nota = model.getValueAt(i, COLUMNA_NOTA);
             notas.put((String) model.getValueAt(i, 0), nota == null ? "" : nota.toString());
         }
-        actaRepository.guardarNotas(profesorId, acta.getCursoId(), acta.getAnioAcademicoId(),
+        actaModel.guardarNotas(profesorId, acta.getCursoId(), acta.getAnioAcademicoId(),
                 acta.getTipoConvocatoria(), notas);
 
         JOptionPane.showMessageDialog(view.getFrame(), "Notas guardadas correctamente.", "Exito",
@@ -260,7 +259,7 @@ public class ProfesorController {
                 "Cerrar Acta", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
-            actaRepository.cerrarActa(profesorId, acta.getCursoId(), acta.getAnioAcademicoId(),
+            actaModel.cerrarActa(profesorId, acta.getCursoId(), acta.getAnioAcademicoId(),
                     acta.getTipoConvocatoria(), LocalDate.now().toString());
 
             JOptionPane.showMessageDialog(view.getFrame(), "Acta cerrada correctamente.", "Éxito",
@@ -277,10 +276,10 @@ public class ProfesorController {
 
     /** Grados en los que imparte el profesor (con su estado) y su listado "Mis propuestas" */
     private void cargarPropuestas() {
-        List<GradoDisplayDTO> grados = propuestaRepository.getGradosProfesor(profesorId);
+        List<GradoDisplayDTO> grados = propuestaModel.getGradosProfesor(profesorId);
         view.getListGradosPropuesta().setListData(grados.toArray(new GradoDisplayDTO[0]));
 
-        List<PropuestaDisplayDTO> propuestas = propuestaRepository.getPropuestas(profesorId);
+        List<PropuestaDisplayDTO> propuestas = propuestaModel.getPropuestas(profesorId);
         view.getLblProfesorPropuesta().setText("Propuestas de " + view.getCbProfesores().getSelectedItem()
                 + (propuestas.isEmpty() ? ": todavía no ha enviado ninguna" : ""));
         TableModel tmodel = SwingUtil.getTableModelFromPojos(propuestas,
@@ -308,7 +307,7 @@ public class ProfesorController {
         String creditos = view.getTxtCreditosPropuesta().getText();
         String descripcion = view.getTxtDescripcionPropuesta().getText();
 
-        propuestaRepository.validarPropuestas(profesorId, gradoIds, nombre, anio, creditos, descripcion);
+        propuestaModel.validarPropuestas(profesorId, gradoIds, nombre, anio, creditos, descripcion);
 
         StringBuilder grados = new StringBuilder();
         for (GradoDisplayDTO g : gradosSelec)
@@ -320,7 +319,7 @@ public class ProfesorController {
         if (confirm != JOptionPane.YES_OPTION)
             return;
 
-        List<String> creadas = propuestaRepository.crearPropuestas(profesorId, gradoIds, nombre, anio, creditos,
+        List<String> creadas = propuestaModel.crearPropuestas(profesorId, gradoIds, nombre, anio, creditos,
                 descripcion, LocalDate.now().toString());
         JOptionPane.showMessageDialog(view.getFrame(),
                 "Propuesta enviada correctamente: " + String.join(", ", creadas) + " (PENDIENTE).", "Éxito",

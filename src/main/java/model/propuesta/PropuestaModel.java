@@ -1,6 +1,5 @@
 package model.propuesta;
 
-import static util.DbUtil.update;
 import static util.Util.parsearAnio;
 import static util.Util.parsearCreditos;
 
@@ -14,10 +13,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.commons.dbutils.QueryRunner;
-import org.apache.commons.dbutils.handlers.ScalarHandler;
-
 import model.grado.GradoDisplayDTO;
+import repository.PropuestaRepository;
 import util.Database;
 import util.exception.ValidationException;
 
@@ -35,10 +32,12 @@ public class PropuestaModel {
 	// PropuestaCurso.creditos es DECIMAL(4,1)
 	private static final String PREFIJO_ID = "PR";
 
-	private Database db;
+	private final Database db;
+	private final PropuestaRepository propuestaRepository;
 
 	public PropuestaModel(Database db) {
 		this.db = db;
+		this.propuestaRepository = new PropuestaRepository(db);
 	}
 
 	// =========================================================================
@@ -50,28 +49,14 @@ public class PropuestaModel {
 	 * Salen también los no vigentes para poder avisar de por qué no se admite la propuesta.
 	 */
 	public List<GradoDisplayDTO> getGradosProfesor(String profesorId) {
-		return db.executeQueryPojo(GradoDisplayDTO.class,
-				"SELECT DISTINCT g.gradoId AS id, g.nombre, g.facultad, g.ramaConocimiento AS rama, g.estado "
-						+ "FROM Imparte i "
-						+ "JOIN GradoCurso gc ON gc.cursoId = i.cursoId "
-						+ "JOIN Grado g ON g.gradoId = gc.gradoId "
-						+ "WHERE i.profesorId = ? "
-						+ "ORDER BY g.nombre",
-				profesorId);
+		return propuestaRepository.findGradosProfesor(profesorId);
 	}
 
 	/**
 	 * Propuestas del profesor ("Mis propuestas"), de la más reciente a la más antigua.
 	 */
 	public List<PropuestaDisplayDTO> getPropuestas(String profesorId) {
-		return db.executeQueryPojo(PropuestaDisplayDTO.class,
-				"SELECT p.propuestaId, p.gradoId, g.nombre AS grado, p.nombre, p.anio, CAST(p.creditos AS REAL) AS creditos, "
-						+ "p.descripcion, p.fechaPropuesta, p.estado "
-						+ "FROM PropuestaCurso p "
-						+ "JOIN Grado g ON g.gradoId = p.gradoId "
-						+ "WHERE p.profesorId = ? "
-						+ "ORDER BY p.fechaPropuesta DESC, p.propuestaId DESC",
-				profesorId);
+		return propuestaRepository.findPropuestas(profesorId);
 	}
 
 	// =========================================================================
@@ -100,10 +85,8 @@ public class PropuestaModel {
 			int filas = 0;
 			for (String gradoId : grados) {
 				String propuestaId = String.format("%s%03d", PREFIJO_ID, siguiente++);
-				filas += update(conn, "INSERT INTO PropuestaCurso (propuestaId, profesorId, gradoId, nombre, anio, creditos, "
-						+ "descripcion, fechaPropuesta, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-						propuestaId, profesorId, gradoId, nombreLimpio, valorAnio, valorCreditos, descripcionLimpia, fechaHoy,
-						EstadoPropuesta.PENDIENTE.name());
+				filas += propuestaRepository.insertar(conn, propuestaId, profesorId, gradoId, nombreLimpio, valorAnio,
+						valorCreditos, descripcionLimpia, fechaHoy, EstadoPropuesta.PENDIENTE.name());
 				creadas.add(propuestaId);
 			}
 			return filas;
@@ -147,7 +130,7 @@ public class PropuestaModel {
 				throw new ValidationException("El grado " + grado.getNombre() + " no está vigente (" + grado.getEstado()
 						+ "): no admite nuevas propuestas");
 			}
-			if (existeNombreEnGrado(gradoId, nombreLimpio)) {
+			if (propuestaRepository.existeNombreEnGrado(gradoId, nombreLimpio)) {
 				throw new ValidationException("Ya existe una asignatura o propuesta llamada '" + nombreLimpio
 						+ "' en el grado " + grado.getNombre());
 			}
@@ -158,20 +141,10 @@ public class PropuestaModel {
 	// Auxiliares
 	// =========================================================================
 
-	/** Nombre repetido en el grado, sin distinguir mayúsculas: como asignatura del grado o como propuesta no rechazada */
-	private boolean existeNombreEnGrado(String gradoId, String nombre) {
-		return !db.executeQueryArray("SELECT 1 FROM GradoCurso gc JOIN Curso c ON c.cursoId = gc.cursoId "
-				+ "WHERE gc.gradoId = ? AND LOWER(TRIM(c.nombre)) = LOWER(?) "
-				+ "UNION ALL "
-				+ "SELECT 1 FROM PropuestaCurso p WHERE p.gradoId = ? AND LOWER(TRIM(p.nombre)) = LOWER(?) AND p.estado <> ?",
-				gradoId, nombre, gradoId, nombre, EstadoPropuesta.RECHAZADA.name()).isEmpty();
-	}
-
 	/** Número de la siguiente propuesta: PR031 si la última es PR030 */
 	private int siguienteNumero(Connection conn) throws SQLException {
-		Number max = new QueryRunner().query(conn, "SELECT MAX(CAST(SUBSTR(propuestaId, 3) AS INTEGER)) "
-				+ "FROM PropuestaCurso WHERE propuestaId LIKE 'PR%'", new ScalarHandler<Number>());
-		return max == null ? 1 : max.intValue() + 1;
+		Integer max = propuestaRepository.findMaxNumero(conn);
+		return max == null ? 1 : max + 1;
 	}
 
 	private void validarObligatorio(String valor, String mensaje) {
