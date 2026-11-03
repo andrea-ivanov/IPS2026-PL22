@@ -1,18 +1,15 @@
-package model.matriculacion;
-
-import static util.DbUtil.update;
+package model.gestionmatricula;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.dbutils.QueryRunner;
-import org.apache.commons.dbutils.handlers.ScalarHandler;
-
+import repository.AlumnoRepository;
 import repository.AnoAcademicoRepository;
+import repository.GrupoRepository;
+import repository.MatriculaRepository;
 import util.Database;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
@@ -23,55 +20,24 @@ import util.exception.ValidationException;
  * HU 35229: ciclo de vida (aceptar solicitudes, modificar, asignar grupos, cancelar, activar al inicio
  * del año y finalizar al terminarlo)
  * Las operaciones que cambian el estado actualizan Matricula y MatriculaCurso en la misma transacción.
+ * El SQL está en MatriculaRepository, GrupoRepository, AlumnoRepository y AnoAcademicoRepository.
  */
 public class GestionMatriculaModel {
 	public static final List<String> MOTIVOS_CANCELACION = Arrays.asList("IMPAGO", "FUERZA_MAYOR", "INCOMPATIBILIDAD");
 	public static final List<String> METODOS_PAGO = Arrays.asList("TARJETA", "TRANSFERENCIA", "CARTA_PAGO");
 
-	private static final String SQL_COLUMNAS = "SELECT mc.matriculaId, mc.cursoId, m.anioAcademicoId, a.alumnoId, a.dni, "
-			+ "a.nombre || ' ' || a.apellidos AS estudiante, a.email, g.gradoId, g.nombre AS grado, c.nombre AS curso, "
-			+ "COALESCE((SELECT GROUP_CONCAT(mg.grupoCodigo, ', ') FROM MatriculaGrupo mg "
-			+ "WHERE mg.matriculaId = mc.matriculaId AND mg.cursoId = mc.cursoId), 'Sin asignar') AS grupo, "
-			+ "mc.estado, m.estado AS estadoMatricula, CAST(mc.importe AS REAL) AS importe, mc.metodoPago, mc.fechaPago, "
-			+ "mc.pagoValidado, mc.motivoCancelacion, mc.fechaCancelacion, an.fechaInicio AS fechaInicioAnio, "
-			+ "(SELECT COUNT(DISTINCT gr.tipo) FROM Grupo gr WHERE gr.cursoId = mc.cursoId) "
-			+ "- (SELECT COUNT(*) FROM MatriculaGrupo mg2 WHERE mg2.matriculaId = mc.matriculaId "
-			+ "AND mg2.cursoId = mc.cursoId) AS gruposPendientes ";
-	private static final String SQL_FROM = "FROM MatriculaCurso mc "
-			+ "JOIN Matricula m ON mc.matriculaId = m.matriculaId "
-			+ "JOIN AnioAcademico an ON m.anioAcademicoId = an.anioAcademicoId "
-			+ "JOIN Alumno a ON m.alumnoId = a.alumnoId "
-			+ "JOIN Grado g ON mc.gradoId = g.gradoId "
-			+ "JOIN Curso c ON mc.cursoId = c.cursoId ";
-	private static final String SQL_SELECT = SQL_COLUMNAS + SQL_FROM;
-	private static final String SQL_ORDEN = "ORDER BY m.anioAcademicoId DESC, mc.matriculaId, mc.cursoId ";
-
-	// Tipos de grupo del curso que aún no tiene asignados (la misma cuenta que gruposPendientes)
-	private static final String SQL_GRUPOS_PENDIENTES = "((SELECT COUNT(DISTINCT gr.tipo) FROM Grupo gr "
-			+ "WHERE gr.cursoId = mc.cursoId) - (SELECT COUNT(*) FROM MatriculaGrupo mg2 "
-			+ "WHERE mg2.matriculaId = mc.matriculaId AND mg2.cursoId = mc.cursoId))";
-
-	private static final String SQL_COLUMNAS_GRUPO = "SELECT g.cursoId, c.nombre AS curso, "
-			+ "COALESCE((SELECT GROUP_CONCAT(gr.nombre, '; ') FROM GradoCurso gc JOIN Grado gr ON gr.gradoId = gc.gradoId "
-			+ "WHERE gc.cursoId = g.cursoId), '-') AS grados, "
-			+ "g.grupoCodigo, g.tipo, g.capacidad, "
-			+ "(SELECT COUNT(*) FROM MatriculaGrupo mg "
-			+ "JOIN MatriculaCurso mc ON mc.matriculaId = mg.matriculaId AND mc.cursoId = mg.cursoId "
-			+ "JOIN Matricula m ON m.matriculaId = mc.matriculaId "
-			+ "WHERE mg.cursoId = g.cursoId AND mg.grupoCodigo = g.grupoCodigo AND mc.estado IN ('PAGADA', 'ACTIVA') "
-			+ "AND m.anioAcademicoId = ?) AS ocupadas, "
-			+ "COALESCE((SELECT GROUP_CONCAT(p.nombre || ' ' || p.apellidos, ', ') FROM Imparte i "
-			+ "JOIN Profesor p ON p.profesorId = i.profesorId "
-			+ "WHERE i.cursoId = g.cursoId AND i.grupoCodigo = g.grupoCodigo), 'Sin asignar') AS profesores ";
-	private static final String SQL_FROM_GRUPO = "FROM Grupo g JOIN Curso c ON c.cursoId = g.cursoId ";
-	private static final String SQL_ORDEN_GRUPO = "ORDER BY c.nombre, g.tipo DESC, g.grupoCodigo ";
-
 	private Database db;
 	private AnoAcademicoRepository anoAcademicoRepository;
+	private MatriculaRepository matriculaRepository;
+	private GrupoRepository grupoRepository;
+	private AlumnoRepository alumnoRepository;
 
 	public GestionMatriculaModel(Database db) {
 		this.db = db;
 		this.anoAcademicoRepository = new AnoAcademicoRepository(db);
+		this.matriculaRepository = new MatriculaRepository(db);
+		this.grupoRepository = new GrupoRepository(db);
+		this.alumnoRepository = new AlumnoRepository(db);
 	}
 
 	// =========================================================================
@@ -82,110 +48,38 @@ public class GestionMatriculaModel {
 	 * Listado de todos los cursos matriculados, del año académico más reciente al más antiguo.
 	 */
 	public List<MatriculaSecretariaDTO> getMatriculas() {
-		return db.executeQueryPojo(MatriculaSecretariaDTO.class, SQL_SELECT + SQL_ORDEN);
+		return matriculaRepository.findMatriculasSecretaria();
 	}
 
 	/**
 	 * Número de cursos matriculados que cumplen los filtros.
 	 */
 	public int contarMatriculas(FiltroMatriculasSecretaria filtro) {
-		List<Object> params = new ArrayList<>();
-		String where = whereMatriculas(filtro, params);
-		return ((Number) db.executeQueryArray("SELECT COUNT(*) " + SQL_FROM + where, params.toArray()).get(0)[0])
-				.intValue();
+		return matriculaRepository.contarMatriculasSecretaria(filtro);
 	}
 
 	/**
 	 * Una página del listado de cursos matriculados que cumplen los filtros, en el mismo orden que getMatriculas.
-	 * Primero se buscan solo las claves de la página y después se calculan los datos (grupos, pendientes...)
-	 * de esas filas, para no calcularlos para todo el listado.
 	 * @param offset filas que se saltan (desde 0)
 	 * @param limite número máximo de filas de la página
 	 */
 	public List<MatriculaSecretariaDTO> getMatriculas(FiltroMatriculasSecretaria filtro, int offset, int limite) {
-		List<Object> params = new ArrayList<>();
-		String where = whereMatriculas(filtro, params);
-		params.add(limite);
-		params.add(offset);
-		return db.executeQueryPojo(MatriculaSecretariaDTO.class, SQL_SELECT
-				+ "WHERE (mc.matriculaId, mc.cursoId) IN (SELECT mc.matriculaId, mc.cursoId " + SQL_FROM + where
-				+ SQL_ORDEN + "LIMIT ? OFFSET ?) " + SQL_ORDEN, params.toArray());
+		return matriculaRepository.findMatriculasSecretaria(filtro, offset, limite);
 	}
 
 	/** Años académicos que tienen matrículas, del más reciente al más antiguo. */
 	public List<String> getAniosConMatriculas() {
-		return columna("SELECT DISTINCT anioAcademicoId FROM Matricula ORDER BY anioAcademicoId DESC");
+		return matriculaRepository.findAniosConMatriculas();
 	}
 
 	/** Nombres de los grados que tienen cursos matriculados. */
 	public List<String> getGradosConMatriculas() {
-		return columna("SELECT DISTINCT g.nombre FROM MatriculaCurso mc JOIN Grado g ON g.gradoId = mc.gradoId "
-				+ "ORDER BY g.nombre");
+		return matriculaRepository.findGradosConMatriculas();
 	}
 
 	/** Nombres de los cursos que tienen alguna matrícula. */
 	public List<String> getCursosConMatriculas() {
-		return columna("SELECT DISTINCT c.nombre FROM MatriculaCurso mc JOIN Curso c ON c.cursoId = mc.cursoId "
-				+ "ORDER BY c.nombre");
-	}
-
-	/** Condiciones WHERE de los filtros del listado; añade a params los valores de sus parámetros. */
-	private static String whereMatriculas(FiltroMatriculasSecretaria filtro, List<Object> params) {
-		StringBuilder where = new StringBuilder("WHERE 1 = 1 ");
-		if (hayValor(filtro.getEstudiante())) {
-			String patron = "%" + filtro.getEstudiante().trim().toLowerCase() + "%";
-			where.append("AND (LOWER(a.nombre || ' ' || a.apellidos) LIKE ? OR LOWER(a.dni) LIKE ?) ");
-			params.add(patron);
-			params.add(patron);
-		}
-		if (hayValor(filtro.getAnioAcademicoId())) {
-			where.append("AND m.anioAcademicoId = ? ");
-			params.add(filtro.getAnioAcademicoId());
-		}
-		if (hayValor(filtro.getGrado())) {
-			where.append("AND g.nombre = ? ");
-			params.add(filtro.getGrado());
-		}
-		if (hayValor(filtro.getCurso())) {
-			where.append("AND c.nombre = ? ");
-			params.add(filtro.getCurso());
-		}
-		if (hayValor(filtro.getGrupo())) {
-			where.append("AND EXISTS (SELECT 1 FROM MatriculaGrupo mgf WHERE mgf.matriculaId = mc.matriculaId "
-					+ "AND mgf.cursoId = mc.cursoId AND UPPER(mgf.grupoCodigo) = UPPER(?)) ");
-			params.add(filtro.getGrupo().trim());
-		}
-		if (hayValor(filtro.getEstado())) {
-			where.append("AND mc.estado = ? ");
-			params.add(filtro.getEstado());
-		}
-		switch (filtro.getSituacion()) {
-			case PAGO_PENDIENTE:
-				where.append("AND mc.estado = 'SOLICITADA' AND mc.metodoPago IS NOT NULL AND mc.pagoValidado = 0 ");
-				break;
-			case SIN_PAGAR:
-				where.append("AND mc.estado = 'SOLICITADA' AND mc.metodoPago IS NULL AND an.fechaInicio <= ? ");
-				params.add(filtro.getFechaHoy());
-				break;
-			case FALTAN_GRUPOS:
-				where.append("AND mc.estado IN ('PAGADA', 'ACTIVA') AND " + SQL_GRUPOS_PENDIENTES + " > 0 ");
-				break;
-			default:
-				break;
-		}
-		return where.toString();
-	}
-
-	private static boolean hayValor(String filtro) {
-		return filtro != null && !filtro.trim().isEmpty();
-	}
-
-	private List<String> columna(String sql, Object... params) {
-		List<String> valores = new ArrayList<>();
-		for (Object[] fila : db.executeQueryArray(sql, params)) {
-			valores.add(fila[0].toString());
-		}
-		return valores;
+		return matriculaRepository.findCursosConMatriculas();
 	}
 
 	/**
@@ -193,12 +87,11 @@ public class GestionMatriculaModel {
 	 * @throws ResourceNotFoundException si no existe
 	 */
 	public MatriculaSecretariaDTO getMatricula(String matriculaId, String cursoId) {
-		List<MatriculaSecretariaDTO> result = db.executeQueryPojo(MatriculaSecretariaDTO.class,
-				SQL_SELECT + "WHERE mc.matriculaId = ? AND mc.cursoId = ?", matriculaId, cursoId);
-		if (result.isEmpty()) {
+		MatriculaSecretariaDTO result = matriculaRepository.findMatriculaSecretaria(matriculaId, cursoId);
+		if (result == null) {
 			throw new ResourceNotFoundException("No existe la matrícula " + matriculaId + " en el curso " + cursoId);
 		}
-		return result.get(0);
+		return result;
 	}
 
 	/**
@@ -225,71 +118,41 @@ public class GestionMatriculaModel {
 	 * Solo ocupan plaza los cursos PAGADOS o ACTIVOS.
 	 */
 	public List<GrupoConsultaDTO> getGruposConsulta(String anioAcademicoId) {
-		return db.executeQueryPojo(GrupoConsultaDTO.class,
-				SQL_COLUMNAS_GRUPO + SQL_FROM_GRUPO + SQL_ORDEN_GRUPO, anioAcademicoId);
+		return grupoRepository.findGruposConsulta(anioAcademicoId);
 	}
 
 	/**
 	 * Número de grupos del grado y curso indicados (nulo o vacío para no filtrar).
 	 */
 	public int contarGruposConsulta(String grado, String curso) {
-		List<Object> params = new ArrayList<>();
-		String where = whereGrupos(grado, curso, params);
-		return ((Number) db.executeQueryArray("SELECT COUNT(*) " + SQL_FROM_GRUPO + where, params.toArray()).get(0)[0])
-				.intValue();
+		return grupoRepository.contarGruposConsulta(grado, curso);
 	}
 
 	/**
 	 * Una página de los grupos del grado y curso indicados, en el mismo orden que getGruposConsulta.
-	 * Como en las matrículas, la ocupación y los profesores solo se calculan para los grupos de la página.
 	 * @param offset filas que se saltan (desde 0)
 	 * @param limite número máximo de filas de la página
 	 */
 	public List<GrupoConsultaDTO> getGruposConsulta(String anioAcademicoId, String grado, String curso, int offset,
 			int limite) {
-		List<Object> params = new ArrayList<>();
-		params.add(anioAcademicoId);
-		String where = whereGrupos(grado, curso, params);
-		params.add(limite);
-		params.add(offset);
-		return db.executeQueryPojo(GrupoConsultaDTO.class, SQL_COLUMNAS_GRUPO + SQL_FROM_GRUPO
-				+ "WHERE (g.cursoId, g.grupoCodigo) IN (SELECT g.cursoId, g.grupoCodigo " + SQL_FROM_GRUPO + where
-				+ SQL_ORDEN_GRUPO + "LIMIT ? OFFSET ?) " + SQL_ORDEN_GRUPO, params.toArray());
+		return grupoRepository.findGruposConsulta(anioAcademicoId, grado, curso, offset, limite);
 	}
 
 	/** Nombres de los grados que tienen algún curso con grupos. */
 	public List<String> getGradosConGrupos() {
-		return columna("SELECT DISTINCT gr.nombre FROM GradoCurso gc JOIN Grado gr ON gr.gradoId = gc.gradoId "
-				+ "WHERE EXISTS (SELECT 1 FROM Grupo g WHERE g.cursoId = gc.cursoId) ORDER BY gr.nombre");
+		return grupoRepository.findGradosConGrupos();
 	}
 
 	/** Nombres de los cursos que tienen grupos. */
 	public List<String> getCursosConGrupos() {
-		return columna("SELECT DISTINCT c.nombre FROM Grupo g JOIN Curso c ON c.cursoId = g.cursoId ORDER BY c.nombre");
-	}
-
-	private static String whereGrupos(String grado, String curso, List<Object> params) {
-		StringBuilder where = new StringBuilder("WHERE 1 = 1 ");
-		if (hayValor(grado)) {
-			where.append("AND EXISTS (SELECT 1 FROM GradoCurso gcf JOIN Grado grf ON grf.gradoId = gcf.gradoId "
-					+ "WHERE gcf.cursoId = g.cursoId AND grf.nombre = ?) ");
-			params.add(grado);
-		}
-		if (hayValor(curso)) {
-			where.append("AND c.nombre = ? ");
-			params.add(curso);
-		}
-		return where.toString();
+		return grupoRepository.findCursosConGrupos();
 	}
 
 	/**
 	 * Cursos matriculados asignados a un grupo en un año académico (en cualquier estado).
 	 */
 	public List<MatriculaSecretariaDTO> getMatriculasGrupo(String cursoId, String grupoCodigo, String anioAcademicoId) {
-		return db.executeQueryPojo(MatriculaSecretariaDTO.class, SQL_SELECT
-				+ "WHERE mc.cursoId = ? AND m.anioAcademicoId = ? AND EXISTS (SELECT 1 FROM MatriculaGrupo mg3 "
-				+ "WHERE mg3.matriculaId = mc.matriculaId AND mg3.cursoId = mc.cursoId AND mg3.grupoCodigo = ?) "
-				+ "ORDER BY a.apellidos, a.nombre", cursoId, anioAcademicoId, grupoCodigo);
+		return matriculaRepository.findMatriculasGrupo(cursoId, grupoCodigo, anioAcademicoId);
 	}
 
 	// =========================================================================
@@ -334,15 +197,7 @@ public class GestionMatriculaModel {
 	 * Solo ocupan plaza los cursos PAGADOS o ACTIVOS.
 	 */
 	public List<GrupoPlazasDTO> getGrupos(String matriculaId, String cursoId) {
-		return db.executeQueryPojo(GrupoPlazasDTO.class, "SELECT g.grupoCodigo, g.tipo, g.capacidad, "
-				+ "(SELECT COUNT(*) FROM MatriculaGrupo mg "
-				+ "JOIN MatriculaCurso mc ON mc.matriculaId = mg.matriculaId AND mc.cursoId = mg.cursoId "
-				+ "JOIN Matricula m ON m.matriculaId = mc.matriculaId "
-				+ "WHERE mg.cursoId = g.cursoId AND mg.grupoCodigo = g.grupoCodigo AND mc.estado IN ('PAGADA', 'ACTIVA') "
-				+ "AND m.anioAcademicoId = (SELECT anioAcademicoId FROM Matricula WHERE matriculaId = ?)) AS ocupadas, "
-				+ "(SELECT COUNT(*) FROM MatriculaGrupo mg WHERE mg.matriculaId = ? AND mg.cursoId = g.cursoId "
-				+ "AND mg.grupoCodigo = g.grupoCodigo) AS asignado "
-				+ "FROM Grupo g WHERE g.cursoId = ? ORDER BY g.tipo DESC, g.grupoCodigo", matriculaId, matriculaId, cursoId);
+		return grupoRepository.findGruposMatricula(matriculaId, cursoId);
 	}
 
 	/**
@@ -378,10 +233,8 @@ public class GestionMatriculaModel {
 
 		db.enTransaccion(conn -> {
 			for (Map.Entry<String, String> e : grupoPorTipo.entrySet()) {
-				update(conn, "DELETE FROM MatriculaGrupo WHERE matriculaId = ? AND cursoId = ? AND tipo = ?",
-						matriculaId, cursoId, e.getKey());
-				update(conn, "INSERT INTO MatriculaGrupo (matriculaId, cursoId, tipo, grupoCodigo) VALUES (?, ?, ?, ?)",
-						matriculaId, cursoId, e.getKey(), e.getValue());
+				grupoRepository.quitarGrupo(conn, matriculaId, cursoId, e.getKey());
+				grupoRepository.asignarGrupo(conn, matriculaId, cursoId, e.getKey(), e.getValue());
 			}
 			return 0;
 		});
@@ -404,9 +257,7 @@ public class GestionMatriculaModel {
 		String fechaPago = actual.getFechaPago() != null ? actual.getFechaPago() : fechaHoy;
 
 		db.enTransaccion(conn -> {
-			update(conn, "UPDATE MatriculaCurso SET estado = 'PAGADA', metodoPago = ?, fechaPago = ?, pagoValidado = 1 "
-					+ "WHERE matriculaId = ? AND cursoId = ? AND estado = 'SOLICITADA'",
-					metodo, fechaPago, matriculaId, cursoId);
+			matriculaRepository.validarPagoCurso(conn, matriculaId, cursoId, metodo, fechaPago);
 			return activarMatriculasIniciadas(conn, fechaHoy) + finalizarMatriculasTerminadas(conn, fechaHoy);
 		});
 		return getMatricula(matriculaId, cursoId).getEstado();
@@ -435,16 +286,13 @@ public class GestionMatriculaModel {
 			throw new ValidationException("El email introducido no es válido");
 		}
 		String emailLimpio = email.trim();
-		List<Object[]> otros = db.executeQueryArray(
-				"SELECT alumnoId FROM Alumno WHERE email = ? AND alumnoId <> ?", emailLimpio, actual.getAlumnoId());
-		if (!otros.isEmpty()) {
+		if (alumnoRepository.existeEmailDeOtroAlumno(emailLimpio, actual.getAlumnoId())) {
 			throw new ValidationException("El email " + emailLimpio + " ya pertenece a otro estudiante");
 		}
 
 		db.enTransaccion(conn -> {
-			update(conn, "UPDATE MatriculaCurso SET metodoPago = COALESCE(?, metodoPago), fechaPago = ? "
-					+ "WHERE matriculaId = ? AND cursoId = ?", metodoPago, fechaPago, matriculaId, cursoId);
-			update(conn, "UPDATE Alumno SET email = ? WHERE alumnoId = ?", emailLimpio, actual.getAlumnoId());
+			matriculaRepository.actualizarPagoCurso(conn, matriculaId, cursoId, metodoPago, fechaPago);
+			alumnoRepository.actualizarEmail(conn, actual.getAlumnoId(), emailLimpio);
 			return 0;
 		});
 	}
@@ -466,18 +314,13 @@ public class GestionMatriculaModel {
 
 		db.enTransaccion(conn -> {
 			if (todaLaMatricula) {
-				update(conn, "UPDATE MatriculaCurso SET estado = 'CANCELADA', motivoCancelacion = ?, fechaCancelacion = ? "
-						+ "WHERE matriculaId = ? AND estado NOT IN ('CANCELADA', 'FINALIZADA')", motivo, fechaHoy, matriculaId);
+				matriculaRepository.cancelarCursosAbiertos(conn, matriculaId, motivo, fechaHoy);
 			} else {
-				update(conn, "UPDATE MatriculaCurso SET estado = 'CANCELADA', motivoCancelacion = ?, fechaCancelacion = ? "
-						+ "WHERE matriculaId = ? AND cursoId = ?", motivo, fechaHoy, matriculaId, cursoId);
+				matriculaRepository.cancelarCurso(conn, matriculaId, cursoId, motivo, fechaHoy);
 			}
-			Number restantes = new QueryRunner().query(conn,
-					"SELECT count(*) FROM MatriculaCurso WHERE matriculaId = ? AND estado <> 'CANCELADA'",
-					new ScalarHandler<Number>(), matriculaId);
-			if (todaLaMatricula || restantes.intValue() == 0) {
-				update(conn, "UPDATE Matricula SET estado = 'CANCELADA', motivoCancelacion = ?, fechaCancelacion = ? "
-						+ "WHERE matriculaId = ?", motivo, fechaHoy, matriculaId);
+			int restantes = matriculaRepository.contarCursosNoCancelados(conn, matriculaId);
+			if (todaLaMatricula || restantes == 0) {
+				matriculaRepository.cancelarMatricula(conn, matriculaId, motivo, fechaHoy);
 			}
 			return 0;
 		});
@@ -492,22 +335,14 @@ public class GestionMatriculaModel {
 	 * nunca se queda PAGADO, y a continuación finalizarMatriculasTerminadas lo pasa a FINALIZADA.
 	 */
 	private int activarMatriculasIniciadas(Connection conn, String fechaHoy) throws SQLException {
-		int activadas = update(conn, "UPDATE MatriculaCurso SET estado = 'ACTIVA' WHERE estado = 'PAGADA' "
-				+ "AND matriculaId IN (SELECT m.matriculaId FROM Matricula m "
-				+ "JOIN AnioAcademico an ON m.anioAcademicoId = an.anioAcademicoId "
-				+ "WHERE an.fechaInicio <= ?)", fechaHoy);
-		update(conn, "UPDATE Matricula SET estado = 'ACTIVA' WHERE estado = 'SOLICITADA' "
-				+ "AND EXISTS (SELECT 1 FROM MatriculaCurso mc WHERE mc.matriculaId = Matricula.matriculaId "
-				+ "AND mc.estado = 'ACTIVA')");
+		int activadas = matriculaRepository.activarCursosPagadosIniciados(conn, fechaHoy);
+		matriculaRepository.activarMatriculasConCursoActivo(conn);
 		return activadas;
 	}
 
 	private int finalizarMatriculasTerminadas(Connection conn, String fechaHoy) throws SQLException {
-		int finalizadas = update(conn, "UPDATE MatriculaCurso SET estado = 'FINALIZADA' WHERE estado = 'ACTIVA' "
-				+ "AND matriculaId IN (SELECT m.matriculaId FROM Matricula m "
-				+ "JOIN AnioAcademico an ON m.anioAcademicoId = an.anioAcademicoId WHERE an.fechaFin < ?)", fechaHoy);
-		update(conn, "UPDATE Matricula SET estado = 'FINALIZADA' WHERE estado = 'ACTIVA' "
-				+ "AND anioAcademicoId IN (SELECT anioAcademicoId FROM AnioAcademico WHERE fechaFin < ?)", fechaHoy);
+		int finalizadas = matriculaRepository.finalizarCursosActivosTerminados(conn, fechaHoy);
+		matriculaRepository.finalizarMatriculasActivasTerminadas(conn, fechaHoy);
 		return finalizadas;
 	}
 

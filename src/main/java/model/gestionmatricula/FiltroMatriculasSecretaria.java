@@ -1,4 +1,4 @@
-package model.matriculacion;
+package model.gestionmatricula;
 
 /**
  * Filtros del listado de matrículas de Secretaría (HU 35226). Se aplican en la consulta SQL

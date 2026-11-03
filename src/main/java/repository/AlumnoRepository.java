@@ -1,5 +1,9 @@
 package repository;
 
+import static util.DbUtil.update;
+
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 
 import util.Database;
@@ -37,5 +41,17 @@ public class AlumnoRepository {
     public String findNombre(String alumnoId) {
         List<Object[]> rows = db.executeQueryArray("SELECT nombre FROM Alumno WHERE alumnoId = ?", alumnoId);
         return rows != null && !rows.isEmpty() && rows.get(0)[0] != null ? rows.get(0)[0].toString() : null;
+    }
+
+    /** Si el email pertenece a un alumno distinto del indicado */
+    public boolean existeEmailDeOtroAlumno(String email, String alumnoId) {
+        List<Object[]> otros = db.executeQueryArray(
+                "SELECT alumnoId FROM Alumno WHERE email = ? AND alumnoId <> ?", email, alumnoId);
+        return !otros.isEmpty();
+    }
+
+    /** Cambia el email del alumno (dentro de la transacción del modelo) */
+    public void actualizarEmail(Connection conn, String alumnoId, String email) throws SQLException {
+        update(conn, "UPDATE Alumno SET email = ? WHERE alumnoId = ?", email, alumnoId);
     }
 }

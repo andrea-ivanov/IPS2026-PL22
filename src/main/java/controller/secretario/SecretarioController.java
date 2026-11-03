@@ -1,13 +1,12 @@
 package controller.secretario;
 
-import model.matriculacion.FiltroMatriculasSecretaria;
-import model.matriculacion.GestionMatriculaModel;
-import model.matriculacion.GrupoConsultaDTO;
-import model.matriculacion.GrupoPlazasDTO;
-import model.matriculacion.MatriculaSecretariaDTO;
-import model.matriculacion.SituacionSecretaria;
+import model.gestionmatricula.FiltroMatriculasSecretaria;
+import model.gestionmatricula.GestionMatriculaModel;
+import model.gestionmatricula.GrupoConsultaDTO;
+import model.gestionmatricula.GrupoPlazasDTO;
+import model.gestionmatricula.MatriculaSecretariaDTO;
+import model.gestionmatricula.SituacionSecretaria;
 import model.acta.ActaModel;
-import repository.MatriculacionRepository;
 import view.secretario.SecretarioView;
 import util.Database;
 import util.Paginacion;
@@ -37,7 +36,7 @@ public class SecretarioController {
     private SecretarioView view;
     private final Paginacion paginacionMatriculas = new Paginacion(FILAS_POR_PAGINA);
     private final Paginacion paginacionGrupos = new Paginacion(FILAS_POR_PAGINA);
-    private final MatriculacionRepository repository;
+    private final GestionMatriculaModel gestionModel;
     private final ActaModel actaModel;
     // Evita recargar la tabla mientras se rellenan los desplegables de filtros
     private boolean cargandoFiltros = false;
@@ -46,7 +45,7 @@ public class SecretarioController {
 
     public SecretarioController(SecretarioView view, Database db) {
         this.view = view;
-        this.repository = new MatriculacionRepository(db);
+        this.gestionModel = new GestionMatriculaModel(db);
         this.actaModel = new ActaModel(db);
         this.initView();
     }
@@ -119,9 +118,9 @@ public class SecretarioController {
     private void cargarOpcionesFiltros() {
         cargandoFiltros = true;
         try {
-            rellenarCombo(view.getCbFiltroAnio(), repository.getAniosConMatriculas());
-            rellenarCombo(view.getCbFiltroGrado(), repository.getGradosConMatriculas());
-            rellenarCombo(view.getCbFiltroCurso(), repository.getCursosConMatriculas());
+            rellenarCombo(view.getCbFiltroAnio(), gestionModel.getAniosConMatriculas());
+            rellenarCombo(view.getCbFiltroGrado(), gestionModel.getGradosConMatriculas());
+            rellenarCombo(view.getCbFiltroCurso(), gestionModel.getCursosConMatriculas());
         } finally {
             cargandoFiltros = false;
         }
@@ -173,8 +172,8 @@ public class SecretarioController {
                 .setFechaHoy(hoy());
 
         // Primero el total, que puede recolocar la página si tras un cambio hay menos filas
-        paginacionMatriculas.setTotalFilas(repository.contarMatriculasSecretaria(filtro));
-        List<MatriculaSecretariaDTO> pagina = repository.getMatriculasSecretaria(filtro,
+        paginacionMatriculas.setTotalFilas(gestionModel.contarMatriculas(filtro));
+        List<MatriculaSecretariaDTO> pagina = gestionModel.getMatriculas(filtro,
                 paginacionMatriculas.getOffset(), paginacionMatriculas.getFilasPorPagina());
 
         DefaultTableModel model = (DefaultTableModel) view.getTabMatriculas().getModel();
@@ -209,18 +208,18 @@ public class SecretarioController {
 
     /** Rellena los años académicos (seleccionando el año en curso) y los grados y cursos que tienen grupos. */
     private void cargarOpcionesGrupos() {
-        String anioActual = repository.getAnioAcademicoActual(hoy());
+        String anioActual = gestionModel.getAnioAcademicoActual(hoy());
         cargandoFiltros = true;
         try {
             Object anioSeleccionado = view.getCbGruposAnio().getSelectedItem();
             DefaultComboBoxModel<String> anios = new DefaultComboBoxModel<>();
-            for (String anio : repository.getAniosAcademicos()) {
+            for (String anio : gestionModel.getAniosAcademicos()) {
                 anios.addElement(anio);
             }
             view.getCbGruposAnio().setModel(anios);
             view.getCbGruposAnio().setSelectedItem(anioSeleccionado != null ? anioSeleccionado : anioActual);
-            rellenarCombo(view.getCbGruposGrado(), repository.getGradosConGrupos());
-            rellenarCombo(view.getCbGruposCurso(), repository.getCursosConGrupos());
+            rellenarCombo(view.getCbGruposGrado(), gestionModel.getGradosConGrupos());
+            rellenarCombo(view.getCbGruposCurso(), gestionModel.getCursosConGrupos());
         } finally {
             cargandoFiltros = false;
         }
@@ -247,8 +246,8 @@ public class SecretarioController {
             view.getLblResultadosGrupos().setText("No hay años académicos definidos");
             return;
         }
-        paginacionGrupos.setTotalFilas(repository.contarGruposConsulta(grado, curso));
-        for (GrupoConsultaDTO g : repository.getGruposConsulta(anio, grado, curso, paginacionGrupos.getOffset(),
+        paginacionGrupos.setTotalFilas(gestionModel.contarGruposConsulta(grado, curso));
+        for (GrupoConsultaDTO g : gestionModel.getGruposConsulta(anio, grado, curso, paginacionGrupos.getOffset(),
                 paginacionGrupos.getFilasPorPagina())) {
             model.addRow(new Object[] {
                 g.getCursoId(),
@@ -281,7 +280,7 @@ public class SecretarioController {
 
         DefaultTableModel model = (DefaultTableModel) view.getTabAlumnosGrupo().getModel();
         model.setRowCount(0);
-        for (MatriculaSecretariaDTO m : repository.getMatriculasGrupo(cursoId, grupoCodigo, anio)) {
+        for (MatriculaSecretariaDTO m : gestionModel.getMatriculasGrupo(cursoId, grupoCodigo, anio)) {
             model.addRow(new Object[] { m.getMatriculaId(), m.getDni(), m.getEstudiante(), m.getGrado(), m.getEstado() });
         }
         view.setTituloAlumnosGrupo("Alumnos de " + curso + " - " + grupoCodigo + " en " + anio
@@ -294,7 +293,7 @@ public class SecretarioController {
     }
 
     private void mostrarDetalle() {
-        MatriculaSecretariaDTO m = repository.getMatriculaSecretaria(view.getIdMatriculaSeleccionada(),
+        MatriculaSecretariaDTO m = gestionModel.getMatricula(view.getIdMatriculaSeleccionada(),
                 view.getCursoIdSeleccionado());
         String pago = String.format(Locale.US, "%.2f €", m.getImporte() != null ? m.getImporte() : 0.0)
                 + (m.getMetodoPago() != null ? " - " + m.getMetodoPago() : " - sin método de pago")
@@ -316,7 +315,7 @@ public class SecretarioController {
     private void aceptarSolicitud() {
         String matriculaId = view.getIdMatriculaSeleccionada();
         String cursoId = view.getCursoIdSeleccionado();
-        MatriculaSecretariaDTO m = repository.getMatriculaSecretaria(matriculaId, cursoId);
+        MatriculaSecretariaDTO m = gestionModel.getMatricula(matriculaId, cursoId);
 
         // Si la solicitud no tiene metodo de pago hay que registrarlo al aceptarla
         String metodoPago = m.getMetodoPago();
@@ -336,7 +335,7 @@ public class SecretarioController {
             return;
         }
 
-        String estadoFinal = repository.aceptarSolicitud(matriculaId, cursoId, metodoPago, hoy());
+        String estadoFinal = gestionModel.aceptarSolicitud(matriculaId, cursoId, metodoPago, hoy());
         // Se refresca antes del aviso para que detrás ya se vea el nuevo estado guardado en la BD
         refrescar();
         String mensaje;
@@ -353,7 +352,7 @@ public class SecretarioController {
     private void modificarMatricula() {
         String matriculaId = view.getIdMatriculaSeleccionada();
         String cursoId = view.getCursoIdSeleccionado();
-        MatriculaSecretariaDTO m = repository.getMatriculaSecretaria(matriculaId, cursoId);
+        MatriculaSecretariaDTO m = gestionModel.getMatricula(matriculaId, cursoId);
 
         JComboBox<Object> cbMetodo = new JComboBox<>(GestionMatriculaModel.METODOS_PAGO.toArray());
         if (m.getMetodoPago() == null) {
@@ -384,7 +383,7 @@ public class SecretarioController {
         Object metodo = cbMetodo.getSelectedItem();
         String metodoPago = GestionMatriculaModel.METODOS_PAGO.contains(metodo) ? (String) metodo : null;
 
-        repository.modificarMatricula(matriculaId, cursoId, metodoPago, txtEmail.getText(), hoy());
+        gestionModel.modificarMatricula(matriculaId, cursoId, metodoPago, txtEmail.getText(), hoy());
         refrescar();
         JOptionPane.showMessageDialog(view.getFrame(), "Información de la matrícula actualizada correctamente.",
                 "Modificación Exitosa", JOptionPane.INFORMATION_MESSAGE);
@@ -394,8 +393,8 @@ public class SecretarioController {
     private void asignarGrupos() {
         String matriculaId = view.getIdMatriculaSeleccionada();
         String cursoId = view.getCursoIdSeleccionado();
-        MatriculaSecretariaDTO m = repository.getMatriculaSecretaria(matriculaId, cursoId);
-        List<GrupoPlazasDTO> grupos = repository.getGruposMatricula(matriculaId, cursoId);
+        MatriculaSecretariaDTO m = gestionModel.getMatricula(matriculaId, cursoId);
+        List<GrupoPlazasDTO> grupos = gestionModel.getGrupos(matriculaId, cursoId);
         if (grupos.isEmpty()) {
             JOptionPane.showMessageDialog(view.getFrame(), "El curso " + m.getCurso() + " no tiene grupos definidos.",
                     "Asignar grupos", JOptionPane.INFORMATION_MESSAGE);
@@ -429,7 +428,7 @@ public class SecretarioController {
         for (Map.Entry<String, JComboBox<GrupoPlazasDTO>> e : combos.entrySet()) {
             grupoPorTipo.put(e.getKey(), ((GrupoPlazasDTO) e.getValue().getSelectedItem()).getGrupoCodigo());
         }
-        repository.asignarGrupos(matriculaId, cursoId, grupoPorTipo);
+        gestionModel.asignarGrupos(matriculaId, cursoId, grupoPorTipo);
         refrescar();
         JOptionPane.showMessageDialog(view.getFrame(), "Grupos asignados correctamente: " + grupoPorTipo.values(),
                 "Grupos asignados", JOptionPane.INFORMATION_MESSAGE);
@@ -447,7 +446,7 @@ public class SecretarioController {
     private void cancelarMatricula() {
         String matriculaId = view.getIdMatriculaSeleccionada();
         String cursoId = view.getCursoIdSeleccionado();
-        MatriculaSecretariaDTO m = repository.getMatriculaSecretaria(matriculaId, cursoId);
+        MatriculaSecretariaDTO m = gestionModel.getMatricula(matriculaId, cursoId);
 
         JComboBox<Object> cbMotivo = new JComboBox<>(GestionMatriculaModel.MOTIVOS_CANCELACION.toArray());
         JRadioButton rbCurso = new JRadioButton("Solo el curso " + m.getCurso(), true);
@@ -468,7 +467,7 @@ public class SecretarioController {
             return;
         }
         String motivo = (String) cbMotivo.getSelectedItem();
-        repository.cancelarMatricula(matriculaId, cursoId, motivo, hoy(), rbTodo.isSelected());
+        gestionModel.cancelar(matriculaId, cursoId, motivo, hoy(), rbTodo.isSelected());
         refrescar();
         JOptionPane.showMessageDialog(view.getFrame(),
                 "Cancelación registrada correctamente.\nMotivo: " + motivo

@@ -177,7 +177,7 @@ public class MatriculacionDisplayDTO {
 
 	/**
 	 * Constructor de 7 parámetros utilizado en la vista de Secretaría
-	 * (SecretarioView / MatriculacionRepository).
+	 * (SecretarioView).
 	 */
 	public MatriculacionDisplayDTO(String id, String estudiante, String dni, String grado, String curso, String grupo,
 			String estado) {

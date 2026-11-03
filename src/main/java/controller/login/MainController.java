@@ -16,7 +16,7 @@ import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
 import model.alumno.AlumnoModel;
 import model.acta.ActaModel;
-import repository.MatriculacionRepository;
+import model.gestionmatricula.GestionMatriculaModel;
 import util.ComboBuscable;
 import util.Database;
 import util.SwingUtil;
@@ -58,7 +58,7 @@ public class MainController {
         // arranque,
         // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA ->
         // FINALIZADA al terminarlo)
-        SwingUtil.exceptionWrapper(() -> new MatriculacionRepository(db)
+        SwingUtil.exceptionWrapper(() -> new GestionMatriculaModel(db)
                 .actualizarCicloVida(LocalDate.now().toString()));
         // HU 35239: las actas abiertas cuya convocatoria ya ha terminado las cierra el
         // sistema
