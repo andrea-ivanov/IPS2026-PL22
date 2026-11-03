@@ -9,10 +9,10 @@ import model.curso.CursoDisplayDTO;
 import model.curso.CursoEdicionDTO;
 import model.grado.GradoDisplayDTO;
 import model.matriculacion.MatriculacionDisplayDTO;
+import model.matriculacion.MatriculacionModel;
 import model.anoacademico.AnoAcademicoModel;
 import model.curso.CursoModel;
 import model.grado.GradoModel;
-import repository.MatriculacionRepository;
 import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
 import util.Database;
@@ -52,7 +52,7 @@ public class AdminOfertaController {
 	private final Database db;
 	private GradoModel gradoModel;
 	private CursoModel cursoModel;
-	private MatriculacionRepository matriculacionRepository;
+	private MatriculacionModel matriculacionModel;
 	private AnoAcademicoModel anoAcademicoModel;
 
 	// Estado del Año Académico actual
@@ -74,7 +74,7 @@ public class AdminOfertaController {
 		this.db = db;
 		this.gradoModel = new GradoModel(db);
 		this.cursoModel = new CursoModel(db);
-		this.matriculacionRepository = new MatriculacionRepository(db);
+		this.matriculacionModel = new MatriculacionModel(db);
 		this.anoAcademicoModel = new AnoAcademicoModel(db);
 		this.initView();
 	}
@@ -82,12 +82,12 @@ public class AdminOfertaController {
 	public AdminOfertaController(AdminOfertaView view,
 			GradoModel gradoModel,
 			CursoModel cursoModel,
-			MatriculacionRepository matriculacionRepository, Database db) {
+			MatriculacionModel matriculacionModel, Database db) {
 		this.view = view;
 		this.db = db;
 		this.gradoModel = gradoModel;
 		this.cursoModel = cursoModel;
-		this.matriculacionRepository = matriculacionRepository;
+		this.matriculacionModel = matriculacionModel;
 		this.anoAcademicoModel = new AnoAcademicoModel(db);
 		this.initView();
 	}
@@ -383,7 +383,7 @@ public class AdminOfertaController {
 	public void cargarMatriculasDeCurso(String idCurso, String nombreCurso) {
 		this.cursoActualId = idCurso;
 		this.cursoActualNombre = nombreCurso;
-		todasLasMatriculaciones = matriculacionRepository.getMatriculacionesPorCursoYAnoActual(idCurso,
+		todasLasMatriculaciones = matriculacionModel.getMatriculacionesPorCursoYAnoActual(idCurso,
 				getAnioActualId());
 		if (todasLasMatriculaciones.isEmpty()) {
 			view.getLblTituloMatriculas().setText(view.getLblTituloMatriculas().getText() + " (sin matrículas"

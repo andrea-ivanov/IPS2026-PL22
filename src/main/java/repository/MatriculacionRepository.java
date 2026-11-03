@@ -8,20 +8,16 @@ import model.matriculacion.GestionMatriculaModel;
 import model.matriculacion.GrupoConsultaDTO;
 import model.matriculacion.GrupoPlazasDTO;
 import model.matriculacion.MatriculaSecretariaDTO;
-import model.matriculacion.MatriculacionDisplayDTO;
-import model.matriculacion.MatriculacionModel;
 import util.Database;
 
 /**
  * Repositorio unificado para el acceso a datos de Matriculación.
- * Integra las operaciones de la vista de Administración, Secretaría y Estudiante.
+ * Operaciones de la vista de Secretaría (las del estudiante están en MatriculacionModel).
  */
 public class MatriculacionRepository {
-	private MatriculacionModel matriculacionModel;
 	private GestionMatriculaModel gestionModel;
 
 	public MatriculacionRepository(Database db) {
-		this.matriculacionModel = new MatriculacionModel(db);
 		this.gestionModel = new GestionMatriculaModel(db);
 	}
 
@@ -125,55 +121,5 @@ public class MatriculacionRepository {
 	public void cancelarMatricula(String matriculaId, String cursoId, String motivo, String fechaHoy,
 			boolean todaLaMatricula) {
 		gestionModel.cancelar(matriculaId, cursoId, motivo, fechaHoy, todaLaMatricula);
-	}
-
-	/**
-	 * Obtiene las matrículas de un estudiante por su UO o alumnoId.
-	 */
-	public List<MatriculacionDisplayDTO> getMatriculasPorEstudiante(String uo) {
-		return matriculacionModel.getMatriculasPorEstudiante(uo);
-	}
-
-	/**
-	 * Obtiene las matrículas (alumnos) asociadas a un curso específico para la tabla de AdminOfertaView.
-	 */
-	public List<MatriculacionDisplayDTO> getMatriculacionesPorCurso(String idCurso) {
-		return matriculacionModel.getMatriculacionesPorCurso(idCurso);
-	}
-
-	/**
-     * Obtiene las matrículas (alumnos) asociadas a un curso específico
-     * filtradas por el año académico indicado.
-     */
-    public List<MatriculacionDisplayDTO> getMatriculacionesPorCursoYAnoActual(String idCurso, String anioAcademicoId) {
-        return matriculacionModel.getMatriculacionesPorCursoYAnoActual(idCurso, anioAcademicoId);
-    }
-
-	/**
-	 * Obtiene los grados en los que está o ha estado matriculado el estudiante.
-	 */
-	public List<Object[]> getGradosPorEstudiante(String uo) {
-		return matriculacionModel.getGradosPorEstudiante(uo);
-	}
-
-	/**
-	 * Obtiene las asignaturas matriculadas de un estudiante filtradas por el grado consultado (HU 35232).
-	 */
-	public List<MatriculacionDisplayDTO> getMatriculasPorEstudianteYGrado(String uo, String gradoId) {
-		return matriculacionModel.getMatriculasPorEstudianteYGrado(uo, gradoId);
-	}
-
-	/**
-	 * Obtiene el resumen de hitos de permanencia del estudiante (HU 35232).
-	 */
-	public model.matriculacion.HitosPermanenciaDTO getHitosPermanencia(String uo, String gradoId) {
-		return matriculacionModel.getHitosPermanencia(uo, gradoId);
-	}
-
-	/**
-	 * Obtiene el historial de calificaciones en convocatorias presentadas (HU 35232).
-	 */
-	public List<model.matriculacion.CalificacionDisplayDTO> getCalificacionesPorEstudianteYGrado(String uo, String gradoId) {
-		return matriculacionModel.getCalificacionesPorEstudianteYGrado(uo, gradoId);
 	}
 }

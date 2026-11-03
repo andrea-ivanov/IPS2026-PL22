@@ -1,18 +1,14 @@
 package model.matriculacion;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.dbutils.DbUtils;
-
 import model.alumno.AlumnoModel;
 import repository.AnoAcademicoRepository;
+import repository.MatriculaRepository;
 import util.Database;
 import util.UnexpectedException;
 import util.exception.ValidationException;
@@ -35,11 +31,13 @@ public class MatriculacionModel {
 	private Database db;
 	private AlumnoModel alumnoModel;
 	private AnoAcademicoRepository anoAcademicoRepository;
+	private MatriculaRepository matriculaRepository;
 
 	public MatriculacionModel(Database db) {
 		this.db = db;
 		this.alumnoModel = new AlumnoModel(db);
 		this.anoAcademicoRepository = new AnoAcademicoRepository(db);
+		this.matriculaRepository = new MatriculaRepository(db);
 	}
 
 	/**
@@ -53,14 +51,7 @@ public class MatriculacionModel {
 		if (uo == null || uo.trim().isEmpty()) {
 			return new ArrayList<>();
 		}
-		String sql = "SELECT m.matriculaId AS id, "
-				+ "       g.nombre AS grado, "
-				+ "       m.estado AS estado, "
-				+ "       m.fechaSolicitud AS fecha "
-				+ "FROM Matricula m "
-				+ "JOIN Grado g ON m.gradoId = g.gradoId "
-				+ "WHERE m.alumnoId = ?";
-		return db.executeQueryPojo(MatriculacionDisplayDTO.class, sql, resolverAlumnoId(uo));
+		return matriculaRepository.findMatriculasAlumno(resolverAlumnoId(uo));
 	}
 
 	/**
@@ -98,12 +89,7 @@ public class MatriculacionModel {
 		if (uo == null || uo.trim().isEmpty()) {
 			return new ArrayList<>();
 		}
-		String sql = "SELECT DISTINCT g.gradoId || ' - ' || g.nombre "
-				+ "FROM Matricula m "
-				+ "JOIN Grado g ON m.gradoId = g.gradoId "
-				+ "WHERE m.alumnoId = ? "
-				+ "ORDER BY g.gradoId";
-		return db.executeQueryArray(sql, resolverAlumnoId(uo));
+		return matriculaRepository.findGradosAlumno(resolverAlumnoId(uo));
 	}
 
 	/**
@@ -120,27 +106,15 @@ public class MatriculacionModel {
 		if (uo == null || uo.trim().isEmpty()) {
 			return new ArrayList<>();
 		}
-		String cleanUo = resolverAlumnoId(uo);
-		String sql = "SELECT m.matriculaId AS id, "
-				+ "       m.anioAcademicoId, "
-				+ "       c.nombre AS curso, "
-				+ "       gc.anio, "
-				+ "       mc.estado, "
-				+ "       (SELECT COUNT(*) FROM MatriculaCurso mc2 "
-				+ "        JOIN Matricula m2 ON m2.matriculaId = mc2.matriculaId "
-				+ "        WHERE m2.alumnoId = m.alumnoId AND mc2.cursoId = mc.cursoId "
-				+ "          AND m2.anioAcademicoId <= m.anioAcademicoId) AS numMatricula "
-				+ "FROM MatriculaCurso mc "
-				+ "JOIN Matricula m ON m.matriculaId = mc.matriculaId "
-				+ "JOIN Curso c ON c.cursoId = mc.cursoId "
-				+ "JOIN GradoCurso gc ON gc.gradoId = mc.gradoId AND gc.cursoId = mc.cursoId "
-				+ "WHERE m.alumnoId = ? ";
-		String orden = "ORDER BY gc.anio ASC, numMatricula DESC, c.nombre ASC";
-		if (gradoId != null && !gradoId.trim().isEmpty()) {
-			return db.executeQueryPojo(MatriculacionDisplayDTO.class, sql + "AND m.gradoId = ? " + orden,
-					cleanUo, gradoId.trim());
-		}
-		return db.executeQueryPojo(MatriculacionDisplayDTO.class, sql + orden, cleanUo);
+		return matriculaRepository.findCursosMatriculados(resolverAlumnoId(uo), limpiar(gradoId));
+	}
+
+	/**
+	 * Valor sin espacios alrededor; vacío si es nulo (los filtros vacíos no se
+	 * aplican)
+	 */
+	private static String limpiar(String valor) {
+		return valor != null ? valor.trim() : "";
 	}
 
 	/**
@@ -160,7 +134,7 @@ public class MatriculacionModel {
 			return new HitosPermanenciaDTO("", "", null, 0, 0, 0);
 		}
 		String cleanUo = resolverAlumnoId(uo);
-		String cleanGrado = gradoId != null ? gradoId.trim() : "";
+		String cleanGrado = limpiar(gradoId);
 
 		String ultimoAnoEvaluadoId = null;
 		int creditosAnuales = 0;
@@ -168,21 +142,8 @@ public class MatriculacionModel {
 		int aniosEnGrado = 0;
 
 		// 1. Créditos superados en cada año matriculado
-		String sqlAnual = "SELECT m.matriculaId, m.anioAcademicoId, m.estado, "
-				+ "       COALESCE(SUM(c.creditos), 0) AS creditosSuperados "
-				+ "FROM Matricula m "
-				+ "LEFT JOIN (SELECT DISTINCT matriculaId, cursoId FROM Calificacion WHERE nota >= " + NOTA_APROBADO
-				+ ") a "
-				+ "       ON a.matriculaId = m.matriculaId "
-				+ "LEFT JOIN Curso c ON c.cursoId = a.cursoId "
-				+ "WHERE m.alumnoId = ? "
-				+ (cleanGrado.isEmpty() ? "" : "AND m.gradoId = ? ")
-				+ "GROUP BY m.matriculaId, m.anioAcademicoId, m.estado "
-				+ "ORDER BY m.anioAcademicoId DESC";
-
-		List<Object[]> rowsAnual = cleanGrado.isEmpty()
-				? db.executeQueryArray(sqlAnual, cleanUo)
-				: db.executeQueryArray(sqlAnual, cleanUo, cleanGrado);
+		List<Object[]> rowsAnual = matriculaRepository.findCreditosSuperadosPorMatricula(cleanUo, cleanGrado,
+				NOTA_APROBADO);
 
 		if (rowsAnual != null && !rowsAnual.isEmpty()) {
 			Object[] selectedRow = rowsAnual.get(0);
@@ -198,22 +159,7 @@ public class MatriculacionModel {
 		}
 
 		// 2. Años en el grado y créditos totales acumulados (frente a 90)
-		String sqlTotal = "SELECT COUNT(*) AS aniosEnGrado, "
-				+ "       COALESCE((SELECT SUM(c.creditos) "
-				+ "                 FROM (SELECT DISTINCT ca.cursoId "
-				+ "                       FROM Calificacion ca "
-				+ "                       JOIN Matricula m2 ON m2.matriculaId = ca.matriculaId "
-				+ "                       WHERE m2.alumnoId = ? "
-				+ (cleanGrado.isEmpty() ? "" : "AND m2.gradoId = ? ")
-				+ "                         AND ca.nota >= " + NOTA_APROBADO + ") s "
-				+ "                 JOIN Curso c ON c.cursoId = s.cursoId), 0) AS creditosTotales "
-				+ "FROM Matricula "
-				+ "WHERE alumnoId = ? "
-				+ (cleanGrado.isEmpty() ? "" : "AND gradoId = ?");
-
-		List<Object[]> rowsTotal = cleanGrado.isEmpty()
-				? db.executeQueryArray(sqlTotal, cleanUo, cleanUo)
-				: db.executeQueryArray(sqlTotal, cleanUo, cleanGrado, cleanUo, cleanGrado);
+		List<Object[]> rowsTotal = matriculaRepository.findAniosYCreditosTotales(cleanUo, cleanGrado, NOTA_APROBADO);
 
 		if (rowsTotal != null && !rowsTotal.isEmpty()) {
 			Object[] r = rowsTotal.get(0);
@@ -237,22 +183,7 @@ public class MatriculacionModel {
 		if (uo == null || uo.trim().isEmpty()) {
 			return new ArrayList<>();
 		}
-		String cleanUo = resolverAlumnoId(uo);
-		String sql = "SELECT ca.anioAcademicoId, "
-				+ "       ca.cursoId, "
-				+ "       c.nombre AS curso, "
-				+ "       ca.tipoConvocatoria, "
-				+ "       ca.nota "
-				+ "FROM Calificacion ca "
-				+ "JOIN Matricula m ON m.matriculaId = ca.matriculaId "
-				+ "JOIN Curso c ON c.cursoId = ca.cursoId "
-				+ "WHERE m.alumnoId = ? ";
-		String orden = "ORDER BY ca.anioAcademicoId DESC, c.nombre ASC, ca.tipoConvocatoria ASC";
-		if (gradoId != null && !gradoId.trim().isEmpty()) {
-			return db.executeQueryPojo(CalificacionDisplayDTO.class, sql + "AND m.gradoId = ? " + orden,
-					cleanUo, gradoId.trim());
-		}
-		return db.executeQueryPojo(CalificacionDisplayDTO.class, sql + orden, cleanUo);
+		return matriculaRepository.findCalificaciones(resolverAlumnoId(uo), limpiar(gradoId));
 	}
 
 	/**
@@ -270,15 +201,8 @@ public class MatriculacionModel {
 		if (alumnoId == null || gradoId == null || anioAcademicoId == null) {
 			return false;
 		}
-		String cleanAlumno = resolverAlumnoId(alumnoId);
-		String sql = "SELECT COUNT(*) FROM Matricula "
-				+ "WHERE alumnoId = ? AND gradoId = ? AND anioAcademicoId = ? "
-				+ "  AND estado != 'CANCELADA'";
-		List<Object[]> rows = db.executeQueryArray(sql, cleanAlumno, gradoId.trim(), anioAcademicoId.trim());
-		if (rows != null && !rows.isEmpty() && rows.get(0)[0] != null) {
-			return ((Number) rows.get(0)[0]).intValue() > 0;
-		}
-		return false;
+		return matriculaRepository.existeMatriculaNoCancelada(resolverAlumnoId(alumnoId), gradoId.trim(),
+				anioAcademicoId.trim());
 	}
 
 	/**
@@ -296,17 +220,7 @@ public class MatriculacionModel {
 		if (alumnoId == null || cursoId == null) {
 			return 0;
 		}
-		String cleanAlumno = resolverAlumnoId(alumnoId);
-		String sql = "SELECT COUNT(*) AS convocatoriasConsumidas "
-				+ "FROM Calificacion ca "
-				+ "JOIN Matricula m ON m.matriculaId = ca.matriculaId "
-				+ "WHERE m.alumnoId = ? AND ca.cursoId = ? "
-				+ "  AND ca.nota IS NOT NULL";
-		List<Object[]> rows = db.executeQueryArray(sql, cleanAlumno, cursoId.trim());
-		if (rows != null && !rows.isEmpty() && rows.get(0)[0] != null) {
-			return ((Number) rows.get(0)[0]).intValue();
-		}
-		return 0;
+		return matriculaRepository.contarConvocatoriasConsumidas(resolverAlumnoId(alumnoId), cursoId.trim());
 	}
 
 	/**
@@ -326,26 +240,11 @@ public class MatriculacionModel {
 		}
 		String cleanId = resolverAlumnoId(alumnoId);
 		// 1. Asignaturas sin pagar con el año ya iniciado
-		String sqlSinPagar = "SELECT COUNT(*) FROM MatriculaCurso mc "
-				+ "JOIN Matricula m ON m.matriculaId = mc.matriculaId "
-				+ "JOIN AnioAcademico a ON a.anioAcademicoId = m.anioAcademicoId "
-				+ "WHERE m.alumnoId = ? AND mc.estado = 'SOLICITADA' "
-				+ "  AND (mc.metodoPago IS NULL OR mc.pagoValidado = 0) "
-				+ "  AND a.fechaInicio <= date('now')";
-		List<Object[]> r1 = db.executeQueryArray(sqlSinPagar, cleanId);
-		if (r1 != null && !r1.isEmpty() && r1.get(0)[0] != null && ((Number) r1.get(0)[0]).intValue() > 0) {
+		if (matriculaRepository.contarCursosSinPagarIniciados(cleanId) > 0) {
 			return false;
 		}
-
 		// 2. Cancelaciones por IMPAGO
-		String sqlImpago = "SELECT COUNT(*) FROM Matricula m "
-				+ "LEFT JOIN MatriculaCurso mc ON mc.matriculaId = m.matriculaId "
-				+ "WHERE m.alumnoId = ? AND (m.motivoCancelacion = 'IMPAGO' OR mc.motivoCancelacion = 'IMPAGO')";
-		List<Object[]> r2 = db.executeQueryArray(sqlImpago, cleanId);
-		if (r2 != null && !r2.isEmpty() && r2.get(0)[0] != null && ((Number) r2.get(0)[0]).intValue() > 0) {
-			return false;
-		}
-		return true;
+		return matriculaRepository.contarCancelacionesPorImpago(cleanId) == 0;
 	}
 
 	/**
@@ -446,11 +345,7 @@ public class MatriculacionModel {
 	 * @return Lista de OfertaGradoDTO disponibles
 	 */
 	public List<OfertaGradoDTO> getOfertaGradosDisponibles() {
-		String sql = "SELECT gradoId, nombre, facultad, ramaConocimiento, estado "
-				+ "FROM Grado "
-				+ "WHERE estado IN ('VIGENTE', 'PENDIENTE_RENOVACION') "
-				+ "ORDER BY nombre ASC";
-		return db.executeQueryPojo(OfertaGradoDTO.class, sql);
+		return matriculaRepository.findGradosOfertados();
 	}
 
 	/**
@@ -469,12 +364,7 @@ public class MatriculacionModel {
 		if (gradoId == null || gradoId.trim().isEmpty()) {
 			return new ArrayList<>();
 		}
-		String sql = "SELECT c.cursoId, c.nombre, gc.anio, c.creditos, gc.itinerario "
-				+ "FROM GradoCurso gc "
-				+ "JOIN Curso c ON c.cursoId = gc.cursoId "
-				+ "WHERE gc.gradoId = ? AND gc.estado = 'ACTIVO' "
-				+ "ORDER BY gc.anio ASC, c.nombre ASC";
-		List<OfertaCursoDTO> list = db.executeQueryPojo(OfertaCursoDTO.class, sql, gradoId.trim());
+		List<OfertaCursoDTO> list = matriculaRepository.findCursosOfertados(gradoId.trim());
 		for (OfertaCursoDTO curso : list) {
 			if (curso.getPrecio() <= 0 && curso.getCreditos() > 0) {
 				curso.setPrecio(curso.getCreditos() * PRECIO_CREDITO);
@@ -553,15 +443,7 @@ public class MatriculacionModel {
 	 * @throws SQLException si ocurre un error SQL
 	 */
 	public String generarSiguienteMatriculaId(Connection conn) throws SQLException {
-		String sql = "SELECT MAX(CAST(SUBSTR(matriculaId, 2) AS INTEGER)) FROM Matricula WHERE matriculaId LIKE 'M%'";
-		try (Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
-			int maxNum = 0;
-			if (rs.next()) {
-				maxNum = rs.getInt(1);
-			}
-			return String.format("M%05d", maxNum + 1);
-		}
+		return String.format("M%05d", matriculaRepository.siguienteNumeroMatricula(conn));
 	}
 
 	/**
@@ -636,75 +518,40 @@ public class MatriculacionModel {
 			fecha = fecha.trim();
 		}
 
-		Connection conn = null;
-		try {
-			conn = db.getConnection();
-			// Asegurar enforcement de claves foráneas en la conexión SQLite
-			try (Statement pragmaStmt = conn.createStatement()) {
-				pragmaStmt.execute("PRAGMA foreign_keys = ON;");
-			}
+		// Estado y pago según método elegido
+		boolean esTarjeta = "TARJETA".equals(metodoPago);
+		String estadoCurso = esTarjeta ? "PAGADA" : "SOLICITADA";
+		int pagoValidado = esTarjeta ? 1 : 0;
+		String metodo = metodoPago;
+		String fechaSolicitud = fecha;
+		String anio = anioAcademicoId.trim();
 
-			// Iniciar transacción
-			conn.setAutoCommit(false);
+		// Matricula y sus MatriculaCurso se insertan en la misma transacción: o todo o
+		// nada
+		return db.enTransaccion(conn -> {
+			try {
+				// 1. Obtener nuevo ID correlativo de matrícula
+				String matriculaId = generarSiguienteMatriculaId(conn);
 
-			// 1. Obtener nuevo ID correlativo de matrícula
-			String matriculaId = generarSiguienteMatriculaId(conn);
+				// 2. Insertar cabecera en Matricula (siempre SOLICITADA)
+				matriculaRepository.insertarMatricula(conn, matriculaId, alumnoId.trim(), gradoId.trim(), anio,
+						fechaSolicitud);
 
-			// 2. Insertar cabecera en Matricula (siempre SOLICITADA)
-			String sqlMatricula = "INSERT INTO Matricula (matriculaId, alumnoId, gradoId, anioAcademicoId, fechaSolicitud, estado, motivoCancelacion, fechaCancelacion) "
-					+ "VALUES (?, ?, ?, ?, ?, 'SOLICITADA', NULL, NULL)";
-			try (PreparedStatement psMatricula = conn.prepareStatement(sqlMatricula)) {
-				psMatricula.setString(1, matriculaId);
-				psMatricula.setString(2, alumnoId.trim());
-				psMatricula.setString(3, gradoId.trim());
-				psMatricula.setString(4, anioAcademicoId.trim());
-				psMatricula.setString(5, fecha);
-				psMatricula.executeUpdate();
-			}
-
-			// 3. Determinar estado y pago según método elegido
-			boolean esTarjeta = "TARJETA".equals(metodoPago);
-			String estadoCurso = esTarjeta ? "PAGADA" : "SOLICITADA";
-			int pagoValidado = esTarjeta ? 1 : 0;
-
-			// 4. Insertar cada asignatura en MatriculaCurso
-			String sqlCurso = "INSERT INTO MatriculaCurso (matriculaId, gradoId, cursoId, estado, motivoCancelacion, fechaCancelacion, importe, metodoPago, fechaPago, pagoValidado) "
-					+ "VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)";
-			try (PreparedStatement psCurso = conn.prepareStatement(sqlCurso)) {
+				// 3. Insertar cada asignatura en MatriculaCurso
 				for (OfertaCursoDTO c : asignaturas) {
 					double importe = c.getPrecio() > 0 ? c.getPrecio() : c.getCreditos() * PRECIO_CREDITO;
-					psCurso.setString(1, matriculaId);
-					psCurso.setString(2, gradoId.trim());
-					psCurso.setString(3, c.getCursoId().trim());
-					psCurso.setString(4, estadoCurso);
-					psCurso.setDouble(5, importe);
-					psCurso.setString(6, metodoPago);
-					psCurso.setString(7, fecha);
-					psCurso.setInt(8, pagoValidado);
-					psCurso.executeUpdate();
+					matriculaRepository.insertarCurso(conn, matriculaId, gradoId.trim(), c.getCursoId().trim(),
+							estadoCurso, importe, metodo, fechaSolicitud, pagoValidado);
 				}
-			}
-
-			// Confirmar transacción
-			conn.commit();
-			return matriculaId;
-
-		} catch (SQLException ex) {
-			if (conn != null) {
-				try {
-					conn.rollback();
-				} catch (SQLException rollbackEx) {
-					System.err.println("Error al revertir transacción de matrícula: " + rollbackEx.getMessage());
+				return matriculaId;
+			} catch (SQLException ex) {
+				if (ex.getMessage() != null && ex.getMessage().contains("UNIQUE constraint failed")) {
+					throw new ValidationException(
+							"Ya existe una matrícula registrada para este estudiante en el grado y año indicados.");
 				}
+				throw ex; // enTransaccion la convierte en UnexpectedException
 			}
-			if (ex.getMessage() != null && ex.getMessage().contains("UNIQUE constraint failed")) {
-				throw new ValidationException(
-						"Ya existe una matrícula registrada para este estudiante en el grado y año indicados.");
-			}
-			throw new UnexpectedException(ex);
-		} finally {
-			DbUtils.closeQuietly(conn);
-		}
+		});
 	}
 
 	/**
@@ -749,10 +596,8 @@ public class MatriculacionModel {
 		resumen.setFechaSolicitud(LocalDate.now().toString());
 
 		if (cleanAlumnoId != null && !cleanAlumnoId.trim().isEmpty()) {
-			String sqlAlumno = "SELECT dni, nombre, apellidos, email FROM Alumno WHERE alumnoId = ?";
-			List<Object[]> rows = db.executeQueryArray(sqlAlumno, cleanAlumnoId.trim());
-			if (rows != null && !rows.isEmpty()) {
-				Object[] r = rows.get(0);
+			Object[] r = matriculaRepository.findDatosAlumno(cleanAlumnoId.trim());
+			if (r != null) {
 				resumen.setDni(r[0] != null ? r[0].toString() : "");
 				String nom = r[1] != null ? r[1].toString() : "";
 				String ape = r[2] != null ? r[2].toString() : "";
@@ -762,10 +607,9 @@ public class MatriculacionModel {
 		}
 
 		if (gradoId != null && !gradoId.trim().isEmpty()) {
-			String sqlGrado = "SELECT nombre FROM Grado WHERE gradoId = ?";
-			List<Object[]> rows = db.executeQueryArray(sqlGrado, gradoId.trim());
-			if (rows != null && !rows.isEmpty() && rows.get(0)[0] != null) {
-				resumen.setNombreGrado(rows.get(0)[0].toString());
+			String nombreGrado = matriculaRepository.findNombreGrado(gradoId.trim());
+			if (nombreGrado != null) {
+				resumen.setNombreGrado(nombreGrado);
 			}
 		}
 
@@ -788,20 +632,6 @@ public class MatriculacionModel {
 		if (idCurso == null) {
 			return new ArrayList<>();
 		}
-		String sql = "SELECT a.alumnoId AS id, " +
-				"       a.nombre || ' ' || a.apellidos AS nombreAlumno, " +
-				"       mc.cursoId AS idCurso, " +
-				"       a.email AS email, " +
-				"       mc.estado AS estado " +
-				"FROM MatriculaCurso mc " +
-				"JOIN Matricula m ON mc.matriculaId = m.matriculaId " +
-				"JOIN Alumno a ON m.alumnoId = a.alumnoId " +
-				"WHERE mc.cursoId = ? ";
-		String orden = "ORDER BY a.alumnoId";
-		if (anioAcademicoId != null && !anioAcademicoId.isEmpty()) {
-			return db.executeQueryPojo(MatriculacionDisplayDTO.class, sql + "AND m.anioAcademicoId = ? " + orden,
-					idCurso, anioAcademicoId);
-		}
-		return db.executeQueryPojo(MatriculacionDisplayDTO.class, sql + orden, idCurso);
+		return matriculaRepository.findAlumnosCurso(idCurso, anioAcademicoId);
 	}
 }
