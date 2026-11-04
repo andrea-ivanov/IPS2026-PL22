@@ -51,6 +51,19 @@ public class AnoAcademicoRepository {
 		return rows.isEmpty() ? null : rows.get(0)[0].toString();
 	}
 
+	/**
+	 * Todos los años académicos del más antiguo al más reciente, como pares {anioAcademicoId, finMatriculacion}
+	 * (finMatriculacion en ISO, puede ser nulo)
+	 */
+	public List<String[]> findIdsYFinMatriculacion() {
+		List<String[]> anios = new ArrayList<>();
+		for (Object[] fila : db.executeQueryArray(
+				"SELECT anioAcademicoId, finMatriculacion FROM AnioAcademico ORDER BY anioAcademicoId")) {
+			anios.add(new String[] { fila[0].toString(), fila[1] == null ? null : fila[1].toString() });
+		}
+		return anios;
+	}
+
 	/** Ids de todos los años académicos, del más reciente al más antiguo */
 	public List<String> findAllIds() {
 		List<String> ids = new ArrayList<>();

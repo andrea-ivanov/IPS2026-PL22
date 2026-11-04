@@ -5,6 +5,7 @@ import view.admin.AdminOfertaView;
 import view.estudiante.EstudianteView;
 import view.secretario.SecretarioView; // Tu vista de secretario
 import view.profesor.ProfesorView;
+import view.revisor.RevisorView;
 import java.awt.EventQueue;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
@@ -15,6 +16,7 @@ import controller.admin.AdminOfertaController;
 import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
+import controller.revisor.RevisorController;
 import model.alumno.AlumnoModel;
 import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
@@ -135,6 +137,9 @@ public class MainController {
             case "Estudiante":
                 abrirVistaEstudiante();
                 break;
+            case "Revisor externo":
+                abrirVistaRevisor();
+                break;
         }
     }
 
@@ -197,6 +202,14 @@ public class MainController {
         ProfesorController profController = new ProfesorController(profView, db, profesor);
         profController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         profController.initController();
+        view.getFrame().setVisible(false);
+    }
+
+    private void abrirVistaRevisor() {
+        RevisorView revisorView = new RevisorView();
+        RevisorController revisorController = new RevisorController(revisorView, db);
+        revisorController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
+        revisorController.initController();
         view.getFrame().setVisible(false);
     }
 

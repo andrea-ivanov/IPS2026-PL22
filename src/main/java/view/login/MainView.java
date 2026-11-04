@@ -64,7 +64,7 @@ public class MainView {
 
         // Panel selección de rol
         JPanel panelRol = filaCampo("Rol de acceso");
-        cbRoles = new JComboBox<>(new String[] { "Administrador", "Secretario", "Profesor", "Estudiante" });
+        cbRoles = new JComboBox<>(new String[] { "Administrador", "Secretario", "Profesor", "Estudiante", "Revisor externo" });
         anadirCampo(panelRol, cbRoles);
         campos.add(panelRol);
         campos.add(Box.createVerticalStrut(12));
@@ -168,6 +168,8 @@ public class MainView {
                 + "<li><b>Profesor</b>: elija también el profesor para ver sus asignaciones docentes, actas, "
                 + "propuestas de asignaturas y microcredenciales.</li>"
                 + "<li><b>Estudiante</b>: elija también el alumno para consultar su expediente o solicitar una matrícula.</li>"
+                + "<li><b>Revisor externo</b>: métricas de rendimiento de los grados por año académico "
+                + "(tasas de éxito y abandono, aprobados y matriculados).</li>"
                 + "</ul><p>Desde cada panel, <b>Volver al inicio</b> (o Cerrar Sesión) regresa a esta pantalla.</p>"
                 + "<p><b>Archivo &gt; Recargar base de datos</b> vuelve a cargar los datos iniciales "
                 + "(se pierden los cambios hechos en la aplicación).</p></body></html>";
