@@ -1,6 +1,7 @@
 package util;
 
 import java.lang.reflect.InvocationTargetException;
+import java.math.BigDecimal;
 import java.text.Format;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -13,12 +14,52 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import util.exception.ValidationException;
+
 /**
  * Utilidades varias con metodos generales de serializacion, conversion a csv y conversion de fechas
  */
 public class Util {
 	private Util() {
 	    throw new IllegalStateException("Utility class");
+	}
+
+	/**
+	 * Créditos de una asignatura escritos por el usuario: admite coma o punto decimal, mayores que 0,
+	 * menores que 1000 y con un decimal como mucho (las columnas son DECIMAL(4,1)).
+	 * @throws ValidationException si no cumple alguna de estas reglas (también "NaN" o "Infinity")
+	 */
+	public static double parsearCreditos(String creditos) {
+		BigDecimal valor;
+		try {
+			valor = new BigDecimal(creditos.trim().replace(',', '.'));
+		} catch (NumberFormatException e) {
+			throw new ValidationException("Los créditos deben ser un número: '" + creditos.trim() + "'");
+		}
+		if (valor.signum() <= 0) {
+			throw new ValidationException("Los créditos deben ser mayores que 0");
+		}
+		if (valor.compareTo(new BigDecimal("999.9")) > 0 || valor.stripTrailingZeros().scale() > 1) {
+			throw new ValidationException("Los créditos deben ser menores que 1000 y tener como mucho un decimal");
+		}
+		return valor.doubleValue();
+	}
+
+	/**
+	 * Año (curso) de una asignatura en el grado, entre 1 y 6.
+	 * @throws ValidationException si no es un número entero en ese rango
+	 */
+	public static int parsearAnio(String anio) {
+		int valor;
+		try {
+			valor = Integer.parseInt(anio.trim());
+		} catch (NumberFormatException e) {
+			throw new ValidationException("El año debe ser un número entero: '" + anio.trim() + "'");
+		}
+		if (valor < 1 || valor > 6) {
+			throw new ValidationException("El año debe estar entre 1 y 6");
+		}
+		return valor;
 	}
 
 	/**

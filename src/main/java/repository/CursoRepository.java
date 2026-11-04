@@ -3,7 +3,6 @@ package repository;
 import java.util.ArrayList;
 import java.util.List;
 
-import model.curso.Curso;
 import model.curso.CursoDisplayDTO;
 import model.curso.CursoEdicionDTO;
 import model.curso.CursoModel;
@@ -19,11 +18,7 @@ public class CursoRepository {
 	private Database db;
 
 	public CursoRepository() {
-		try {
-			this.db = new Database();
-		} catch (Exception ignored) {
-		}
-		this.cursoModel = this.db != null ? new CursoModel(this.db) : new CursoModel();
+		this(new Database());
 	}
 
 	public CursoRepository(Database db) {
@@ -31,41 +26,26 @@ public class CursoRepository {
 		this.cursoModel = new CursoModel(db);
 	}
 
-	public Curso findById(String id) {
-		return cursoModel.buscarPorId(id);
-	}
-
-	public Curso findById(Long id) {
-		return cursoModel.buscarPorId(id);
-	}
-
 	/**
 	 * Obtiene los cursos asociados a un grado específico para la tabla de AdminOfertaView.
 	 */
 	public List<CursoDisplayDTO> getCursosPorGrado(String idGrado) {
-		if (db != null && idGrado != null) {
-			try {
-				String sql = "SELECT c.cursoId AS id, " +
-							 "       c.nombre AS nombre, " +
-							 "       CAST(gc.anio AS TEXT) || 'º' AS ano, " +
-							 "       COALESCE(gc.itinerario, 'Común') AS itinerario, " +
-							 "       COALESCE(p.nombre || ' ' || p.apellidos, 'Sin asignar') AS profesor, " +
-							 "       gc.estado AS estado, " +
-							 "       gc.gradoId AS idGrado " +
-							 "FROM GradoCurso gc " +
-							 "JOIN Curso c ON gc.cursoId = c.cursoId " +
-							 "LEFT JOIN Profesor p ON c.coordinadorId = p.profesorId " +
-							 "WHERE gc.gradoId = ? " +
-							 "ORDER BY gc.anio, c.cursoId";
-				List<CursoDisplayDTO> list = db.executeQueryPojo(CursoDisplayDTO.class, sql, idGrado);
-				if (list != null) {
-					return list;
-				}
-			} catch (Exception ex) {
-				System.err.println("Aviso al consultar BD en getCursosPorGrado: " + ex.getMessage());
-			}
+		if (idGrado == null) {
+			return new ArrayList<>();
 		}
-		return new ArrayList<>();
+		String sql = "SELECT c.cursoId AS id, " +
+					 "       c.nombre AS nombre, " +
+					 "       CAST(gc.anio AS TEXT) || 'º' AS ano, " +
+					 "       COALESCE(gc.itinerario, 'Común') AS itinerario, " +
+					 "       COALESCE(p.nombre || ' ' || p.apellidos, 'Sin asignar') AS profesor, " +
+					 "       gc.estado AS estado, " +
+					 "       gc.gradoId AS idGrado " +
+					 "FROM GradoCurso gc " +
+					 "JOIN Curso c ON gc.cursoId = c.cursoId " +
+					 "LEFT JOIN Profesor p ON c.coordinadorId = p.profesorId " +
+					 "WHERE gc.gradoId = ? " +
+					 "ORDER BY gc.anio, c.cursoId";
+		return db.executeQueryPojo(CursoDisplayDTO.class, sql, idGrado);
 	}
 
 	public String crearCurso(String gradoId, String nombre, String creditos, String anio, String coordinadorId,

@@ -31,16 +31,16 @@ public class ActaModelTest {
 	private static final String ANIO = "2026-2027";
 	private static final String CONV = "ORDINARIA_ENERO";
 
-	private static Database db = new Database();
+	private static Database db = new Database("jdbc:sqlite:TestDB.db?foreign_keys=true");
 	private ActaModel actaModel;
 	private ProfesorRepository profesorRepository;
 
 	@BeforeEach
 	public void setUp() {
-		db.createDatabase(true);
+		db.createDatabase(false);
 		loadCleanDatabase(db);
 		actaModel = new ActaModel(db);
-		profesorRepository = new ProfesorRepository();
+		profesorRepository = new ProfesorRepository(db);
 	}
 
 	/**
@@ -60,9 +60,9 @@ public class ActaModelTest {
 				"DELETE FROM Grado", "DELETE FROM AnioAcademico", "DELETE FROM Profesor", "DELETE FROM Alumno",
 				"INSERT INTO AnioAcademico VALUES ('2025-2026','2025-09-08','2026-07-31','2025-07-01','2025-09-30')",
 				"INSERT INTO AnioAcademico VALUES ('2026-2027','2026-09-07','2027-07-30','2026-07-01','2026-09-30')",
-				"INSERT INTO Grado VALUES ('G001','Software','EII','Ingenieria','VIGENTE','2024-09-01')",
-				"INSERT INTO Grado VALUES ('G002','Tecnologias','EPI','Ingenieria','VIGENTE','2025-09-01')",
-				"INSERT INTO Grado VALUES ('G006','Doble Grado','EII','Ingenieria','VIGENTE','2024-09-01')",
+				"INSERT INTO Grado VALUES ('G001','Software','EII','Ingenieria y Arquitectura','VIGENTE','2024-09-01')",
+				"INSERT INTO Grado VALUES ('G002','Tecnologias','EPI','Ingenieria y Arquitectura','VIGENTE','2025-09-01')",
+				"INSERT INTO Grado VALUES ('G006','Doble Grado','EII','Ingenieria y Arquitectura','VIGENTE','2024-09-01')",
 				"INSERT INTO Profesor VALUES ('P001','10000001A','Ana','Garcia','p001@uni.es')",
 				"INSERT INTO Profesor VALUES ('P003','10000003C','Marta','Suarez','p003@uni.es')",
 				"INSERT INTO Profesor VALUES ('P004','10000004D','Pablo','Menendez','p004@uni.es')",

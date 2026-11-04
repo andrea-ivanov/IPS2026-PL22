@@ -37,6 +37,7 @@ public class EstudianteNavegacionTest extends BaseModelTest {
     public void testMenuInicial() {
         assertNotNull(view.getBtnMisMatriculas(), "El botón de consultar matrículas debe existir");
         assertNotNull(view.getBtnSolicitarMatricula(), "El botón de solicitar matrícula debe existir");
+        assertNotNull(view.getBtnSolicitarMicrocredencial(), "El botón de solicitar microcredencial debe existir");
         assertNotNull(view.getBtnVolverLogin(), "El botón de volver al login debe existir");
         assertTrue(view.getFrame().isVisible());
     }
@@ -67,6 +68,19 @@ public class EstudianteNavegacionTest extends BaseModelTest {
         // Clic en Solicitar Nueva Matrícula
         view.getBtnSolicitarMatricula().doClick();
         assertTrue(view.getPanelSolicitudContainer().getComponentCount() > 0);
+
+        // Volver al menú
+        view.mostrarMenu();
+        assertTrue(view.getFrame().isVisible());
+    }
+
+    @Test
+    @DisplayName("Navegación: Abrir solicitud de microcredenciales y volver al menú principal")
+    public void testNavegacionMicrocredencialYVolver() {
+        // Clic en Solicitar Nueva Microcredencial
+        view.getBtnSolicitarMicrocredencial().doClick();
+        assertTrue(view.getPanelMicrocredencialContainer().getComponentCount() > 0,
+                "El contenedor de microcredenciales debe tener embebido el panel principal");
 
         // Volver al menú
         view.mostrarMenu();

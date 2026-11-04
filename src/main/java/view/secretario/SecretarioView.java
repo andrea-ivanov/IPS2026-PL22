@@ -70,7 +70,6 @@ public class SecretarioView {
     // Pestaña de propuestas de microcredenciales
     private JTable tabPropuestas;
     private JButton btnAceptarPropuesta;
-    private JButton btnRechazarPropuesta;
     private JButton btnRecargarPropuestas;
     private JLabel lblResultadosPropuestas;
 
@@ -322,23 +321,19 @@ public class SecretarioView {
         JPanel filterPanel = crearTarjetaFiltros("Gestión de propuestas");
         btnAceptarPropuesta = botonPrimario("Aceptar Propuesta");
         btnAceptarPropuesta.setToolTipText("Aprobar propuesta para registrarla como microcredencial oficial");
-        btnRechazarPropuesta = botonSecundario("Rechazar Propuesta");
-        btnRechazarPropuesta.setForeground(new Color(185, 28, 28));
-        btnRechazarPropuesta.setToolTipText("Rechazar propuesta indicando obligatoriamente el motivo");
         btnRecargarPropuestas = botonSecundario("Actualizar listado");
 
-        addBotonesFiltro(filterPanel, btnAceptarPropuesta, btnRechazarPropuesta, btnRecargarPropuestas);
+        addBotonesFiltro(filterPanel, btnAceptarPropuesta, btnRecargarPropuestas);
 
         JLabel ayuda = textoSecundario("<html>Seleccione una propuesta pendiente para revisarla.<br><br>"
-                + "• <b>Aceptar</b>: La propuesta pasará a ACEPTADA y se registrará oficialmente como microcredencial disponible en el sistema.<br><br>"
-                + "• <b>Rechazar</b>: Se exigirá introducir obligatoriamente el motivo del rechazo. La propuesta quedará invalidada.</html>");
+                + "• <b>Aceptar</b>: La propuesta pasará a ACEPTADA y se registrará oficialmente como microcredencial disponible en el sistema.</html>");
         ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
         filterPanel.add(Box.createVerticalStrut(12));
         filterPanel.add(ayuda);
         panel.add(envolverFiltros(filterPanel), BorderLayout.WEST);
 
-        String[] columnasPropuestas = { "ID Propuesta", "Nombre del Curso", "Profesor Proponente", "Créditos",
-                "Periodo / Año", "Grado", "Fecha Envío" };
+        String[] columnasPropuestas = { "Código", "Nombre del Curso", "Profesor Proponente", "Créditos",
+                "Periodo de Impartición", "Rama", "Plazas", "Fecha Propuesta" };
         tabPropuestas = new JTable(new DefaultTableModel(columnasPropuestas, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -347,10 +342,10 @@ public class SecretarioView {
         });
         estilizarTabla(tabPropuestas);
         tabPropuestas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        anchos(tabPropuestas, 100, 240, 200, 80, 110, 180, 100);
-        anchoMinimo(tabPropuestas, 90, 0);
+        anchos(tabPropuestas, 80, 240, 200, 70, 190, 190, 60, 110);
+        anchoMinimo(tabPropuestas, 70, 0);
         anchoMinimo(tabPropuestas, 70, 3);
-        anchoMinimo(tabPropuestas, 90, 4);
+        anchoMinimo(tabPropuestas, 170, 4);
 
         JPanel propuestasCard = tarjeta(new BorderLayout(0, 10));
         JPanel tituloPropuestas = new JPanel(new BorderLayout());
@@ -583,9 +578,7 @@ public class SecretarioView {
         pie.setOpaque(false);
         resultados.setFont(ETIQUETA);
         pie.add(resultados, BorderLayout.WEST);
-        if (paginacion != null) {
-            pie.add(paginacion, BorderLayout.EAST);
-        }
+        pie.add(paginacion, BorderLayout.EAST);
         return pie;
     }
 
@@ -656,7 +649,15 @@ public class SecretarioView {
 
     /** Botón "Ver / Gestionar" de cada fila: blanco con borde y texto azul, centrado en la celda. */
     private static JButton crearBotonFila() {
-        return botonFila(TEXTO_ACCION);
+        JButton button = new JButton(TEXTO_ACCION);
+        button.setFont(new Font("Tahoma", Font.BOLD, 11));
+        button.setForeground(PRIMARIO);
+        button.setBackground(TARJETA);
+        button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setBorder(new LineBorder(PRIMARIO, 1, true));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return button;
     }
 
     /** Celda con el botón dentro y un pequeño margen, con el fondo de la fila. */
@@ -841,10 +842,6 @@ public class SecretarioView {
 
     public JButton getBtnAceptarPropuesta() {
         return btnAceptarPropuesta;
-    }
-
-    public JButton getBtnRechazarPropuesta() {
-        return btnRechazarPropuesta;
     }
 
     public JButton getBtnRecargarPropuestas() {

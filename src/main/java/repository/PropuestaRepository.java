@@ -8,8 +8,7 @@ import model.propuesta.PropuestaModel;
 import util.Database;
 
 /**
- * Repositorio de propuestas de asignaturas (HU 35243 y revisión de propuestas en Secretaría).
- * La lógica de negocio está en PropuestaModel.
+ * Repositorio de propuestas de asignaturas (HU 35243). La lógica de negocio está en PropuestaModel.
  */
 public class PropuestaRepository {
 	private PropuestaModel propuestaModel;
@@ -38,17 +37,5 @@ public class PropuestaRepository {
 	public List<String> crearPropuestas(String profesorId, List<String> gradoIds, String nombre, String anio,
 			String creditos, String descripcion, String fechaHoy) {
 		return propuestaModel.crearPropuestas(profesorId, gradoIds, nombre, anio, creditos, descripcion, fechaHoy);
-	}
-
-	public List<PropuestaDisplayDTO> getPropuestasPendientesSecretaria() {
-		return propuestaModel.getPropuestasPendientes();
-	}
-
-	public String aceptarPropuesta(String propuestaId) {
-		return propuestaModel.aceptarPropuesta(propuestaId);
-	}
-
-	public void rechazarPropuesta(String propuestaId, String motivoRechazo) {
-		propuestaModel.rechazarPropuesta(propuestaId, motivoRechazo);
 	}
 }

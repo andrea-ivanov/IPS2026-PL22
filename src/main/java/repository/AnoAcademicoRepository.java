@@ -13,21 +13,12 @@ import util.Database;
  */
 public class AnoAcademicoRepository {
     private final AnoAcademicoModel anoAcademicoModel;
-    private Database db;
 
     public AnoAcademicoRepository() {
-        AnoAcademicoModel model = null;
-        try {
-            this.db = new Database();
-            model = new AnoAcademicoModel(this.db);
-        } catch (Exception ex) {
-            model = new AnoAcademicoModel();
-        }
-        this.anoAcademicoModel = model;
+        this(new Database());
     }
 
     public AnoAcademicoRepository(Database db) {
-        this.db = db;
         this.anoAcademicoModel = new AnoAcademicoModel(db);
     }
 
@@ -56,7 +47,4 @@ public class AnoAcademicoRepository {
                 inicioMatriculacion, finMatriculacion);
     }
 
-    public AnoAcademico findById(String id) {
-        return anoAcademicoModel.buscarPorId(id);
-    }
 }

@@ -36,7 +36,7 @@ public class MatriculaSecretariaDTO {
 	}
 
 	// =========================================================================
-	// Situaciones que revisa el secretario (consultas de base-de-datos.md, HU 35229)
+	// Situaciones que revisa el secretario (consultas de docs/DATABASE.md, HU 35229)
 	// =========================================================================
 
 	/** Pagada por transferencia o carta de pago y pendiente de que el secretario la valide. */

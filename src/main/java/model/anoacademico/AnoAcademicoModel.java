@@ -1,18 +1,18 @@
 package model.anoacademico;
 
+import static util.DbUtil.update;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Date;
 import java.util.List;
 
-import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.curso.EstadoCurso;
 import model.grado.EstadoGrado;
 import util.Database;
-import util.UnexpectedException;
 import util.Util;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
@@ -72,7 +72,7 @@ public class AnoAcademicoModel {
 	 * @throws ValidationException Si el año anterior todavía no ha terminado
 	 */
 	public void validarAnoAnteriorTerminado(String fechaHoy) {
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			comprobarAnoAnteriorTerminado(conn, fechaHoy);
 			return null;
 		});
@@ -87,7 +87,7 @@ public class AnoAcademicoModel {
 	 */
 	public String validarNuevoAnoAcademico(String fechaHoy, Date inicioAnio, Date finAnio, Date inicioMatriculacion,
 			Date finMatriculacion) {
-		return enTransaccion(conn -> comprobarNuevoAno(conn, fechaHoy, inicioAnio, finAnio, inicioMatriculacion,
+		return db.enTransaccion(conn -> comprobarNuevoAno(conn, fechaHoy, inicioAnio, finAnio, inicioMatriculacion,
 				finMatriculacion));
 	}
 
@@ -102,7 +102,7 @@ public class AnoAcademicoModel {
 	 */
 	public String iniciarNuevoAnoAcademico(String fechaHoy, Date inicioAnio, Date finAnio, Date inicioMatriculacion,
 			Date finMatriculacion) {
-		return enTransaccion(conn -> {
+		return db.enTransaccion(conn -> {
 			String anioId = comprobarNuevoAno(conn, fechaHoy, inicioAnio, finAnio, inicioMatriculacion,
 					finMatriculacion);
 			String inicio = Util.dateToIsoString(inicioAnio);
@@ -173,35 +173,6 @@ public class AnoAcademicoModel {
 			throw new ValidationException("Ya existe el año académico " + anioId);
 		}
 		return anioId;
-	}
-
-	private int update(Connection conn, String sql, Object... params) throws SQLException {
-		return new QueryRunner().update(conn, sql, params);
-	}
-
-	@FunctionalInterface
-	private interface OperacionBD<T> {
-		T ejecutar(Connection conn) throws SQLException;
-	}
-
-	/** Ejecuta la operación en una única transacción: o se aplican todos los cambios o ninguno. */
-	private <T> T enTransaccion(OperacionBD<T> operacion) {
-		Connection conn = null;
-		try {
-			conn = db.getConnection();
-			conn.setAutoCommit(false);
-			T result = operacion.ejecutar(conn);
-			conn.commit();
-			return result;
-		} catch (SQLException e) {
-			DbUtils.rollbackQuietly(conn);
-			throw new UnexpectedException(e);
-		} catch (RuntimeException e) {
-			DbUtils.rollbackQuietly(conn);
-			throw e;
-		} finally {
-			DbUtils.closeQuietly(conn);
-		}
 	}
 
 	private Date mapearFecha(Object fechaObj) {

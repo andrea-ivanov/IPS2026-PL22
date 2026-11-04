@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import model.fixtures.BaseModelTest;
+import util.UnexpectedException;
 import util.exception.ValidationException;
 
 /**
@@ -137,7 +138,8 @@ public class MatriculacionSolicitudModelTest extends BaseModelTest {
 		solicitud.setAsignaturas(asignaturas);
 
 		String matriculaId = matriculacionModel.registrarSolicitudMatricula(solicitud);
-		assertNotNull(matriculaId, "Debe generar y retornar un ID de matrícula");
+		// mismo formato que data.sql (M00001 ... M02100): la carga limpia no tiene ids con M, así que es la primera
+		assertEquals("M00001", matriculaId);
 
 		// Verificar en BD que la cabecera Matricula tiene estado SOLICITADA
 		List<Object[]> rowsMat = db.executeQueryArray("SELECT estado FROM Matricula WHERE matriculaId = ?",
@@ -359,5 +361,16 @@ public class MatriculacionSolicitudModelTest extends BaseModelTest {
 			matriculacionModel.registrarSolicitudMatricula(solicitud);
 		});
 		assertTrue(ex.getMessage().contains("pagos pendientes") || ex.getMessage().contains("deudas"));
+	}
+
+	@Test
+	@DisplayName("HU 35235: si la BD falla, la solicitud se rechaza en vez de darse por válida")
+	public void testSolicitudRechazadaSiFallaLaBaseDeDatos() {
+		// Sin la tabla Alumno las consultas de validación fallan (el setUp de la siguiente prueba recrea el esquema).
+		// Antes cada comprobación atrapaba el error y devolvía "todo correcto".
+		db.executeBatchNoFail(new String[] { "DROP TABLE Alumno" });
+
+		assertThrows(UnexpectedException.class,
+				() -> matriculacionModel.validarSolicitudMatricula("1", "1", "1", List.of("1")));
 	}
 }

@@ -45,6 +45,8 @@ public class GradoFormDialog {
         formPanel.add(txtFacultad);
 
         formPanel.add(new JLabel("Rama de conocimiento:"));
+        // TODO: cambiar por un JComboBox con las 5 ramas de ck_grado_rama (schema.sql); con texto libre
+        // cualquier errata o tilde ("Ingeniería") la rechaza la BD con un error tecnico
         txtRama = new JTextField(20);
         formPanel.add(txtRama);
 

@@ -6,7 +6,7 @@ package model.matriculacion;
  * secretaría y estudiante (Mis Matrículas).
  * 
  * Unifica los atributos de todas las vistas:
- * - AdminOfertaView: {"Código", "NombreAlumno"} (además de idCurso, email,
+ * - AdminOfertaView: {"Código", "Alumno"} (además de idCurso, email,
  * estado, idAnoAcademico)
  * - SecretarioView: {"Nº Ref.", "DNI", "Estudiante", "Grado", "Curso", "Grupo",
  * "Estado"}
@@ -164,7 +164,7 @@ public class MatriculacionDisplayDTO {
 	}
 
 	/**
-	 * Constructor de 5 parámetros utilizado en AdminOfertaView y TestDataFactory.
+	 * Constructor de 5 parámetros utilizado en AdminOfertaView.
 	 */
 	public MatriculacionDisplayDTO(String id, String nombreAlumno, String idCurso, String email, String estado) {
 		this.id = id;

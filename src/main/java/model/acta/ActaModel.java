@@ -1,16 +1,16 @@
 package model.acta;
 
+import static util.DbUtil.update;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.dbutils.DbUtils;
-import org.apache.commons.dbutils.QueryRunner;
 
 import model.asignaciondocente.RolDocente;
+import model.matriculacion.MatriculacionModel;
 import util.Database;
-import util.UnexpectedException;
 import util.exception.ValidationException;
 
 /**
@@ -41,7 +41,7 @@ public class ActaModel {
 			+ "JOIN Convocatoria cvAp ON cvAp.anioAcademicoId = ap.anioAcademicoId AND cvAp.tipoConvocatoria = ap.tipoConvocatoria "
 			+ "JOIN Convocatoria cvActa ON cvActa.anioAcademicoId = a.anioAcademicoId AND cvActa.tipoConvocatoria = a.tipoConvocatoria "
 			+ "WHERE ap.matriculaId = mc.matriculaId AND ap.cursoId = mc.cursoId AND ap.anioAcademicoId = a.anioAcademicoId "
-			+ "AND ap.nota >= 5 AND cvAp.fechaFin < cvActa.fechaFin) ";
+			+ "AND ap.nota >= " + MatriculacionModel.NOTA_APROBADO + " AND cvAp.fechaFin < cvActa.fechaFin) ";
 
 	private Database db;
 
@@ -144,7 +144,7 @@ public class ActaModel {
 			parseNota(n.getKey(), n.getValue());
 		}
 
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			int filas = 0;
 			for (Map.Entry<String, String> n : notas.entrySet()) {
 				String texto = n.getValue() == null ? "" : n.getValue().trim();
@@ -170,7 +170,7 @@ public class ActaModel {
 	public void cerrarActa(String profesorId, String cursoId, String anioAcademicoId, String tipoConvocatoria, String fechaHoy) {
 		comprobarCoordinador(profesorId, cursoId);
 		comprobarActaAbierta(cursoId, anioAcademicoId, tipoConvocatoria);
-		enTransaccion(conn -> insertarNoPresentados(conn, cursoId, anioAcademicoId, tipoConvocatoria)
+		db.enTransaccion(conn -> insertarNoPresentados(conn, cursoId, anioAcademicoId, tipoConvocatoria)
 				+ update(conn, "UPDATE Acta SET estado = ?, fechaCierre = ?, cierreAutomatico = 0 "
 						+ "WHERE cursoId = ? AND anioAcademicoId = ? AND tipoConvocatoria = ?",
 						EstadoActa.CERRADA.name(), fechaHoy, cursoId, anioAcademicoId, tipoConvocatoria));
@@ -188,7 +188,7 @@ public class ActaModel {
 		if (vencidas.isEmpty()) {
 			return vencidas;
 		}
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			int filas = 0;
 			for (ActaDisplayDTO a : vencidas) {
 				filas += insertarNoPresentados(conn, a.getCursoId(), a.getAnioAcademicoId(), a.getTipoConvocatoria());
@@ -236,29 +236,4 @@ public class ActaModel {
 				cursoId, anioAcademicoId, tipoConvocatoria);
 	}
 
-	private int update(Connection conn, String sql, Object... params) throws SQLException {
-		return new QueryRunner().update(conn, sql, params);
-	}
-
-	@FunctionalInterface
-	private interface OperacionBD {
-		int ejecutar(Connection conn) throws SQLException;
-	}
-
-	/** Ejecuta la operación en una única transacción: o se aplican todos los cambios o ninguno. */
-	private int enTransaccion(OperacionBD operacion) {
-		Connection conn = null;
-		try {
-			conn = db.getConnection();
-			conn.setAutoCommit(false);
-			int result = operacion.ejecutar(conn);
-			conn.commit();
-			return result;
-		} catch (SQLException e) {
-			DbUtils.rollbackQuietly(conn);
-			throw new UnexpectedException(e);
-		} finally {
-			DbUtils.closeQuietly(conn);
-		}
-	}
 }

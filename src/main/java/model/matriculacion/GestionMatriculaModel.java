@@ -1,5 +1,7 @@
 package model.matriculacion;
 
+import static util.DbUtil.update;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -7,12 +9,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import util.Database;
-import util.UnexpectedException;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
 
@@ -307,7 +307,7 @@ public class GestionMatriculaModel {
 	 * @return número de cursos que han cambiado de estado
 	 */
 	public int actualizarCicloVida(String fechaHoy) {
-		return enTransaccion(conn -> activarMatriculasIniciadas(conn, fechaHoy) + finalizarMatriculasTerminadas(conn, fechaHoy));
+		return db.enTransaccion(conn -> activarMatriculasIniciadas(conn, fechaHoy) + finalizarMatriculasTerminadas(conn, fechaHoy));
 	}
 
 	/**
@@ -317,7 +317,7 @@ public class GestionMatriculaModel {
 	 * @return número de cursos activados
 	 */
 	public int activarMatriculasIniciadas(String fechaHoy) {
-		return enTransaccion(conn -> activarMatriculasIniciadas(conn, fechaHoy));
+		return db.enTransaccion(conn -> activarMatriculasIniciadas(conn, fechaHoy));
 	}
 
 	/**
@@ -326,7 +326,7 @@ public class GestionMatriculaModel {
 	 * @return número de cursos finalizados
 	 */
 	public int finalizarMatriculasTerminadas(String fechaHoy) {
-		return enTransaccion(conn -> finalizarMatriculasTerminadas(conn, fechaHoy));
+		return db.enTransaccion(conn -> finalizarMatriculasTerminadas(conn, fechaHoy));
 	}
 
 	// =========================================================================
@@ -380,7 +380,7 @@ public class GestionMatriculaModel {
 			}
 		}
 
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			for (Map.Entry<String, String> e : grupoPorTipo.entrySet()) {
 				update(conn, "DELETE FROM MatriculaGrupo WHERE matriculaId = ? AND cursoId = ? AND tipo = ?",
 						matriculaId, cursoId, e.getKey());
@@ -407,7 +407,7 @@ public class GestionMatriculaModel {
 		validarMetodoPago(metodo);
 		String fechaPago = actual.getFechaPago() != null ? actual.getFechaPago() : fechaHoy;
 
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			update(conn, "UPDATE MatriculaCurso SET estado = 'PAGADA', metodoPago = ?, fechaPago = ?, pagoValidado = 1 "
 					+ "WHERE matriculaId = ? AND cursoId = ? AND estado = 'SOLICITADA'",
 					metodo, fechaPago, matriculaId, cursoId);
@@ -445,7 +445,7 @@ public class GestionMatriculaModel {
 			throw new ValidationException("El email " + emailLimpio + " ya pertenece a otro estudiante");
 		}
 
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			update(conn, "UPDATE MatriculaCurso SET metodoPago = COALESCE(?, metodoPago), fechaPago = ? "
 					+ "WHERE matriculaId = ? AND cursoId = ?", metodoPago, fechaPago, matriculaId, cursoId);
 			update(conn, "UPDATE Alumno SET email = ? WHERE alumnoId = ?", emailLimpio, actual.getAlumnoId());
@@ -468,7 +468,7 @@ public class GestionMatriculaModel {
 			throw new ValidationException("No se puede cancelar una matrícula " + actual.getEstado());
 		}
 
-		enTransaccion(conn -> {
+		db.enTransaccion(conn -> {
 			if (todaLaMatricula) {
 				update(conn, "UPDATE MatriculaCurso SET estado = 'CANCELADA', motivoCancelacion = ?, fechaCancelacion = ? "
 						+ "WHERE matriculaId = ? AND estado NOT IN ('CANCELADA', 'FINALIZADA')", motivo, fechaHoy, matriculaId);
@@ -521,29 +521,4 @@ public class GestionMatriculaModel {
 		}
 	}
 
-	private int update(Connection conn, String sql, Object... params) throws SQLException {
-		return new QueryRunner().update(conn, sql, params);
-	}
-
-	@FunctionalInterface
-	private interface OperacionBD {
-		int ejecutar(Connection conn) throws SQLException;
-	}
-
-	/** Ejecuta la operación en una única transacción: o se aplican todos los cambios o ninguno. */
-	private int enTransaccion(OperacionBD operacion) {
-		Connection conn = null;
-		try {
-			conn = db.getConnection();
-			conn.setAutoCommit(false);
-			int result = operacion.ejecutar(conn);
-			conn.commit();
-			return result;
-		} catch (SQLException e) {
-			DbUtils.rollbackQuietly(conn);
-			throw new UnexpectedException(e);
-		} finally {
-			DbUtils.closeQuietly(conn);
-		}
-	}
 }
