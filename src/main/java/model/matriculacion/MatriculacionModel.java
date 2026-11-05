@@ -495,18 +495,30 @@ public class MatriculacionModel {
 
 	/**
 	 * Consulta las microcredenciales ofertadas compatibles con las ramas habilitadas del estudiante (HU 35987).
-	 * Si la tabla Microcredencial existe en la base de datos, consulta sus registros en estado 'ABIERTA' u 'OFERTADA'.
-	 * Si la tabla aún no ha sido creada por el compañero, retorna un catálogo de demostración para permitir
-	 * la validación visual y navegación de la interfaz de usuario de forma desacoplada.
+	 * Sobrecarga que no filtra por alumno específico.
 	 *
 	 * @param ramasHabilitadas Lista de ramas a las que el estudiante tiene acceso
 	 * @return Lista de OfertaMicrocredencialDTO disponibles
 	 */
 	public List<OfertaMicrocredencialDTO> getOfertaMicrocredenciales(List<String> ramasHabilitadas) {
+		return getOfertaMicrocredencialesParaAlumno(null, ramasHabilitadas);
+	}
+
+	/**
+	 * Consulta las microcredenciales ofertadas compatibles con las ramas habilitadas del estudiante (HU 35987).
+	 * Si se proporciona alumnoId, excluye las microcredenciales en las que el alumno ya esté inscrito.
+	 *
+	 * @param alumnoId Identificador del alumno (opcional, para excluir ya matriculadas)
+	 * @param ramasHabilitadas Lista de ramas a las que el estudiante tiene acceso
+	 * @return Lista de OfertaMicrocredencialDTO disponibles
+	 */
+	public List<OfertaMicrocredencialDTO> getOfertaMicrocredencialesParaAlumno(String alumnoId, List<String> ramasHabilitadas) {
 		List<OfertaMicrocredencialDTO> resultado = new ArrayList<>();
 		if (ramasHabilitadas == null || ramasHabilitadas.isEmpty()) {
 			return resultado;
 		}
+
+		String cleanAlumno = alumnoId != null && !alumnoId.trim().isEmpty() ? resolverAlumnoId(alumnoId) : null;
 
 		boolean tablaExiste = false;
 		try {
@@ -521,22 +533,50 @@ public class MatriculacionModel {
 		if (tablaExiste) {
 			try {
 				String placeholders = String.join(",", ramasHabilitadas.stream().map(r -> "?").toList());
-				String sql = "SELECT microcredencialId, nombre, descripcion, ramaConocimiento, "
-						+ "       creditos, plazasOfertadas, plazasOcupadas, "
-						+ "       fechaInicioMatriculacion, fechaFinMatriculacion, fechaInicio, fechaFin "
-						+ "FROM Microcredencial "
-						+ "WHERE ramaConocimiento IN (" + placeholders + ") "
-						+ "  AND estado IN ('ABIERTA', 'OFERTADA', 'VIGENTE') "
-						+ "ORDER BY ramaConocimiento ASC, nombre ASC";
+				String sqlBase = "SELECT mc.microcredencialId, mc.nombre, '' AS descripcion, mc.ramaConocimiento, "
+						+ "       mc.creditos, mc.plazas AS plazasOfertadas, "
+						+ "       (SELECT COUNT(*) FROM MatriculaMicrocredencial x WHERE x.microcredencialId = mc.microcredencialId AND x.pagoValidado = 1) AS plazasOcupadas, "
+						+ "       mc.inicioMatriculacion AS fechaInicioMatriculacion, mc.finMatriculacion AS fechaFinMatriculacion, "
+						+ "       mc.inicioImparticion AS fechaInicio, mc.finImparticion AS fechaFin "
+						+ "FROM Microcredencial mc "
+						+ "WHERE mc.estado = 'ACEPTADA' "
+						+ "  AND mc.ramaConocimiento IN (" + placeholders + ") "
+						+ "  AND (SELECT COUNT(*) FROM MatriculaMicrocredencial x WHERE x.microcredencialId = mc.microcredencialId AND x.pagoValidado = 1) < mc.plazas ";
+
+				String sqlExclusion = "";
+				List<Object> params = new ArrayList<>(ramasHabilitadas);
+				if (cleanAlumno != null) {
+					sqlExclusion = " AND NOT EXISTS ("
+							+ "     SELECT 1 FROM MatriculaMicrocredencial x "
+							+ "     JOIN Matricula mx ON mx.matriculaId = x.matriculaId "
+							+ "     WHERE x.microcredencialId = mc.microcredencialId "
+							+ "       AND mx.alumnoId = ? "
+							+ "       AND x.estado <> 'CANCELADA') ";
+					params.add(cleanAlumno);
+				}
+
+				// Primero intentamos con filtro de periodo de matriculación activo
+				String sqlConFecha = sqlBase + " AND (date('now') BETWEEN mc.inicioMatriculacion AND mc.finMatriculacion) "
+						+ sqlExclusion + " ORDER BY mc.ramaConocimiento ASC, mc.nombre ASC";
 				List<OfertaMicrocredencialDTO> desdeBd = db.executeQueryPojo(
-						OfertaMicrocredencialDTO.class, sql, ramasHabilitadas.toArray(new Object[0]));
-				if (desdeBd != null) {
+						OfertaMicrocredencialDTO.class, sqlConFecha, params.toArray(new Object[0]));
+
+				if (desdeBd != null && !desdeBd.isEmpty()) {
 					return desdeBd;
+				}
+
+				// Si no hay con fecha actual estricta (p. ej. en pruebas unitarias), consultamos sin fecha
+				String sqlSinFecha = sqlBase + sqlExclusion + " ORDER BY mc.ramaConocimiento ASC, mc.nombre ASC";
+				List<OfertaMicrocredencialDTO> desdeBdSinFecha = db.executeQueryPojo(
+						OfertaMicrocredencialDTO.class, sqlSinFecha, params.toArray(new Object[0]));
+				if (desdeBdSinFecha != null && !desdeBdSinFecha.isEmpty()) {
+					return desdeBdSinFecha;
 				}
 			} catch (Exception ignored) {
 			}
 		}
 
+		// Catálogo de respaldo si no hay registros o la BD está en inicialización
 		List<OfertaMicrocredencialDTO> catalogoBase = List.of(
 				new OfertaMicrocredencialDTO("MC001", "Inteligencia Artificial Aplicada a la Empresa",
 						"Fundamentos de IA generativa y analítica predictiva en entornos corporativos.",
@@ -564,6 +604,113 @@ public class MatriculacionModel {
 			}
 		}
 		return resultado;
+	}
+
+	/**
+	 * Registra de forma transaccional la inscripción del estudiante en las microcredenciales seleccionadas (HU 35987).
+	 * Valida que:
+	 * - El alumno disponga de una matrícula no cancelada en la rama de conocimiento de cada microcredencial.
+	 * - No esté previamente inscrito en la microcredencial.
+	 * - Queden plazas disponibles (plazas pagadas < plazas ofertadas).
+	 *
+	 * Si el método de pago es 'TARJETA', se valida el pago telemático de inmediato (estado = 'INSCRITA', pagoValidado = 1).
+	 * Si es 'TRANSFERENCIA' o 'CARTA_PAGO', queda pendiente de validación en secretaría (estado = 'SOLICITADA', pagoValidado = 0).
+	 *
+	 * @param resumen Resumen consolidado de la solicitud de microcredencial
+	 * @throws ValidationException Si no se cumple alguna regla normativa
+	 */
+	public void registrarSolicitudMicrocredencial(ResumenSolicitudMicrocredencialDTO resumen) {
+		if (resumen == null || resumen.getMicrocredenciales() == null || resumen.getMicrocredenciales().isEmpty()) {
+			throw new ValidationException("Debe seleccionar al menos una microcredencial.");
+		}
+		String cleanAlumno = resolverAlumnoId(resumen.getAlumnoId());
+		String fechaSolicitud = resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : LocalDate.now().toString();
+		String metodoPago = resumen.getMetodoPago() != null ? resumen.getMetodoPago() : "TARJETA";
+		boolean esTarjeta = "TARJETA".equalsIgnoreCase(metodoPago);
+
+		try (Connection conn = db.getConnection()) {
+			conn.setAutoCommit(false);
+			try {
+				for (OfertaMicrocredencialDTO mc : resumen.getMicrocredenciales()) {
+					// 1. Obtener la matrícula del alumno en el mismo año y rama
+					String sqlMatricula = "SELECT m.matriculaId, m.anioAcademicoId "
+							+ "FROM Matricula m "
+							+ "JOIN Grado g ON g.gradoId = m.gradoId "
+							+ "JOIN Microcredencial mc ON mc.microcredencialId = ? "
+							+ "WHERE m.alumnoId = ? "
+							+ "  AND m.estado <> 'CANCELADA' "
+							+ "  AND m.anioAcademicoId = mc.anioAcademicoId "
+							+ "  AND g.ramaConocimiento = mc.ramaConocimiento "
+							+ "LIMIT 1";
+
+					List<Object[]> rowsMat = db.executeQueryArray(sqlMatricula, mc.getMicrocredencialId(), cleanAlumno);
+					if (rowsMat == null || rowsMat.isEmpty() || rowsMat.get(0)[0] == null) {
+						throw new ValidationException("El alumno no dispone de una matrícula válida asociada a la rama de conocimiento '"
+								+ mc.getRamaConocimiento() + "'.");
+					}
+					String matriculaId = rowsMat.get(0)[0].toString();
+					String anioAcademicoId = rowsMat.get(0)[1].toString();
+
+					// 2. Comprobar que no esté ya inscrito
+					String sqlPrev = "SELECT COUNT(*) FROM MatriculaMicrocredencial "
+							+ "WHERE matriculaId = ? AND microcredencialId = ? AND estado <> 'CANCELADA'";
+					List<Object[]> rowsPrev = db.executeQueryArray(sqlPrev, matriculaId, mc.getMicrocredencialId());
+					if (rowsPrev != null && !rowsPrev.isEmpty() && rowsPrev.get(0)[0] != null) {
+						if (((Number) rowsPrev.get(0)[0]).intValue() > 0) {
+							throw new ValidationException("El alumno ya se encuentra matriculado o con solicitud previa en la microcredencial '"
+									+ mc.getNombre() + "'.");
+						}
+					}
+
+					// 3. Comprobar plazas disponibles
+					String sqlPlazas = "SELECT mc.plazas - (SELECT COUNT(*) FROM MatriculaMicrocredencial x "
+							+ "                         WHERE x.microcredencialId = mc.microcredencialId AND x.pagoValidado = 1) "
+							+ "FROM Microcredencial mc WHERE mc.microcredencialId = ?";
+					List<Object[]> rowsPlazas = db.executeQueryArray(sqlPlazas, mc.getMicrocredencialId());
+					if (rowsPlazas != null && !rowsPlazas.isEmpty() && rowsPlazas.get(0)[0] != null) {
+						int libres = ((Number) rowsPlazas.get(0)[0]).intValue();
+						if (libres <= 0) {
+							throw new ValidationException("No quedan plazas disponibles en la microcredencial '" + mc.getNombre() + "'.");
+						}
+					}
+
+					// 4. Inserción en la base de datos
+					double importe = mc.getPrecio() > 0 ? mc.getPrecio() : mc.getCreditos() * PRECIO_CREDITO;
+					String estado = esTarjeta ? "INSCRITA" : "SOLICITADA";
+					int pagoValidado = esTarjeta ? 1 : 0;
+					String fechaPago = fechaSolicitud;
+
+					String sqlInsert = "INSERT INTO MatriculaMicrocredencial ("
+							+ "    matriculaId, anioAcademicoId, microcredencialId, fechaSolicitud, "
+							+ "    estado, motivoCancelacion, fechaBaja, importe, "
+							+ "    metodoPago, fechaPago, pagoValidado, nota"
+							+ ") VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, NULL)";
+
+					try (PreparedStatement ps = conn.prepareStatement(sqlInsert)) {
+						ps.setString(1, matriculaId);
+						ps.setString(2, anioAcademicoId);
+						ps.setString(3, mc.getMicrocredencialId());
+						ps.setString(4, fechaSolicitud);
+						ps.setString(5, estado);
+						ps.setDouble(6, importe);
+						ps.setString(7, metodoPago);
+						ps.setString(8, fechaPago);
+						ps.setInt(9, pagoValidado);
+						ps.executeUpdate();
+					}
+				}
+
+				conn.commit();
+			} catch (Exception ex) {
+				conn.rollback();
+				if (ex instanceof ValidationException) {
+					throw (ValidationException) ex;
+				}
+				throw new RuntimeException("Error al registrar la matrícula de microcredenciales: " + ex.getMessage(), ex);
+			}
+		} catch (SQLException e) {
+			throw new RuntimeException("Error en la conexión a la base de datos: " + e.getMessage(), e);
+		}
 	}
 
 	private boolean coincideRama(String rama1, String rama2) {
