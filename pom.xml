@@ -118,6 +118,7 @@
 						<include>**/model/**/*Test.java</include>
 						<include>**/repository/**/*Test.java</include>
 						<include>**/util/**/*Test.java</include>
+						<include>**/view/**/*Test.java</include>
 					</includes>
 					<excludes>
 						<exclude>**/giis/**</exclude>
