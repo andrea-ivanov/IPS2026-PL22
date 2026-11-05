@@ -7,14 +7,13 @@ import util.SwingUtil;
 import view.estudiante.EstudianteView;
 import view.estudiante.MisMatriculasView;
 import view.estudiante.SolicitudMatriculaView;
-import view.estudiante.SolicitudMicrocredencialView;
 
 import java.awt.*;
 
 /**
  * Controlador de la vista principal del estudiante.
  * Gestiona la navegación fluida entre el menú de bienvenida, la consulta de
- * matrículas, la solicitud de matrícula y la matriculación en microcredenciales,
+ * matrículas y la solicitud unificada de matrícula (grados y microcredenciales),
  * todo en una única ventana centrada.
  */
 public class EstudianteController {
@@ -68,10 +67,10 @@ public class EstudianteController {
         // 2. Opción 1: Consultar Mis Matrículas (se abre dentro de la misma ventana)
         view.getBtnMisMatriculas().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirConsultaMatriculas));
 
-        // 3. Opción 2: Solicitar Nueva Matrícula (se abre dentro de la misma ventana)
+        // 3. Opción 2: Solicitar Nueva Matrícula (Grado Oficial)
         view.getBtnSolicitarMatricula().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMatricula));
 
-        // 4. Opción 3: Solicitar Nueva Microcredencial (se abre dentro de la misma ventana)
+        // 4. Opción 3: Solicitar Nueva Microcredencial (Microcredenciales)
         view.getBtnSolicitarMicrocredencial().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMicrocredencial));
 
         // Mostrar menú inicial y centrar
@@ -95,7 +94,7 @@ public class EstudianteController {
                     misMatriculasView,
                     matriculacionModel,
                     uo,
-                    () -> view.mostrarMenu() // Al pulsar volver en la vista de matrículas, regresa al menú de inicio
+                    () -> view.mostrarMenu()
             );
             misMatriculasController.initController();
 
@@ -109,7 +108,7 @@ public class EstudianteController {
         view.mostrarConsulta();
     }
 
-    private void abrirSolicitudMatricula() {
+    private void asegurarSolicitudMatriculaInicializada() {
         if (solicitudMatriculaView == null) {
             solicitudMatriculaView = new SolicitudMatriculaView();
             solicitudMatriculaController = new SolicitudMatriculaController(
@@ -117,8 +116,6 @@ public class EstudianteController {
                     matriculacionModel,
                     uo,
                     () -> {
-                        // Al volver al menú principal, refrescamos también la vista de matrículas si ya
-                        // estaba creada
                         if (misMatriculasController != null) {
                             misMatriculasController.refrescarTodo();
                         }
@@ -133,6 +130,11 @@ public class EstudianteController {
         } else {
             solicitudMatriculaController.recargarOferta();
         }
+    }
+
+    private void abrirSolicitudMatricula() {
+        asegurarSolicitudMatriculaInicializada();
+        solicitudMatriculaController.seleccionarModoGrado();
         view.mostrarSolicitud();
     }
 

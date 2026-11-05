@@ -36,7 +36,7 @@ public class SolicitudMicrocredencialViewTest {
         db.createDatabase(false);
         loadCleanDatabase(db);
         menuVuelto = new AtomicBoolean(false);
-        view = new SolicitudMicrocredencialView();
+        view = new SolicitudMatriculaView();
         model = new MatriculacionModel(db);
         controller = new SolicitudMicrocredencialController(view, model, new InscripcionMicrocredencialModel(db),
                 "AL0001", () -> menuVuelto.set(true));
@@ -67,7 +67,7 @@ public class SolicitudMicrocredencialViewTest {
     }
 
     @Test
-    @DisplayName("HU35987: Inicialización en Paso 1 con componentes clave y renderizado de checkboxes")
+    @DisplayName("HU35987: Inicialización en modo Microcredenciales con componentes clave y checkboxes")
     public void testInicializacionPaso1() {
         assertNotNull(view.getLblRamasHabilitadas(), "La etiqueta de ramas habilitadas debe existir");
         assertNotNull(view.getCbFiltroRama(), "El combo de filtro por rama debe existir");
@@ -90,7 +90,7 @@ public class SolicitudMicrocredencialViewTest {
     }
 
     @Test
-    @DisplayName("HU35987: Selección de métodos de pago")
+    @DisplayName("HU35987: Selección de métodos de pago en vista unificada")
     public void testMetodosPago() {
         view.getRbTarjeta().setSelected(true);
         assertEquals("TARJETA", view.getMetodoPagoSeleccionado());
@@ -103,7 +103,7 @@ public class SolicitudMicrocredencialViewTest {
     }
 
     @Test
-    @DisplayName("HU35987: Cálculo en vivo a 20.0 € por crédito")
+    @DisplayName("HU35987: Cálculo en vivo a 20.0 € por crédito en microcredenciales")
     public void testCalculoEnVivoCreditosEImporte() {
         assertEquals(1, view.getModelMicrocredenciales().getRowCount(), "Debe ofertarse la microcredencial abierta hoy");
         if (view.getModelMicrocredenciales().getRowCount() > 0) {
@@ -119,7 +119,7 @@ public class SolicitudMicrocredencialViewTest {
     }
 
     @Test
-    @DisplayName("HU35987: Carga del resumen consolidado en Paso 2")
+    @DisplayName("HU35987: Carga del resumen consolidado de microcredencial en Paso 2")
     public void testCargaResumen() {
         ResumenSolicitudMicrocredencialDTO resumen = new ResumenSolicitudMicrocredencialDTO();
         resumen.setAlumnoId("AL0001");
@@ -145,7 +145,7 @@ public class SolicitudMicrocredencialViewTest {
         resumen.setCreditosTotales(3);
         resumen.setImporteTotal(60.0);
 
-        view.cargarResumen(resumen);
+        view.cargarResumenMicrocredencial(resumen);
 
         assertEquals(1, resumen.getMicrocredenciales().size());
         assertEquals(3, resumen.getCreditosTotales());
@@ -159,4 +159,3 @@ public class SolicitudMicrocredencialViewTest {
         assertTrue(menuVuelto.get(), "Debe invocarse el callback de regreso al menú");
     }
 }
-
