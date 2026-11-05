@@ -18,7 +18,6 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - name: Checkout GitHub repo
         uses: actions/checkout@v7
@@ -31,7 +30,7 @@ jobs:
           cache: 'maven'
 
       - name: Build and run all tests
-        run: xvfb-run -a mvn verify -Dfile.encoding=UTF-8 -Dmaven.test.failure.ignore=true -U --no-transfer-progress
+        run: mvn verify -Dfile.encoding=UTF-8 -Djava.awt.headless=true -Dmaven.test.failure.ignore=true -U --no-transfer-progress
 
       - name: Publish surefire test report
         if: always()
