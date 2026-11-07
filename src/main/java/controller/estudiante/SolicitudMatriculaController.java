@@ -2,7 +2,7 @@ package controller.estudiante;
 
 import model.matriculacion.MatriculacionModel;
 import model.matriculacion.OfertaCursoDTO;
-import model.matriculacion.OfertaGradoDTO;
+import model.grado.GradoDisplayDTO;
 import model.matriculacion.ResumenSolicitudDTO;
 import util.exception.ValidationException;
 import util.SwingUtil;
@@ -31,7 +31,7 @@ public class SolicitudMatriculaController {
     public SolicitudMatriculaController(SolicitudMatriculaView view, MatriculacionModel model, String alumnoId,
             Runnable onVolverMenu) {
         this.view = view;
-        this.model = model != null ? model : new MatriculacionModel();
+        this.model = model;
         this.alumnoId = alumnoId;
         this.onVolverMenu = onVolverMenu;
     }
@@ -76,9 +76,9 @@ public class SolicitudMatriculaController {
 
     private void cargarGradosDisponibles() {
         view.getCbGrados().removeAllItems();
-        List<OfertaGradoDTO> grados = model.getOfertaGradosDisponibles();
+        List<GradoDisplayDTO> grados = model.getOfertaGradosDisponibles();
         if (grados != null && !grados.isEmpty()) {
-            for (OfertaGradoDTO g : grados) {
+            for (GradoDisplayDTO g : grados) {
                 view.getCbGrados().addItem(g);
             }
             cargarAsignaturasDelGradoSeleccionado();
@@ -93,7 +93,7 @@ public class SolicitudMatriculaController {
     }
 
     private void cargarAsignaturasDelGradoSeleccionado() {
-        OfertaGradoDTO grado = (OfertaGradoDTO) view.getCbGrados().getSelectedItem();
+        GradoDisplayDTO grado = (GradoDisplayDTO) view.getCbGrados().getSelectedItem();
         if (grado == null) {
             actualizandoTabla = true;
             view.getModelCursos().setRowCount(0);
@@ -106,7 +106,7 @@ public class SolicitudMatriculaController {
         DefaultTableModel tm = view.getModelCursos();
         tm.setRowCount(0);
 
-        List<OfertaCursoDTO> cursos = model.getOfertaCursosPorGrado(grado.getGradoId(), alumnoId);
+        List<OfertaCursoDTO> cursos = model.getOfertaCursosPorGrado(grado.getId(), alumnoId);
         if (cursos != null) {
             for (OfertaCursoDTO c : cursos) {
                 double precio = c.getPrecio() > 0 ? c.getPrecio() : c.getCreditos() * MatriculacionModel.PRECIO_CREDITO;
@@ -179,7 +179,7 @@ public class SolicitudMatriculaController {
     }
 
     private void validarYContinuarAlResumen() {
-        OfertaGradoDTO grado = (OfertaGradoDTO) view.getCbGrados().getSelectedItem();
+        GradoDisplayDTO grado = (GradoDisplayDTO) view.getCbGrados().getSelectedItem();
         if (grado == null) {
             JOptionPane.showMessageDialog(view.getFrame(),
                     "Debe seleccionar un grado oficial para matricularse.",
@@ -204,7 +204,7 @@ public class SolicitudMatriculaController {
         // Ejecutar validaciones integrales de negocio antes de permitir avanzar al
         // resumen
         try {
-            model.validarSolicitudMatricula(alumnoId, grado.getGradoId(), anioAcademicoId, cursoIds);
+            model.validarSolicitudMatricula(alumnoId, grado.getId(), anioAcademicoId, cursoIds);
         } catch (ValidationException ex) {
             JOptionPane.showMessageDialog(view.getFrame(),
                     ex.getMessage(),
@@ -214,7 +214,7 @@ public class SolicitudMatriculaController {
         }
 
         // Construir DTO de resumen
-        resumenActual = model.obtenerDatosEstudianteParaSolicitud(alumnoId, grado.getGradoId());
+        resumenActual = model.obtenerDatosEstudianteParaSolicitud(alumnoId, grado.getId());
         resumenActual.setAsignaturas(asignaturas);
         int totalCreds = 0;
         double totalImporte = 0.0;

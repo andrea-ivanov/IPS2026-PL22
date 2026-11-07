@@ -70,6 +70,7 @@ public class SecretarioView {
     // Pestaña de propuestas de microcredenciales
     private JTable tabPropuestas;
     private JButton btnAceptarPropuesta;
+    private JButton btnRechazarPropuesta;
     private JButton btnRecargarPropuestas;
     private JLabel lblResultadosPropuestas;
 
@@ -321,12 +322,15 @@ public class SecretarioView {
         JPanel filterPanel = crearTarjetaFiltros("Gestión de propuestas");
         btnAceptarPropuesta = botonPrimario("Aceptar Propuesta");
         btnAceptarPropuesta.setToolTipText("Aprobar propuesta para registrarla como microcredencial oficial");
+        btnRechazarPropuesta = botonPeligro("Rechazar Propuesta");
+        btnRechazarPropuesta.setToolTipText("Rechazar la propuesta indicando obligatoriamente el motivo");
         btnRecargarPropuestas = botonSecundario("Actualizar listado");
 
-        addBotonesFiltro(filterPanel, btnAceptarPropuesta, btnRecargarPropuestas);
+        addBotonesFiltro(filterPanel, btnAceptarPropuesta, btnRechazarPropuesta, btnRecargarPropuestas);
 
         JLabel ayuda = textoSecundario("<html>Seleccione una propuesta pendiente para revisarla.<br><br>"
-                + "• <b>Aceptar</b>: La propuesta pasará a ACEPTADA y se registrará oficialmente como microcredencial disponible en el sistema.</html>");
+                + "• <b>Aceptar</b>: La propuesta pasará a ACEPTADA y se registrará oficialmente como microcredencial disponible en el sistema.<br><br>"
+                + "• <b>Rechazar</b>: Se pedirá el motivo, que es obligatorio. La propuesta pasará a RECHAZADA y quedará invalidada.</html>");
         ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
         filterPanel.add(Box.createVerticalStrut(12));
         filterPanel.add(ayuda);
@@ -842,6 +846,10 @@ public class SecretarioView {
 
     public JButton getBtnAceptarPropuesta() {
         return btnAceptarPropuesta;
+    }
+
+    public JButton getBtnRechazarPropuesta() {
+        return btnRechazarPropuesta;
     }
 
     public JButton getBtnRecargarPropuestas() {

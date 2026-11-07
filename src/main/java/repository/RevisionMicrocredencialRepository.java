@@ -44,12 +44,14 @@ public class RevisionMicrocredencialRepository {
 	}
 
 	/**
-	 * Cambia el estado y guarda la fecha de resolución, solo si sigue en estadoActual.
+	 * Resuelve la microcredencial: cambia el estado y guarda la fecha y el motivo de rechazo (nulo si se acepta),
+	 * solo si sigue en estadoActual.
 	 * @return filas actualizadas (0 si ya no estaba en estadoActual)
 	 */
 	public int resolver(Connection conn, String microcredencialId, String estadoActual, String estadoNuevo,
-			String fechaResolucion) throws SQLException {
-		return update(conn, "UPDATE Microcredencial SET estado = ?, fechaResolucion = ? "
-				+ "WHERE microcredencialId = ? AND estado = ?", estadoNuevo, fechaResolucion, microcredencialId, estadoActual);
+			String fechaResolucion, String motivoRechazo) throws SQLException {
+		return update(conn, "UPDATE Microcredencial SET estado = ?, fechaResolucion = ?, motivoRechazo = ? "
+				+ "WHERE microcredencialId = ? AND estado = ?", estadoNuevo, fechaResolucion, motivoRechazo,
+				microcredencialId, estadoActual);
 	}
 }

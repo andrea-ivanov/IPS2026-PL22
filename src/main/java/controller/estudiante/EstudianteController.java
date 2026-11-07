@@ -1,6 +1,8 @@
 package controller.estudiante;
 
 import model.matriculacion.MatriculacionModel;
+import model.microcredencial.InscripcionMicrocredencialModel;
+import util.Database;
 import util.SwingUtil;
 import view.estudiante.EstudianteView;
 import view.estudiante.MisMatriculasView;
@@ -24,6 +26,7 @@ public class EstudianteController {
     private MisMatriculasView misMatriculasView;
     private MisMatriculasController misMatriculasController;
     private MatriculacionModel matriculacionModel;
+    private InscripcionMicrocredencialModel inscripcionMicrocredencialModel;
 
     private SolicitudMatriculaView solicitudMatriculaView;
     private SolicitudMatriculaController solicitudMatriculaController;
@@ -31,24 +34,25 @@ public class EstudianteController {
     private SolicitudMicrocredencialView solicitudMicrocredencialView;
     private SolicitudMicrocredencialController solicitudMicrocredencialController;
 
-    public EstudianteController(EstudianteView view) {
-        this(view, null, null, null);
+    public EstudianteController(EstudianteView view, Database db) {
+        this(view, db, null, null, null);
     }
 
-    public EstudianteController(EstudianteView view, String uo) {
-        this(view, uo, null, null);
+    public EstudianteController(EstudianteView view, Database db, String uo) {
+        this(view, db, uo, null, null);
     }
 
-    public EstudianteController(EstudianteView view, String uo, Runnable onVolverLogin) {
-        this(view, uo, null, onVolverLogin);
+    public EstudianteController(EstudianteView view, Database db, String uo, Runnable onVolverLogin) {
+        this(view, db, uo, null, onVolverLogin);
     }
 
-    public EstudianteController(EstudianteView view, String uo, String nombre, Runnable onVolverLogin) {
+    public EstudianteController(EstudianteView view, Database db, String uo, String nombre, Runnable onVolverLogin) {
         this.view = view;
         this.uo = uo;
         this.nombre = nombre;
         this.onVolverLogin = onVolverLogin;
-        this.matriculacionModel = new MatriculacionModel();
+        this.matriculacionModel = new MatriculacionModel(db);
+        this.inscripcionMicrocredencialModel = new InscripcionMicrocredencialModel(db);
         if ((this.nombre == null || this.nombre.trim().isEmpty()) && this.uo != null) {
             this.nombre = this.matriculacionModel.obtenerNombreAlumno(this.uo);
         }
@@ -138,6 +142,7 @@ public class EstudianteController {
             solicitudMicrocredencialController = new SolicitudMicrocredencialController(
                     solicitudMicrocredencialView,
                     matriculacionModel,
+                    inscripcionMicrocredencialModel,
                     uo,
                     () -> {
                         if (misMatriculasController != null) {

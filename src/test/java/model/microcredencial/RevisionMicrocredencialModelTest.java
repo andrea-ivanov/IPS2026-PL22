@@ -17,7 +17,7 @@ import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
 
 /**
- * Pruebas de la HU 35994 (primera mitad): el secretario ve las microcredenciales PROPUESTAS y las acepta.
+ * Pruebas de la HU 35994: el secretario ve las microcredenciales PROPUESTAS y las acepta o las rechaza con motivo.
  * Cada prueba parte de sus propios datos (loadCleanDatabase), independientes de data.sql
  */
 public class RevisionMicrocredencialModelTest {
@@ -154,6 +154,99 @@ public class RevisionMicrocredencialModelTest {
 	}
 
 	// //////////////////////////////////////////////
+	// Rechazar
+	// //////////////////////////////////////////////
+
+	/** Al rechazarla pasa a RECHAZADA con el motivo y la fecha, y deja de estar pendiente */
+	@Test
+	public void testRechazarPropuesta() {
+		model.rechazarPropuesta("MC001", "  Contenido solapado con otra asignatura ", HOY);
+
+		assertEquals("RECHAZADA", estado("MC001"));
+		assertEquals(HOY, fechaResolucion("MC001"));
+		assertEquals("Contenido solapado con otra asignatura", motivoRechazo("MC001"));
+		assertEquals(List.of("MC002"), ids(model.getPropuestasPendientes()));
+		// la otra propuesta no cambia
+		assertEquals("PROPUESTA", estado("MC002"));
+		assertNull(motivoRechazo("MC002"));
+	}
+
+	/** El motivo es obligatorio: sin él (o solo con espacios) la propuesta sigue pendiente */
+	@Test
+	public void testRechazarSinMotivo() {
+		for (String motivo : new String[] { null, "", "   " }) {
+			ValidationException e = assertThrows(ValidationException.class,
+					() -> model.rechazarPropuesta("MC001", motivo, HOY));
+			assertEquals("El motivo del rechazo es obligatorio", e.getMessage());
+		}
+		assertEquals("PROPUESTA", estado("MC001"));
+		assertNull(fechaResolucion("MC001"));
+	}
+
+	/** El motivo cabe hasta el límite de la columna (500 caracteres, sin contar los espacios de los extremos) */
+	@Test
+	public void testLimiteDelMotivo() {
+		String limite = "x".repeat(RevisionMicrocredencialModel.MAX_MOTIVO_RECHAZO);
+		assertThrows(ValidationException.class, () -> model.rechazarPropuesta("MC001", limite + "x", HOY));
+		assertEquals("PROPUESTA", estado("MC001"));
+
+		model.rechazarPropuesta("MC001", " " + limite + " ", HOY);
+		assertEquals(limite, motivoRechazo("MC001"));
+	}
+
+	/** El controlador comprueba el motivo antes de cerrar el diálogo: devuelve el texto limpio sin guardar nada */
+	@Test
+	public void testValidarMotivoNoGuardaNada() {
+		assertEquals("Contenido solapado", model.validarMotivoRechazo("  Contenido solapado "));
+		assertThrows(ValidationException.class, () -> model.validarMotivoRechazo("   "));
+		assertEquals("PROPUESTA", estado("MC001"));
+	}
+
+	/** Una propuesta rechazada queda invalidada: no se puede aceptar ni rechazar otra vez */
+	@Test
+	public void testRechazadaQuedaInvalidada() {
+		model.rechazarPropuesta("MC001", "Primer motivo", HOY);
+
+		assertThrows(ValidationException.class, () -> model.aceptarPropuesta("MC001", "2026-11-08"));
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.rechazarPropuesta("MC001", "Otro motivo", "2026-11-08"));
+		assertTrue(e.getMessage().contains("RECHAZADA"), e.getMessage());
+
+		assertEquals("RECHAZADA", estado("MC001"));
+		assertEquals("Primer motivo", motivoRechazo("MC001"));
+		assertEquals(HOY, fechaResolucion("MC001"));
+	}
+
+	/** Una propuesta ya aceptada no se puede rechazar y no se le guarda ningún motivo */
+	@Test
+	public void testRechazarAceptada() {
+		assertThrows(ValidationException.class, () -> model.rechazarPropuesta("MC003", "Tarde", HOY));
+		assertEquals("ACEPTADA", estado("MC003"));
+		assertNull(motivoRechazo("MC003"));
+	}
+
+	/** Una microcredencial que no existe da error de recurso no encontrado */
+	@Test
+	public void testRechazarInexistente() {
+		assertThrows(ResourceNotFoundException.class, () -> model.rechazarPropuesta("MC999", "Motivo", HOY));
+	}
+
+	/** Sin identificador o sin fecha no se rechaza nada */
+	@Test
+	public void testRechazarSinDatos() {
+		assertThrows(ValidationException.class, () -> model.rechazarPropuesta(null, "Motivo", HOY));
+		assertThrows(ValidationException.class, () -> model.rechazarPropuesta("MC001", "Motivo", null));
+		assertEquals("PROPUESTA", estado("MC001"));
+	}
+
+	/** Aceptar no guarda ningún motivo de rechazo */
+	@Test
+	public void testAceptarNoGuardaMotivo() {
+		model.aceptarPropuesta("MC001", HOY);
+		assertNull(motivoRechazo("MC001"));
+	}
+
+	// //////////////////////////////////////////////
 	// Auxiliares
 	// //////////////////////////////////////////////
 
@@ -169,5 +262,10 @@ public class RevisionMicrocredencialModelTest {
 		Object valor = db.executeQueryArray("SELECT fechaResolucion FROM Microcredencial WHERE microcredencialId = ?", id)
 				.get(0)[0];
 		return valor == null ? null : valor.toString();
+	}
+
+	private String motivoRechazo(String id) {
+		return (String) db.executeQueryArray("SELECT motivoRechazo FROM Microcredencial WHERE microcredencialId = ?", id)
+				.get(0)[0];
 	}
 }

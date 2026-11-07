@@ -1,7 +1,8 @@
 package view.estudiante;
 
-import model.matriculacion.OfertaMicrocredencialDTO;
-import model.matriculacion.ResumenSolicitudMicrocredencialDTO;
+import model.matriculacion.MatriculacionModel;
+import model.microcredencial.OfertaMicrocredencialDTO;
+import model.microcredencial.ResumenSolicitudMicrocredencialDTO;
 import view.comun.Estilo;
 
 import javax.swing.*;
@@ -202,7 +203,7 @@ public class SolicitudMicrocredencialView {
                 new EmptyBorder(10, 10, 10, 10)));
 
         String[] columnas = { "Seleccionar", "Código", "Microcredencial", "Rama de Conocimiento", "Créditos",
-                "Plazas", "Fin Matrícula", "Inicio Curso", "Precio (€)" };
+                "Plazas libres", "Fin Matrícula", "Inicio Curso", "Precio (€)" };
         modelMicrocredenciales = new DefaultTableModel(columnas, 0) {
             @Override
             public Class<?> getColumnClass(int col) {
@@ -528,7 +529,7 @@ public class SolicitudMicrocredencialView {
                 String finMat = (String) modelMicrocredenciales.getValueAt(i, 6);
                 String iniCur = (String) modelMicrocredenciales.getValueAt(i, 7);
                 String precStr = (String) modelMicrocredenciales.getValueAt(i, 8);
-                double precio = creds * 20.0;
+                double precio = creds * MatriculacionModel.PRECIO_CREDITO;
                 try {
                     precio = Double.parseDouble(precStr.replace(" €", "").replace(",", "."));
                 } catch (Exception ignored) {
@@ -539,8 +540,8 @@ public class SolicitudMicrocredencialView {
                 dto.setNombre(nombre);
                 dto.setRamaConocimiento(rama);
                 dto.setCreditos(creds);
-                dto.setFechaFinMatriculacion(finMat);
-                dto.setFechaInicio(iniCur);
+                dto.setFinMatriculacion(finMat);
+                dto.setInicioImparticion(iniCur);
                 dto.setPrecio(precio);
                 dto.setSeleccionada(true);
                 seleccionadas.add(dto);
