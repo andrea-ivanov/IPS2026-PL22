@@ -13,6 +13,7 @@ import org.apache.commons.dbutils.handlers.ScalarHandler;
 import model.curso.EstadoCurso;
 import model.grado.EstadoGrado;
 import model.grado.GradoDisplayDTO;
+import model.grado.GradoRevisionDisplayDTO;
 import util.Database;
 
 /**
@@ -45,6 +46,14 @@ public class GradoRepository {
 				"SELECT fechaInicio FROM AnioAcademico WHERE anioAcademicoId = ?",
 				new ScalarHandler<Object>(), anioAcademicoId);
 		return fechaInicio == null ? null : fechaInicio.toString();
+	}
+
+	/** Inicio del periodo de matriculación del año académico indicado. Nulo si no existe o no está configurado */
+	public String findInicioMatriculacionAnio(Connection conn, String anioAcademicoId) throws SQLException {
+		Object inicio = new QueryRunner().query(conn,
+				"SELECT inicioMatriculacion FROM AnioAcademico WHERE anioAcademicoId = ?",
+				new ScalarHandler<Object>(), anioAcademicoId);
+		return inicio == null ? null : inicio.toString();
 	}
 
 	/** Estado del grado tal y como está en la base de datos. Nulo si no existe */
@@ -97,6 +106,71 @@ public class GradoRepository {
 	/** Cambia el estado del grado */
 	public void actualizarEstado(Connection conn, String gradoId, String estado) throws SQLException {
 		update(conn, "UPDATE Grado SET estado = ? WHERE gradoId = ?", estado, gradoId);
+	}
+
+	/** Cambia el estado del grado y el inicio de su vigencia */
+	public void actualizarEstadoYVigencia(Connection conn, String gradoId, String estado, String fechaInicioVigencia)
+			throws SQLException {
+		update(conn, "UPDATE Grado SET estado = ?, fechaInicioVigencia = ? WHERE gradoId = ?", estado,
+				fechaInicioVigencia, gradoId);
+	}
+
+	/**
+	 * Datos del grado para la pantalla de revisión: decision es el resultado de su dictamen para el año indicado
+	 * (nulo si no lo tiene) y fechaUltimaRevision la fecha del dictamen de su año más reciente. Nulo si no existe
+	 */
+	public GradoRevisionDisplayDTO findRevision(String gradoId, String anioAcademicoId) {
+		List<GradoRevisionDisplayDTO> filas = db.executeQueryPojo(GradoRevisionDisplayDTO.class,
+				"SELECT g.gradoId AS idGrado, g.nombre, g.facultad, g.ramaConocimiento AS rama, g.estado, "
+						+ "(SELECT r.resultado FROM RevisionGrado r WHERE r.gradoId = g.gradoId "
+						+ "AND r.anioAcademicoId = ?) AS decision, "
+						+ "(SELECT r.fechaRevision FROM RevisionGrado r WHERE r.gradoId = g.gradoId "
+						+ "ORDER BY r.anioAcademicoId DESC LIMIT 1) AS fechaUltimaRevision "
+						+ "FROM Grado g WHERE g.gradoId = ?",
+				anioAcademicoId, gradoId);
+		return filas.isEmpty() ? null : filas.get(0);
+	}
+
+	/** Resultado del dictamen del grado para el año académico; nulo si no tiene */
+	public String findResultadoRevision(Connection conn, String gradoId, String anioAcademicoId) throws SQLException {
+		return new QueryRunner().query(conn,
+				"SELECT resultado FROM RevisionGrado WHERE gradoId = ? AND anioAcademicoId = ?",
+				new ScalarHandler<String>(), gradoId, anioAcademicoId);
+	}
+
+	public void insertarRevision(Connection conn, String gradoId, String anioAcademicoId, String resultado,
+			String fechaRevision) throws SQLException {
+		update(conn, "INSERT INTO RevisionGrado (gradoId, anioAcademicoId, resultado, fechaRevision) VALUES (?, ?, ?, ?)",
+				gradoId, anioAcademicoId, resultado, fechaRevision);
+	}
+
+	/** Sobrescribe el resultado y la fecha del dictamen del grado para el año académico */
+	public void actualizarRevision(Connection conn, String gradoId, String anioAcademicoId, String resultado,
+			String fechaRevision) throws SQLException {
+		update(conn, "UPDATE RevisionGrado SET resultado = ?, fechaRevision = ? WHERE gradoId = ? AND anioAcademicoId = ?",
+				resultado, fechaRevision, gradoId, anioAcademicoId);
+	}
+
+	/** Identificadores de los grados que están en alguno de los estados indicados */
+	public List<String> findIdsPorEstados(Connection conn, List<String> estados) throws SQLException {
+		String marcas = String.join(", ", java.util.Collections.nCopies(estados.size(), "?"));
+		return new QueryRunner().query(conn,
+				"SELECT gradoId FROM Grado WHERE estado IN (" + marcas + ") ORDER BY gradoId",
+				new ColumnListHandler<String>(), estados.toArray());
+	}
+
+	/**
+	 * Identificadores de los grados VIGENTES que no tenían, en la fecha de inicio del año académico, ninguna matrícula
+	 * de ese año con alguna asignatura pagada (pago validado y no cancelada antes de esa fecha)
+	 */
+	public List<String> findIdsVigentesSinMatriculaPagada(Connection conn, String anioAcademicoId, String fechaInicio)
+			throws SQLException {
+		return new QueryRunner().query(conn,
+				"SELECT g.gradoId FROM Grado g WHERE g.estado = 'VIGENTE' AND NOT EXISTS ("
+						+ "SELECT 1 FROM MatriculaCurso mc JOIN Matricula m ON m.matriculaId = mc.matriculaId "
+						+ "WHERE m.gradoId = g.gradoId AND m.anioAcademicoId = ? AND mc.pagoValidado = 1 "
+						+ "AND (mc.estado <> 'CANCELADA' OR mc.fechaCancelacion >= ?)) ORDER BY g.gradoId",
+				new ColumnListHandler<String>(), anioAcademicoId, fechaInicio);
 	}
 
 	/** Cambia el estado de todos los cursos del grado */

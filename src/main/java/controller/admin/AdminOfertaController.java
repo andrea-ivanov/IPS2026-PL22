@@ -172,7 +172,7 @@ public class AdminOfertaController {
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
 			String nombre = form.getTxtNombre().getText();
 			gradoModel.crearGrado(nombre, form.getTxtFacultad().getText(), form.getTxtRama().getText(),
-					getAnioActualId());
+					getAnioActualId(), LocalDate.now().toString());
 			form.cerrar();
 			JOptionPane.showMessageDialog(view.getFrame(), "Grado " + nombre.trim() + " añadido correctamente.",
 					"Añadir grado", JOptionPane.INFORMATION_MESSAGE);
