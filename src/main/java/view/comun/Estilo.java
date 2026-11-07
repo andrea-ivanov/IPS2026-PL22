@@ -9,7 +9,6 @@ import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
-import java.awt.image.BufferedImage;
 
 /**
  * Estética común de todas las vistas (la de las vistas de Estudiante y
@@ -47,146 +46,17 @@ public final class Estilo {
     private Estilo() {
     }
 
-    private static Image iconoAppCache;
-    private static Icon iconoInfoCache;
-    private static Icon iconoAvisoCache;
-    private static Icon iconoErrorCache;
-    private static Icon iconoPreguntaCache;
-
     // =========================================================================
-    // Ventanas e Iconos
+    // Ventanas
     // =========================================================================
 
     /**
-     * Centra la ventana con su tamaño normal (el que recupera al restaurarla),
-     * aplica el icono de la aplicación (eliminando el logo de Java por defecto) y
-     * la abre maximizada.
+     * Centra la ventana con su tamaño normal (el que recupera al restaurarla) y la
+     * abre maximizada.
      */
     public static void maximizarCentrado(JFrame frame) {
-        aplicarIconoVentana(frame);
         frame.setLocationRelativeTo(null);
         frame.setExtendedState(frame.getExtendedState() | Frame.MAXIMIZED_BOTH);
-    }
-
-    /**
-     * Aplica el icono de la aplicación a una ventana (JFrame o JDialog),
-     * reemplazando el icono por defecto de Java (cafetera).
-     */
-    public static void aplicarIconoVentana(Window window) {
-        if (window == null)
-            return;
-        try {
-            Image icono = getIconoApp();
-            if (icono != null && window instanceof Frame) {
-                ((Frame) window).setIconImage(icono);
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    /**
-     * Obtiene el icono de la aplicación (escudo académico).
-     * Si existe un recurso en /img/logo.png o /img/escudo.png lo carga; si no,
-     * genera un emblema vectorial universitario con birrete nítido y antialiasing.
-     */
-    public static Image getIconoApp() {
-        if (iconoAppCache != null)
-            return iconoAppCache;
-        try {
-            java.net.URL res = Estilo.class.getResource("/img/logo.png");
-            if (res == null)
-                res = Estilo.class.getResource("/img/escudo.png");
-            if (res != null) {
-                iconoAppCache = new ImageIcon(res).getImage();
-                return iconoAppCache;
-            }
-        } catch (Exception ignored) {
-        }
-
-        // Generar icono universitario nítido de 32x32
-        BufferedImage img = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2 = img.createGraphics();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2.setColor(PRIMARIO);
-        g2.fillRoundRect(2, 2, 28, 28, 8, 8);
-        g2.setColor(Color.WHITE);
-        Polygon birrete = new Polygon();
-        birrete.addPoint(16, 8);
-        birrete.addPoint(27, 13);
-        birrete.addPoint(16, 18);
-        birrete.addPoint(5, 13);
-        g2.fillPolygon(birrete);
-        g2.fillRect(11, 18, 10, 5);
-        g2.dispose();
-        iconoAppCache = img;
-        return iconoAppCache;
-    }
-
-    public static Icon getIconoInfo() {
-        if (iconoInfoCache != null)
-            return iconoInfoCache;
-        iconoInfoCache = crearIconoCircular(EXITO, "✓");
-        return iconoInfoCache;
-    }
-
-    public static Icon getIconoAviso() {
-        if (iconoAvisoCache != null)
-            return iconoAvisoCache;
-        iconoAvisoCache = crearIconoCircular(new Color(230, 150, 0), "!");
-        return iconoAvisoCache;
-    }
-
-    public static Icon getIconoError() {
-        if (iconoErrorCache != null)
-            return iconoErrorCache;
-        iconoErrorCache = crearIconoCircular(PELIGRO, "✕");
-        return iconoErrorCache;
-    }
-
-    public static Icon getIconoPregunta() {
-        if (iconoPreguntaCache != null)
-            return iconoPreguntaCache;
-        iconoPreguntaCache = crearIconoCircular(PRIMARIO, "?");
-        return iconoPreguntaCache;
-    }
-
-    private static Icon crearIconoCircular(Color colorFondo, String simbolo) {
-        int size = 38;
-        BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2 = img.createGraphics();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2.setColor(colorFondo);
-        g2.fillOval(2, 2, size - 4, size - 4);
-        g2.setColor(Color.WHITE);
-        g2.setFont(new Font("Tahoma", Font.BOLD, 22));
-        FontMetrics fm = g2.getFontMetrics();
-        int x = (size - fm.stringWidth(simbolo)) / 2;
-        int y = (size - fm.getHeight()) / 2 + fm.getAscent() - 1;
-        g2.drawString(simbolo, x, y);
-        g2.dispose();
-        return new ImageIcon(img);
-    }
-
-    // =========================================================================
-    // Cuadros de aviso personalizados (sin el logo de Java)
-    // =========================================================================
-
-    public static void mostrarMensaje(Component parent, String mensaje, String titulo) {
-        JOptionPane.showMessageDialog(parent, mensaje, titulo, JOptionPane.PLAIN_MESSAGE, getIconoInfo());
-    }
-
-    public static void mostrarAviso(Component parent, String mensaje, String titulo) {
-        JOptionPane.showMessageDialog(parent, mensaje, titulo, JOptionPane.PLAIN_MESSAGE, getIconoAviso());
-    }
-
-    public static void mostrarError(Component parent, String mensaje, String titulo) {
-        JOptionPane.showMessageDialog(parent, mensaje, titulo, JOptionPane.PLAIN_MESSAGE, getIconoError());
-    }
-
-    public static int confirmar(Component parent, String mensaje, String titulo, Object[] opciones) {
-        return JOptionPane.showOptionDialog(parent, mensaje, titulo,
-                JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE, getIconoPregunta(),
-                opciones, opciones != null && opciones.length > 0 ? opciones[0] : null);
     }
 
     /** Panel raíz de una ventana: fondo gris claro con margen. */

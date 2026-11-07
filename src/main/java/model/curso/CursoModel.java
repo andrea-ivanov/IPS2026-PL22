@@ -1,6 +1,5 @@
 package model.curso;
 
-import static util.DbUtil.update;
 import static util.Util.parsearAnio;
 import static util.Util.parsearCreditos;
 
@@ -8,11 +7,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
-import org.apache.commons.dbutils.QueryRunner;
-import org.apache.commons.dbutils.handlers.ColumnListHandler;
-import org.apache.commons.dbutils.handlers.ScalarHandler;
-
 import model.grado.EstadoGrado;
+import repository.CursoRepository;
+import repository.GradoRepository;
 import util.Database;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
@@ -21,14 +18,21 @@ import util.exception.ValidationException;
  * Modelo de negocio y caso de uso para la gestión y búsqueda de Cursos / Asignaturas.
  */
 public class CursoModel {
-	private Database db;
-
-	public CursoModel() {
-		this.db = new Database();
-	}
+	private final Database db;
+	private final CursoRepository cursoRepository;
+	private final GradoRepository gradoRepository;
 
 	public CursoModel(Database db) {
 		this.db = db;
+		this.cursoRepository = new CursoRepository(db);
+		this.gradoRepository = new GradoRepository(db);
+	}
+
+	/**
+	 * Obtiene los cursos de un grado para la tabla de AdminOfertaView.
+	 */
+	public List<CursoDisplayDTO> getCursosPorGrado(String gradoId) {
+		return cursoRepository.findByGrado(gradoId);
 	}
 
 	/**
@@ -49,8 +53,7 @@ public class CursoModel {
 		int valorAnio = parsearAnio(anio);
 
 		return db.enTransaccion(conn -> {
-			String estadoGrado = new QueryRunner().query(conn, "SELECT estado FROM Grado WHERE gradoId = ?",
-					new ScalarHandler<String>(), gradoId);
+			String estadoGrado = gradoRepository.findEstado(conn, gradoId);
 			if (estadoGrado == null) {
 				throw new ResourceNotFoundException("Grado", gradoId);
 			}
@@ -58,15 +61,12 @@ public class CursoModel {
 				throw new ValidationException("Solo se pueden añadir cursos a grados vigentes");
 			}
 			String cursoId = generarId(conn);
-			Number existentes = new QueryRunner().query(conn, "SELECT COUNT(*) FROM Curso WHERE cursoId = ?",
-					new ScalarHandler<Number>(), cursoId);
-			if (existentes.intValue() > 0) {
+			if (cursoRepository.existe(conn, cursoId)) {
 				throw new ValidationException("Ya existe un curso con el código " + cursoId);
 			}
-			update(conn, "INSERT INTO Curso (cursoId, coordinadorId, nombre, creditos) VALUES (?, ?, ?, ?)",
-					cursoId, coordinadorId.trim(), nombre.trim(), valorCreditos);
-			update(conn, "INSERT INTO GradoCurso (gradoId, cursoId, anio, itinerario, estado) VALUES (?, ?, ?, ?, ?)",
-					gradoId, cursoId, valorAnio, itinerario.trim(), EstadoCurso.ACTIVO.name());
+			cursoRepository.insertarCurso(conn, cursoId, coordinadorId.trim(), nombre.trim(), valorCreditos);
+			cursoRepository.insertarEnGrado(conn, gradoId, cursoId, valorAnio, itinerario.trim(),
+					EstadoCurso.ACTIVO.name());
 			return cursoId;
 		});
 	}
@@ -88,12 +88,11 @@ public class CursoModel {
 		int valorAnio = parsearAnio(anio);
 
 		db.enTransaccion(conn -> {
-			int filas = update(conn, "UPDATE GradoCurso SET anio = ?, itinerario = ? WHERE gradoId = ? AND cursoId = ?",
-					valorAnio, itinerario.trim(), gradoId, cursoId);
+			int filas = cursoRepository.actualizarEnGrado(conn, gradoId, cursoId, valorAnio, itinerario.trim());
 			if (filas == 0) {
 				throw new ResourceNotFoundException("Curso", cursoId);
 			}
-			update(conn, "UPDATE Curso SET creditos = ? WHERE cursoId = ?", valorCreditos, cursoId);
+			cursoRepository.actualizarCreditos(conn, cursoId, valorCreditos);
 			return null;
 		});
 	}
@@ -104,22 +103,18 @@ public class CursoModel {
 	 * @throws ResourceNotFoundException Si el curso no pertenece a ese grado
 	 */
 	public CursoEdicionDTO buscarDatosEdicion(String gradoId, String cursoId) {
-		List<CursoEdicionDTO> datos = db.executeQueryPojo(CursoEdicionDTO.class,
-				"SELECT gc.anio, gc.itinerario, c.creditos, c.nombre, c.coordinadorId "
-						+ "FROM GradoCurso gc JOIN Curso c ON c.cursoId = gc.cursoId WHERE gc.gradoId = ? AND gc.cursoId = ?",
-				gradoId, cursoId);
-		if (datos.isEmpty()) {
+		CursoEdicionDTO datos = cursoRepository.findDatosEdicion(gradoId, cursoId);
+		if (datos == null) {
 			throw new ResourceNotFoundException("Curso", cursoId);
 		}
-		return datos.get(0);
+		return datos;
 	}
 
 	/**
 	 * Cuenta en cuántos grados está el curso.
 	 */
 	public int contarGradosDelCurso(String cursoId) {
-		return ((Number) db.executeQueryArray("SELECT COUNT(*) FROM GradoCurso WHERE cursoId = ?", cursoId).get(0)[0])
-				.intValue();
+		return cursoRepository.contarGrados(cursoId);
 	}
 
 	/**
@@ -142,8 +137,7 @@ public class CursoModel {
 	public void eliminarCurso(String gradoId, String cursoId, String anioAcademicoId) {
 		db.enTransaccion(conn -> {
 			comprobarEliminable(conn, gradoId, cursoId, anioAcademicoId);
-			update(conn, "UPDATE GradoCurso SET estado = ? WHERE gradoId = ? AND cursoId = ?",
-					EstadoCurso.INACTIVO.name(), gradoId, cursoId);
+			cursoRepository.actualizarEstadoEnGrado(conn, gradoId, cursoId, EstadoCurso.INACTIVO.name());
 			return null;
 		});
 	}
@@ -154,9 +148,7 @@ public class CursoModel {
 		validarObligatorio(gradoId, "Debe indicarse el grado del curso");
 		validarObligatorio(cursoId, "Debe indicarse el curso a eliminar");
 
-		String estado = new QueryRunner().query(conn,
-				"SELECT estado FROM GradoCurso WHERE gradoId = ? AND cursoId = ?",
-				new ScalarHandler<String>(), gradoId, cursoId);
+		String estado = cursoRepository.findEstadoEnGrado(conn, gradoId, cursoId);
 		if (estado == null) {
 			throw new ResourceNotFoundException("Curso", cursoId);
 		}
@@ -164,19 +156,14 @@ public class CursoModel {
 			throw new ValidationException("El curso " + cursoId + " ya está inactivo");
 		}
 
-		Number matriculas = new QueryRunner().query(conn,
-				"SELECT COUNT(*) FROM MatriculaCurso mc JOIN Matricula m ON m.matriculaId = mc.matriculaId "
-						+ "WHERE mc.gradoId = ? AND mc.cursoId = ? AND m.anioAcademicoId = ? AND mc.estado <> 'CANCELADA'",
-				new ScalarHandler<Number>(), gradoId, cursoId, anioAcademicoId);
-		if (matriculas.intValue() > 0) {
+		if (cursoRepository.contarMatriculasActivas(conn, gradoId, cursoId, anioAcademicoId) > 0) {
 			throw new ValidationException("No se puede eliminar el curso " + cursoId
 					+ ": tiene matrículas en el año académico " + anioAcademicoId);
 		}
 	}
 
 	private String generarId(Connection conn) throws SQLException {
-		List<String> ids = new QueryRunner().query(conn, "SELECT cursoId FROM Curso WHERE cursoId GLOB 'C[0-9]*'",
-				new ColumnListHandler<String>());
+		List<String> ids = cursoRepository.findIdsNumerados(conn);
 		int max = 0;
 		for (String id : ids) {
 			if (id.matches("^C\\d+$")) {
