@@ -233,8 +233,20 @@ public class AnoAcademicoModelNuevoAnoTest extends BaseModelTest {
 	@DisplayName("3. Vigencia de grados y desactivación de cursos")
 	public class EfectosSobreGrados {
 
+		/**
+		 * HU 36455 (Q-12): la vigencia se cuenta en años académicos empezados. Con los dos años anteriores que se
+		 * añaden aquí, desde el 2024-09-01 han empezado 4 años (2024, 2025, '1' y '2').
+		 */
+		@BeforeEach
+		public void anadirAniosAnteriores() {
+			db.executeBatch(new String[] {
+					"INSERT INTO AnioAcademico VALUES ('2024-2025', '2024-09-01', '2025-06-30', '2024-07-01', '2024-08-31')",
+					"INSERT INTO AnioAcademico VALUES ('2025-2026', '2025-09-01', '2026-06-30', '2025-07-01', '2025-08-31')"
+			});
+		}
+
 		@Test
-		@DisplayName("TA-16 Vigencia caducada: el grado VIGENTE pasa a PENDIENTE_RENOVACION")
+		@DisplayName("TA-16 Vigencia caducada: con 4 años empezados el grado VIGENTE pasa a PENDIENTE_RENOVACION")
 		public void testVigenciaCaducada() {
 			iniciar(INICIO_ANIO, FIN_ANIO, INICIO_MATRICULACION, FIN_MATRICULACION);
 
@@ -242,13 +254,22 @@ public class AnoAcademicoModelNuevoAnoTest extends BaseModelTest {
 		}
 
 		@Test
-		@DisplayName("TA-17 Vigencia en el límite: termina un día después del inicio del año y sigue VIGENTE")
+		@DisplayName("TA-17 Vigencia en el límite: con 3 años empezados sigue VIGENTE (el año nuevo no cuenta)")
 		public void testVigenciaEnElLimite() {
-			db.executeUpdate("UPDATE Grado SET fechaInicioVigencia = '2024-09-02' WHERE gradoId = '2'");
+			db.executeUpdate("UPDATE Grado SET fechaInicioVigencia = '2025-09-01' WHERE gradoId = '2'");
 
 			iniciar(INICIO_ANIO, FIN_ANIO, INICIO_MATRICULACION, FIN_MATRICULACION);
 
 			assertEquals("VIGENTE", estadoGrado("2"));
+			assertEquals("PENDIENTE_RENOVACION", estadoGrado("1"));
+		}
+
+		@Test
+		@DisplayName("TA-26 Cuentan los años, no las fechas: el año nuevo empieza antes del aniversario y caduca igual")
+		public void testVigenciaPorAniosNoPorFechas() {
+			// 2024-09-01 + 4 años = 2028-09-01, posterior al inicio del año nuevo; pero ya han empezado 4 años
+			iniciar("2028-08-15", FIN_ANIO, INICIO_MATRICULACION, FIN_MATRICULACION);
+
 			assertEquals("PENDIENTE_RENOVACION", estadoGrado("1"));
 		}
 
