@@ -1,4 +1,4 @@
-package model.microcredencial;
+package model.matriculacion;
 
 import java.util.ArrayList;
 import java.util.List;

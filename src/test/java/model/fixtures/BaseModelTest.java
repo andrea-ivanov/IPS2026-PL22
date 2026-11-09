@@ -21,6 +21,9 @@ public abstract class BaseModelTest {
 
 	public static void loadCleanDatabase(Database db) {
 		db.executeBatchNoFail(new String[] {
+				"DELETE FROM MatriculaMicrocredencial",
+				"DELETE FROM Microcredencial",
+				"DELETE FROM RevisionGrado",
 				"DELETE FROM Calificacion",
 				"DELETE FROM MatriculaGrupo",
 				"DELETE FROM MatriculaCurso",

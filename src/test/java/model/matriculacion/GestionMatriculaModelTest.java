@@ -1,4 +1,4 @@
-package model.gestionmatricula;
+package model.matriculacion;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

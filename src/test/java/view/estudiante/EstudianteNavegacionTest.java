@@ -21,7 +21,7 @@ public class EstudianteNavegacionTest extends BaseModelTest {
     public void setUpNavigation() {
         loginVuelto = new AtomicBoolean(false);
         view = new EstudianteView();
-        controller = new EstudianteController(view, db, "AL001", () -> loginVuelto.set(true));
+        controller = new EstudianteController(view, "AL001", () -> loginVuelto.set(true));
         controller.initController();
     }
 

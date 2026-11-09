@@ -486,13 +486,14 @@ stateDiagram-v2
     [*] --> PROPUESTA : el profesor la propone
     PROPUESTA --> ACEPTADA : el secretario la acepta
     PROPUESTA --> RECHAZADA : el secretario la rechaza (con motivo)
-    ACEPTADA --> CANCELADA_BAJA_DEMANDA : el día antes de la impartición, menos del 10% de plazas pagadas
+    ACEPTADA --> CANCELADA_BAJA_DEMANDA : al cierre de matriculación, menos del 10% de plazas pagadas
     ACEPTADA --> FINALIZADA : se cierra el acta
 ```
 
 - **PROPUESTA (HU 35988):** el profesor indica nombre, rama, plazas, créditos (sin superar el máximo), el periodo de matriculación de 2 semanas y las fechas de impartición. Si todo es válido, se guarda como PROPUESTA.
 - **Revisión (HU 35994):** el secretario ve las pendientes con nombre, profesor, créditos y periodo de impartición. Si la acepta, pasa a ACEPTADA y queda en la oferta. Si la rechaza, el motivo es obligatorio, pasa a RECHAZADA y no se reutiliza: el profesor tendría que crear otra propuesta desde cero.
-- **El día antes de la impartición (HU 36410):** un proceso por lotes cancela por IMPAGO las inscripciones que siguen SOLICITADAS. Después cuenta las pagadas: si `pagadas × 10 < plazas`, pasa la microcredencial a CANCELADA_BAJA_DEMANDA y sus inscripciones a CANCELADA (BAJA_DEMANDA), con fecha del día antes de la impartición. El profesor y los alumnos lo ven en sus vistas; no hay otro aviso.
+- **Al concluir la matriculación (HU 36410):** se evalúa el día antes de que cierre el periodo de matriculación. Un proceso por lotes cancela por IMPAGO las inscripciones que siguen SOLICITADAS. Después cuenta las pagadas: si `pagadas × 10 < plazas`, pasa la microcredencial a CANCELADA_BAJA_DEMANDA y sus inscripciones a CANCELADA (BAJA_DEMANDA), con fecha de ese día. El profesor y los alumnos lo ven en sus vistas; no hay otro aviso.
+- **Sin renovaciones:** a diferencia de los grados (HU 36455), las microcredenciales no se renuevan; si se quiere volver a ofertar al curso siguiente, debe generarse una nueva propuesta desde cero (HU 35988).
 - **Cierre del acta (HU 36459):** al cerrarla, la microcredencial pasa a FINALIZADA (ver 5.8).
 
 ### 5.7 Inscripción en una microcredencial
@@ -502,7 +503,7 @@ stateDiagram-v2
     direction LR
     [*] --> SOLICITADA : el alumno se inscribe
     SOLICITADA --> INSCRITA : pago validado
-    SOLICITADA --> CANCELADA : IMPAGO (el día antes de la impartición)
+    SOLICITADA --> CANCELADA : IMPAGO (al cerrar la matriculación)
     INSCRITA --> CANCELADA : BAJA_DEMANDA
     INSCRITA --> ABANDONADA : la deja durante la impartición
     INSCRITA --> FINALIZADA : se cierra el acta
@@ -596,12 +597,12 @@ Los hitos que ve el alumno son los dos mínimos de la permanencia:
 ### 6.10 Microcredenciales
 
 - **Inscripción (HU 35987):** desde la ventana de nueva matrícula, opción "Microcredenciales". El alumno solo puede inscribirse si:
-  1. tiene una matrícula **no cancelada** ese año en un grado de la **misma rama** que la microcredencial;
+  1. está habilitado en la **misma rama** que la microcredencial (por tener una matrícula no cancelada ese año en un grado de esa rama o por haber finalizado un grado de la misma con anterioridad, a modo de ampliación de estudios);
   2. la microcredencial está ACEPTADA y hoy está **dentro de su periodo de matriculación**;
   3. quedan **plazas** (contando solo las inscripciones pagadas);
   4. no está ya inscrito en ella (lo impide la clave primaria).
-- **Pago:** `importe = créditos de la microcredencial × PRECIO_CREDITO`, con los mismos métodos y la misma validación del secretario que las asignaturas. No hay devoluciones.
-- **Créditos:** no cuentan para la permanencia ni para los hitos.
+- **Pago:** `importe = créditos de la microcredencial × PRECIO_CREDITO`, con los mismos métodos y la misma validación del secretario que las asignaturas. El pago debe quedar completado antes del inicio de las clases. No hay devoluciones.
+- **Créditos:** no cuentan para la permanencia ni para los hitos, y no existe un límite máximo de créditos ECTS que el estudiante pueda sumar en microcredenciales.
 - El profesor solo califica sus propias microcredenciales.
 
 ### 6.11 Revisión de grados y métricas (HU 36411 y 36455)
@@ -1030,24 +1031,24 @@ WHERE m.alumnoId = 'AL0001'
 ORDER BY mc.inicioImparticion DESC;
 ```
 
-### HU 36410 — Lote del día antes de la impartición
+### HU 36410 — Lote de cancelación por baja demanda al concluir la matriculación
 
-Se ejecuta al arrancar la aplicación con la fecha actual (aquí, `'2026-11-15'`). Las fechas que guarda son las del día antes de la impartición, así que el resultado es el mismo aunque se ejecute días después.
+Se ejecuta al arrancar la aplicación con la fecha actual (aquí, `'2026-11-15'`). Conforme a la aclaración docente, se evalúa el día antes de que cierre el periodo de matriculación (o al término de este: `date(finMatriculacion, '-1 day') <= '2026-11-15'`). Las fechas que guarda como fecha de baja o cancelación son las del momento de evaluación, de modo que el resultado es determinista aunque el lote se ejecute días después.
 
 ```sql
 -- 1. Las inscripciones sin pagar se cancelan por impago
 UPDATE MatriculaMicrocredencial
 SET estado = 'CANCELADA', motivoCancelacion = 'IMPAGO',
-    fechaBaja = (SELECT date(mc.inicioImparticion, '-1 day') FROM Microcredencial mc
+    fechaBaja = (SELECT mc.finMatriculacion FROM Microcredencial mc
                  WHERE mc.microcredencialId = MatriculaMicrocredencial.microcredencialId)
 WHERE estado = 'SOLICITADA'
   AND microcredencialId IN (SELECT microcredencialId FROM Microcredencial
-                            WHERE estado = 'ACEPTADA' AND date(inicioImparticion, '-1 day') <= '2026-11-15');
+                            WHERE estado = 'ACEPTADA' AND date(finMatriculacion, '-1 day') <= '2026-11-15');
 
 -- 2. Si las pagadas no llegan al 10 % de las plazas, se cancela la microcredencial
 UPDATE Microcredencial
-SET estado = 'CANCELADA_BAJA_DEMANDA', fechaCancelacion = date(inicioImparticion, '-1 day')
-WHERE estado = 'ACEPTADA' AND date(inicioImparticion, '-1 day') <= '2026-11-15'
+SET estado = 'CANCELADA_BAJA_DEMANDA', fechaCancelacion = date(finMatriculacion, '-1 day')
+WHERE estado = 'ACEPTADA' AND date(finMatriculacion, '-1 day') <= '2026-11-15'
   AND (SELECT COUNT(*) FROM MatriculaMicrocredencial mm
        WHERE mm.microcredencialId = Microcredencial.microcredencialId AND mm.pagoValidado = 1) * 10 < plazas;
 
