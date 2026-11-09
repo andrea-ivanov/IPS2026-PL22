@@ -5,9 +5,9 @@ import model.microcredencial.InscripcionMicrocredencialModel;
 import model.microcredencial.OfertaMicrocredencialDTO;
 import model.microcredencial.ResumenSolicitudMicrocredencialDTO;
 import util.SwingUtil;
+import view.comun.Estilo;
 import view.estudiante.SolicitudMicrocredencialView;
 
-import javax.swing.*;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
 import java.time.LocalDate;
@@ -186,9 +186,9 @@ public class SolicitudMicrocredencialController {
     private void validarYContinuarAlResumen() {
         List<OfertaMicrocredencialDTO> seleccionadas = view.getMicrocredencialesSeleccionadas();
         if (seleccionadas.isEmpty()) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarAviso(view.getFrame(),
                     "Debe seleccionar al menos una microcredencial de la oferta para continuar.",
-                    "Sin microcredenciales seleccionadas", JOptionPane.WARNING_MESSAGE);
+                    "Sin microcredenciales seleccionadas");
             return;
         }
 
@@ -217,8 +217,7 @@ public class SolicitudMicrocredencialController {
 
     private void confirmarSolicitud() {
         if (resumenActual == null) {
-            JOptionPane.showMessageDialog(view.getFrame(), "No hay una solicitud activa.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            Estilo.mostrarError(view.getFrame(), "No hay una solicitud activa.", "Error");
             return;
         }
 
@@ -226,18 +225,14 @@ public class SolicitudMicrocredencialController {
         resumenActual.setMetodoPago(metodoPago);
 
         Object[] opciones = new Object[] { "Sí", "No" };
-        int confirmacion = JOptionPane.showOptionDialog(view.getFrame(),
+        int confirmacion = Estilo.confirmar(view.getFrame(),
                 "¿Desea formalizar la solicitud de matrícula en las microcredenciales seleccionadas?\n\n"
                         + "Total créditos: " + resumenActual.getCreditosTotales() + " ECTS\n"
                         + "Importe total: " + String.format("%.2f €", resumenActual.getImporteTotal()) + "\n"
                         + "Modalidad de pago: " + metodoPago + "\n\n"
                         + "Recuerde que el pago debe quedar completado antes del inicio de las clases.",
                 "Confirmar Solicitud de Microcredencial",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                opciones,
-                opciones[0]);
+                opciones);
 
         if (confirmacion != 0) {
             return;
@@ -266,8 +261,7 @@ public class SolicitudMicrocredencialController {
                 ? "La transacción ha sido validada. Su plaza en la microcredencial queda confirmada."
                 : "Su plaza queda pendiente de validar el pago. Recuerde presentar el justificante de pago antes de la fecha de inicio del curso.");
 
-        JOptionPane.showMessageDialog(view.getFrame(), mensajeExito,
-                "Matrícula Solicitada", JOptionPane.INFORMATION_MESSAGE);
+        Estilo.mostrarMensaje(view.getFrame(), mensajeExito, "Matrícula Solicitada");
 
         // Regresar al menú principal
         if (onVolverMenu != null) {

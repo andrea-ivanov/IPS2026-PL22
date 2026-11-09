@@ -20,14 +20,14 @@ Las consultas SQL de referencia de cada historia están en [DATABASE.md](DATABAS
 
 | HU | Rol | Historia | Responsable | Controlador → modelo | Tests |
 |---|---|---|---|---|---|
-| 35987 | Estudiante | Matricularme a las microcredenciales para completar mi curriculum de estudiante. | Andrea Ivanov García | `SolicitudMatriculaController` → `MatriculacionModel` | `MatriculacionMicrocredencialModelTest` (y `SolicitudMicrocredencialViewTest`, que no se ejecuta en `mvn test`) |
+| 35987 | Estudiante | Matricularme a las microcredenciales para completar mi curriculum de estudiante. | Andrea Ivanov García | `SolicitudMicrocredencialController` → `InscripcionMicrocredencialModel`, `MatriculacionModel` | `InscripcionMicrocredencialModelTest` (y `SolicitudMicrocredencialViewTest`, que no se ejecuta en `mvn test`) |
 
 ## Notas
 
 - **35243:** el profesor rellena un formulario con los datos de la propuesta (curso) para los grados en los que imparte docencia. Las propuestas podrán incluirse en cursos posteriores del grado o grados a los que se adscriben; su revisión queda para un sprint futuro.
 - **35987:**
-  - **Asistente unificado y refactorización:** para evitar duplicidad de código y componentes Swing redundantes, se unificó la matriculación en un único asistente (`SolicitudMatriculaView` y `SolicitudMatriculaController`), permitiendo alternar entre el modo Grado y Microcredencial mediante selectores de modo y reutilizando los pasos de resumen consolidado, pasarela de pago telemático y diálogo de confirmación con botones localizados en castellano («Sí» / «No»).
-  - **Acceso por rama de conocimiento:** se valida que el estudiante solo acceda a microcredenciales de la misma rama en la que está o ha estado matriculado (`getRamasHabilitadasPorEstudiante`), admitiendo tanto a estudiantes con curso activo como a graduados para ampliación de estudios.
+  - **Asistente por pasos y arquitectura desacoplada:** la matriculación en microcredenciales cuenta con su propia vista y controlador (`SolicitudMicrocredencialView` y `SolicitudMicrocredencialController`) respaldados por `InscripcionMicrocredencialModel` y `MatriculaMicrocredencialRepository`, siguiendo un flujo guiado de selección, resumen consolidado, pasarela de pago telemático y diálogo de confirmación con botones localizados en castellano («Sí» / «No»).
+  - **Acceso por rama de conocimiento:** se valida que el estudiante solo acceda a microcredenciales de la misma rama en la que tiene una matrícula de grado no cancelada en el año académico actual (`getRamasHabilitadas`).
   - **Exclusión de permanencia y sin tope de créditos:** los créditos de las microcredenciales no computan para los hitos de permanencia anuales ($\ge 12$ ECTS) ni acumulados ($\ge 90$ ECTS), y no existe límite máximo de créditos ECTS totales que el alumno pueda cursar mediante microcredenciales.
   - **Precios y pasarela de pago:** se calcula a razón de 20,00 € / crédito ECTS (`creditos × PRECIO_CREDITO`). El pago con tarjeta valida la plaza inmediatamente (`INSCRITA`, `pagoValidado = 1`); la transferencia o carta de pago queda en estado `SOLICITADA` (`pagoValidado = 0`) para su posterior cotejo por secretaría.
   - **Persistencia en base de datos:** inserción transaccional atómica en `MatriculaMicrocredencial` ligada a la matrícula anual del alumno, validando cupo de plazas disponibles (`pagoValidado = 1 < plazas`) y bloqueando solicitudes duplicadas en la misma microcredencial.

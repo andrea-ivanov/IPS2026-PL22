@@ -16,6 +16,7 @@ import controller.admin.AdminOfertaController;
 import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
+import controller.revisor.RevisorController;
 import model.alumno.AlumnoModel;
 import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
@@ -97,7 +98,8 @@ public class MainController {
         ProfesorModel profesorModel = new ProfesorModel(db);
         view.getCbProfesores().setModel(
                 new DefaultComboBoxModel<>(profesorModel.getProfesores().toArray(new ProfesorDTO[0])));
-        // se puede escribir parte del nombre, apellidos o id para buscar el profesor (como el combo de alumnos)
+        // se puede escribir parte del nombre, apellidos o id para buscar el profesor
+        // (como el combo de alumnos)
         ComboBuscable.hacerBuscable(view.getCbProfesores());
     }
 
@@ -109,7 +111,10 @@ public class MainController {
         ComboBuscable.hacerBuscable(view.getCbAlumnos());
     }
 
-    /** Solo se ve la fila del usuario que corresponde al rol: el profesor o el alumno */
+    /**
+     * Solo se ve la fila del usuario que corresponde al rol: el profesor o el
+     * alumno
+     */
     private void actualizarVisibilidadUsuario() {
         Object rol = view.getCbRoles().getSelectedItem();
         view.getPanelProfesor().setVisible("Profesor".equals(rol));
@@ -206,7 +211,7 @@ public class MainController {
 
     private void abrirVistaRevisor() {
         RevisorView revisorView = new RevisorView();
-        RevisorController revisorController = new RevisorController(revisorView);
+        RevisorController revisorController = new RevisorController(revisorView, db);
         revisorController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         revisorController.initController();
         view.getFrame().setVisible(false);
