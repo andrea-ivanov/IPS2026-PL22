@@ -1,11 +1,15 @@
 package model.acta;
 
+import static util.DbUtil.update;
+
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+
 import model.asignaciondocente.RolDocente;
 import model.matriculacion.MatriculacionModel;
-import repository.ActaRepository;
 import util.Database;
 import util.exception.ValidationException;
 
@@ -20,12 +24,29 @@ import util.exception.ValidationException;
 public class ActaModel {
 	public static final String NO_PRESENTADO = "NP";
 
-	private final Database db;
-	private final ActaRepository actaRepository;
+	private static final String SQL_SELECT_ACTA = "SELECT a.cursoId, a.anioAcademicoId, a.tipoConvocatoria, cv.fechaFin, a.estado "
+			+ "FROM Acta a "
+			+ "JOIN Convocatoria cv ON cv.anioAcademicoId = a.anioAcademicoId AND cv.tipoConvocatoria = a.tipoConvocatoria ";
+
+	/**
+	 * Alumnos que entran en el acta "a": matriculados en la asignatura ese año (PAGADA, ACTIVA o FINALIZADA)
+	 * que no la han aprobado ya en una convocatoria anterior del mismo año (p. ej. aprobado en enero no va a julio).
+	 * Alias: a (Acta), m (Matricula), mc (MatriculaCurso).
+	 */
+	private static final String SQL_ALUMNOS_ACTA = "FROM Acta a "
+			+ "JOIN Matricula m ON m.anioAcademicoId = a.anioAcademicoId "
+			+ "JOIN MatriculaCurso mc ON mc.matriculaId = m.matriculaId AND mc.cursoId = a.cursoId "
+			+ "AND mc.estado IN ('PAGADA', 'ACTIVA', 'FINALIZADA') "
+			+ "AND NOT EXISTS (SELECT 1 FROM Calificacion ap "
+			+ "JOIN Convocatoria cvAp ON cvAp.anioAcademicoId = ap.anioAcademicoId AND cvAp.tipoConvocatoria = ap.tipoConvocatoria "
+			+ "JOIN Convocatoria cvActa ON cvActa.anioAcademicoId = a.anioAcademicoId AND cvActa.tipoConvocatoria = a.tipoConvocatoria "
+			+ "WHERE ap.matriculaId = mc.matriculaId AND ap.cursoId = mc.cursoId AND ap.anioAcademicoId = a.anioAcademicoId "
+			+ "AND ap.nota >= " + MatriculacionModel.NOTA_APROBADO + " AND cvAp.fechaFin < cvActa.fechaFin) ";
+
+	private Database db;
 
 	public ActaModel(Database db) {
 		this.db = db;
-		this.actaRepository = new ActaRepository(db);
 	}
 
 	// =========================================================================
@@ -36,16 +57,27 @@ public class ActaModel {
 	 * Actas de la asignatura, de la más reciente a la más antigua.
 	 */
 	public List<ActaDisplayDTO> getActasCurso(String cursoId) {
-		return actaRepository.findActasCurso(cursoId);
+		return db.executeQueryPojo(ActaDisplayDTO.class, SQL_SELECT_ACTA + "WHERE a.cursoId = ? ORDER BY cv.fechaFin DESC",
+				cursoId);
 	}
 
 	/**
-	 * Alumnos del acta con su nota. En un acta abierta salen los que entran en ella;
+	 * Alumnos del acta con su nota. En un acta abierta salen los que entran en ella (ver SQL_ALUMNOS_ACTA);
 	 * en una cerrada solo los que tienen calificación (al cerrar, los que no tenían nota pasan a NP).
 	 * La nota sale vacía si no tiene calificación y NP si la calificación no tiene nota.
 	 */
 	public List<CalificacionActaDisplayDTO> getCalificaciones(String cursoId, String anioAcademicoId, String tipoConvocatoria) {
-		return actaRepository.findCalificaciones(cursoId, anioAcademicoId, tipoConvocatoria, MatriculacionModel.NOTA_APROBADO);
+		return db.executeQueryPojo(CalificacionActaDisplayDTO.class,
+				"SELECT mc.matriculaId, al.alumnoId, al.nombre || ' ' || al.apellidos AS alumno, al.dni, "
+						+ "CASE WHEN ca.matriculaId IS NULL THEN '' WHEN ca.nota IS NULL THEN 'NP' ELSE CAST(ca.nota AS TEXT) END AS nota "
+						+ SQL_ALUMNOS_ACTA
+						+ "JOIN Alumno al ON al.alumnoId = m.alumnoId "
+						+ "LEFT JOIN Calificacion ca ON ca.matriculaId = mc.matriculaId AND ca.cursoId = a.cursoId "
+						+ "AND ca.anioAcademicoId = a.anioAcademicoId AND ca.tipoConvocatoria = a.tipoConvocatoria "
+						+ "WHERE a.cursoId = ? AND a.anioAcademicoId = ? AND a.tipoConvocatoria = ? "
+						+ "AND (a.estado = ? OR ca.matriculaId IS NOT NULL) "
+						+ "ORDER BY al.apellidos, al.nombre",
+				cursoId, anioAcademicoId, tipoConvocatoria, EstadoActa.ABIERTA.name());
 	}
 
 	/**
@@ -53,7 +85,13 @@ public class ActaModel {
 	 * Columnas: curso, asignatura, año, convocatoria, fecha de cierre y coordinador.
 	 */
 	public List<Object[]> getActasCerradasAutomaticamente() {
-		return actaRepository.findActasCerradasAutomaticamente();
+		return db.executeQueryArray("SELECT a.cursoId, c.nombre, a.anioAcademicoId, a.tipoConvocatoria, a.fechaCierre, "
+				+ "COALESCE(p.nombre || ' ' || p.apellidos, '(sin coordinador)') "
+				+ "FROM Acta a "
+				+ "JOIN Curso c ON c.cursoId = a.cursoId "
+				+ "LEFT JOIN Profesor p ON p.profesorId = c.coordinadorId "
+				+ "WHERE a.cierreAutomatico = 1 "
+				+ "ORDER BY a.fechaCierre DESC, a.cursoId");
 	}
 
 	// =========================================================================
@@ -111,10 +149,13 @@ public class ActaModel {
 			for (Map.Entry<String, String> n : notas.entrySet()) {
 				String texto = n.getValue() == null ? "" : n.getValue().trim();
 				if (texto.isEmpty()) {
-					filas += actaRepository.borrarCalificacion(conn, n.getKey(), cursoId, anioAcademicoId, tipoConvocatoria);
+					filas += update(conn, "DELETE FROM Calificacion "
+							+ "WHERE matriculaId = ? AND cursoId = ? AND anioAcademicoId = ? AND tipoConvocatoria = ?",
+							n.getKey(), cursoId, anioAcademicoId, tipoConvocatoria);
 				} else {
-					filas += actaRepository.guardarCalificacion(conn, n.getKey(), cursoId, anioAcademicoId,
-							tipoConvocatoria, parseNota(n.getKey(), texto));
+					filas += update(conn, "INSERT OR REPLACE INTO Calificacion "
+							+ "(matriculaId, cursoId, anioAcademicoId, tipoConvocatoria, nota) VALUES (?, ?, ?, ?, ?)",
+							n.getKey(), cursoId, anioAcademicoId, tipoConvocatoria, parseNota(n.getKey(), texto));
 				}
 			}
 			return filas;
@@ -129,9 +170,10 @@ public class ActaModel {
 	public void cerrarActa(String profesorId, String cursoId, String anioAcademicoId, String tipoConvocatoria, String fechaHoy) {
 		comprobarCoordinador(profesorId, cursoId);
 		comprobarActaAbierta(cursoId, anioAcademicoId, tipoConvocatoria);
-		db.enTransaccion(conn -> actaRepository.insertarNoPresentados(conn, cursoId, anioAcademicoId, tipoConvocatoria,
-				MatriculacionModel.NOTA_APROBADO)
-				+ actaRepository.cerrarActa(conn, cursoId, anioAcademicoId, tipoConvocatoria, fechaHoy, false));
+		db.enTransaccion(conn -> insertarNoPresentados(conn, cursoId, anioAcademicoId, tipoConvocatoria)
+				+ update(conn, "UPDATE Acta SET estado = ?, fechaCierre = ?, cierreAutomatico = 0 "
+						+ "WHERE cursoId = ? AND anioAcademicoId = ? AND tipoConvocatoria = ?",
+						EstadoActa.CERRADA.name(), fechaHoy, cursoId, anioAcademicoId, tipoConvocatoria));
 	}
 
 	/**
@@ -141,17 +183,19 @@ public class ActaModel {
 	 * @return las actas que ha cerrado
 	 */
 	public List<ActaDisplayDTO> cerrarActasVencidas(String fechaHoy) {
-		List<ActaDisplayDTO> vencidas = actaRepository.findActasVencidas(EstadoActa.ABIERTA.name(), fechaHoy);
+		List<ActaDisplayDTO> vencidas = db.executeQueryPojo(ActaDisplayDTO.class,
+				SQL_SELECT_ACTA + "WHERE a.estado = ? AND cv.fechaFin < ?", EstadoActa.ABIERTA.name(), fechaHoy);
 		if (vencidas.isEmpty()) {
 			return vencidas;
 		}
 		db.enTransaccion(conn -> {
 			int filas = 0;
 			for (ActaDisplayDTO a : vencidas) {
-				filas += actaRepository.insertarNoPresentados(conn, a.getCursoId(), a.getAnioAcademicoId(),
-						a.getTipoConvocatoria(), MatriculacionModel.NOTA_APROBADO);
-				filas += actaRepository.cerrarActa(conn, a.getCursoId(), a.getAnioAcademicoId(), a.getTipoConvocatoria(),
-						fechaHoy, true);
+				filas += insertarNoPresentados(conn, a.getCursoId(), a.getAnioAcademicoId(), a.getTipoConvocatoria());
+				filas += update(conn, "UPDATE Acta SET estado = ?, fechaCierre = ?, cierreAutomatico = 1 "
+						+ "WHERE cursoId = ? AND anioAcademicoId = ? AND tipoConvocatoria = ? AND estado = ?",
+						EstadoActa.CERRADA.name(), fechaHoy, a.getCursoId(), a.getAnioAcademicoId(),
+						a.getTipoConvocatoria(), EstadoActa.ABIERTA.name());
 			}
 			return filas;
 		});
@@ -163,15 +207,33 @@ public class ActaModel {
 	// =========================================================================
 
 	private void comprobarCoordinador(String profesorId, String cursoId) {
-		if (!actaRepository.esCoordinador(profesorId, cursoId)) {
+		if (db.executeQueryArray("SELECT 1 FROM Curso WHERE cursoId = ? AND coordinadorId = ?", cursoId, profesorId).isEmpty()) {
 			throw new ValidationException("Solo el coordinador de la asignatura puede modificar las notas");
 		}
 	}
 
 	private void comprobarActaAbierta(String cursoId, String anioAcademicoId, String tipoConvocatoria) {
-		if (!actaRepository.existeActaEnEstado(cursoId, anioAcademicoId, tipoConvocatoria, EstadoActa.ABIERTA.name())) {
+		if (db.executeQueryArray("SELECT 1 FROM Acta WHERE cursoId = ? AND anioAcademicoId = ? "
+				+ "AND tipoConvocatoria = ? AND estado = ?", cursoId, anioAcademicoId, tipoConvocatoria,
+				EstadoActa.ABIERTA.name()).isEmpty()) {
 			throw new ValidationException("El acta está cerrada: las notas son de solo lectura");
 		}
+	}
+
+	/**
+	 * Al cerrar un acta, los alumnos que entran en ella y no tienen calificación quedan como NP (nota nula),
+	 * que no consume convocatoria. Así siguen apareciendo en el acta cerrada.
+	 */
+	private int insertarNoPresentados(Connection conn, String cursoId, String anioAcademicoId, String tipoConvocatoria)
+			throws SQLException {
+		return update(conn, "INSERT INTO Calificacion (matriculaId, cursoId, anioAcademicoId, tipoConvocatoria, nota) "
+				+ "SELECT mc.matriculaId, a.cursoId, a.anioAcademicoId, a.tipoConvocatoria, NULL "
+				+ SQL_ALUMNOS_ACTA
+				+ "WHERE a.cursoId = ? AND a.anioAcademicoId = ? AND a.tipoConvocatoria = ? "
+				+ "AND NOT EXISTS (SELECT 1 FROM Calificacion ca WHERE ca.matriculaId = mc.matriculaId "
+				+ "AND ca.cursoId = a.cursoId AND ca.anioAcademicoId = a.anioAcademicoId "
+				+ "AND ca.tipoConvocatoria = a.tipoConvocatoria)",
+				cursoId, anioAcademicoId, tipoConvocatoria);
 	}
 
 }

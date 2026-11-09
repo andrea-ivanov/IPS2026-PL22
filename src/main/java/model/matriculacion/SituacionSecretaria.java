@@ -1,4 +1,4 @@
-package model.gestionmatricula;
+package model.matriculacion;
 
 /**
  * Situaciones que revisa el secretario en el listado de matrículas (HU 35229).

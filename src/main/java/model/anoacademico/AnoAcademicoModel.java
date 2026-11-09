@@ -1,14 +1,17 @@
 package model.anoacademico;
 
+import static util.DbUtil.update;
+
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
+
+import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.curso.EstadoCurso;
 import model.grado.EstadoGrado;
-import model.grado.GradoModel;
-import repository.AnoAcademicoRepository;
 import util.Database;
 import util.Util;
 import util.exception.ResourceNotFoundException;
@@ -19,15 +22,14 @@ import util.exception.ValidationException;
  * Conecta con la tabla AnioAcademico de la base de datos.
  */
 public class AnoAcademicoModel {
-	/** Estado de grado heredado de la BD, equivalente a EN_EXTINCION (EstadoGrado no lo modela) */
-	private static final String ESTADO_GRADO_EXTINTO = "EXTINTO";
-
 	private Database db;
-	private AnoAcademicoRepository repository;
+
+	public AnoAcademicoModel() {
+		this.db = new Database();
+	}
 
 	public AnoAcademicoModel(Database db) {
 		this.db = db;
-		this.repository = new AnoAcademicoRepository(db);
 	}
 
 	/**
@@ -37,11 +39,12 @@ public class AnoAcademicoModel {
 	 * @throws ResourceNotFoundException si no existe ningún año académico en la base de datos
 	 */
 	public AnoAcademico buscarActual() {
-		String id = repository.findActualId();
-		if (id == null) {
+		List<Object[]> rows = db.executeQueryArray(
+				"SELECT anioAcademicoId FROM AnioAcademico ORDER BY fechaInicio DESC LIMIT 1");
+		if (rows.isEmpty()) {
 			throw new ResourceNotFoundException("AnoAcademico", "actual");
 		}
-		return buscarPorId(id);
+		return buscarPorId((String) rows.get(0)[0]);
 	}
 
 	/**
@@ -51,11 +54,15 @@ public class AnoAcademicoModel {
 		validarFormatoId(id);
 		String cleanId = id.trim();
 
-		AnoAcademico anio = repository.findById(cleanId);
-		if (anio == null) {
+		String sql = "SELECT anioAcademicoId, fechaInicio, fechaFin, inicioMatriculacion, finMatriculacion FROM AnioAcademico WHERE anioAcademicoId = ?";
+		List<Object[]> rows = db.executeQueryArray(sql, cleanId);
+		if (rows == null || rows.isEmpty()) {
 			throw new ResourceNotFoundException("AnoAcademico", id);
 		}
-		return anio;
+		Object[] r = rows.get(0);
+		String anioId = (String) r[0];
+		long idNum = parsearNumeroDeId(anioId, 1L);
+		return new AnoAcademico(idNum,anioId,anioId,mapearFecha(r[1]),mapearFecha(r[2]),mapearFecha(r[3]),mapearFecha(r[4]),true);
 	}
 
 	/**
@@ -99,13 +106,15 @@ public class AnoAcademicoModel {
 			String anioId = comprobarNuevoAno(conn, fechaHoy, inicioAnio, finAnio, inicioMatriculacion,
 					finMatriculacion);
 			String inicio = Util.dateToIsoString(inicioAnio);
-			repository.insertar(conn, anioId, inicio, Util.dateToIsoString(finAnio),
-					Util.dateToIsoString(inicioMatriculacion), Util.dateToIsoString(finMatriculacion));
-			repository.actualizarGradosVigenciaCaducada(conn, inicio, GradoModel.ANIOS_VIGENCIA,
-					EstadoGrado.VIGENTE.name(), EstadoGrado.PENDIENTE_RENOVACION.name());
-			repository.actualizarCursosDeGradosEnEstados(conn,
-					Arrays.asList(EstadoGrado.EN_EXTINCION.name(), ESTADO_GRADO_EXTINTO),
-					EstadoCurso.ACTIVO.name(), EstadoCurso.INACTIVO.name());
+			update(conn, "INSERT INTO AnioAcademico (anioAcademicoId, fechaInicio, fechaFin, inicioMatriculacion, finMatriculacion) "
+					+ "VALUES (?, ?, ?, ?, ?)",
+					anioId, inicio, Util.dateToIsoString(finAnio), Util.dateToIsoString(inicioMatriculacion),
+					Util.dateToIsoString(finMatriculacion));
+			update(conn, "UPDATE Grado SET estado = ? WHERE estado = ? AND date(fechaInicioVigencia, '+4 years') <= ?",
+					EstadoGrado.PENDIENTE_RENOVACION.name(), EstadoGrado.VIGENTE.name(), inicio);
+			update(conn, "UPDATE GradoCurso SET estado = ? WHERE estado = ? "
+					+ "AND gradoId IN (SELECT gradoId FROM Grado WHERE estado IN ('EN_EXTINCION', 'EXTINTO'))",
+					EstadoCurso.INACTIVO.name(), EstadoCurso.ACTIVO.name());
 			return anioId;
 		});
 	}
@@ -114,8 +123,9 @@ public class AnoAcademicoModel {
 		if (fechaHoy == null || fechaHoy.trim().isEmpty()) {
 			throw new ValidationException("Debe indicarse la fecha de hoy");
 		}
-		String finAnterior = repository.findUltimaFechaFin(conn);
-		if (finAnterior != null && fechaHoy.trim().compareTo(finAnterior) <= 0) {
+		Object finAnterior = new QueryRunner().query(conn, "SELECT MAX(fechaFin) FROM AnioAcademico",
+				new ScalarHandler<Object>());
+		if (finAnterior != null && fechaHoy.trim().compareTo(finAnterior.toString()) <= 0) {
 			throw new ValidationException("No se puede configurar un nuevo año académico hasta que termine el actual ("
 					+ finAnterior + ")");
 		}
@@ -143,23 +153,42 @@ public class AnoAcademicoModel {
 			throw new ValidationException("El periodo de matriculación debe terminar antes que el año académico");
 		}
 
-		String finAnterior = repository.findUltimaFechaFin(conn);
+		Object finAnterior = new QueryRunner().query(conn, "SELECT MAX(fechaFin) FROM AnioAcademico",
+				new ScalarHandler<Object>());
 		if (finAnterior != null) {
-			if (inicio.compareTo(finAnterior) <= 0) {
+			if (inicio.compareTo(finAnterior.toString()) <= 0) {
 				throw new ValidationException("El año académico debe empezar después de que termine el anterior ("
 						+ finAnterior + ")");
 			}
-			if (inicioMat.compareTo(finAnterior) <= 0) {
+			if (inicioMat.compareTo(finAnterior.toString()) <= 0) {
 				throw new ValidationException("El periodo de matriculación debe empezar después de que termine el año anterior ("
 						+ finAnterior + ")");
 			}
 		}
 
 		String anioId = inicio.substring(0, 4) + "-" + fin.substring(0, 4);
-		if (repository.existe(conn, anioId)) {
+		Number existentes = new QueryRunner().query(conn,
+				"SELECT COUNT(*) FROM AnioAcademico WHERE anioAcademicoId = ?", new ScalarHandler<Number>(), anioId);
+		if (existentes.intValue() > 0) {
 			throw new ValidationException("Ya existe el año académico " + anioId);
 		}
 		return anioId;
+	}
+
+	private Date mapearFecha(Object fechaObj) {
+		if (fechaObj == null) {
+			return null;
+		}
+		if (fechaObj instanceof Date) {
+			return (Date) fechaObj;
+		}
+		if (fechaObj instanceof java.sql.Date) {
+			return new Date(((java.sql.Date) fechaObj).getTime());
+		}
+		if (fechaObj instanceof String) {
+			return Util.isoStringToDate((String) fechaObj);
+		}
+		throw new ValidationException("Tipo de fecha incompatible: " + fechaObj.getClass());
 	}
 
 	private void validarFormatoId(String id) {
@@ -172,6 +201,16 @@ public class AnoAcademicoModel {
 		}
 		if (!trimmed.matches("^\\d+$") && !trimmed.matches("^\\d{4}[-/]\\d{4}$")) {
 			throw new ValidationException("El formato del ID de año académico es inválido: '" + id + "'. Debe ser un número entero o rango año (p.ej. 2026-2027).");
+		}
+	}
+
+	private long parsearNumeroDeId(String str, long defaultVal) {
+		if (str == null) return defaultVal;
+		try {
+			String digits = str.replaceAll("\\D+", "");
+			return digits.isEmpty() ? defaultVal : Long.parseLong(digits.substring(0, Math.min(digits.length(), 6)));
+		} catch (Exception e) {
+			return defaultVal;
 		}
 	}
 }

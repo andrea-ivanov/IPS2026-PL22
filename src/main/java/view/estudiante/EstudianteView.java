@@ -37,7 +37,6 @@ public class EstudianteView {
     // --- Contenedores embebidos de submódulos ---
     private JPanel panelConsultaContainer;
     private JPanel panelSolicitudContainer;
-    private JPanel panelMicrocredencialContainer;
 
     public EstudianteView() {
         initialize();
@@ -61,13 +60,9 @@ public class EstudianteView {
         panelConsultaContainer = new JPanel(new BorderLayout());
         cardsPanel.add(panelConsultaContainer, CARD_CONSULTA);
 
-        // 3. Tarjeta: Contenedor para Solicitud de Matrícula
+        // 3. Tarjeta: Contenedor para Solicitud de Matrícula (Unificada: Grados y Microcredenciales)
         panelSolicitudContainer = new JPanel(new BorderLayout());
         cardsPanel.add(panelSolicitudContainer, CARD_SOLICITUD);
-
-        // 4. Tarjeta: Contenedor para Solicitud de Microcredenciales
-        panelMicrocredencialContainer = new JPanel(new BorderLayout());
-        cardsPanel.add(panelMicrocredencialContainer, CARD_MICROCREDENCIAL);
 
         frame.getContentPane().add(cardsPanel, BorderLayout.CENTER);
     }
@@ -198,7 +193,7 @@ public class EstudianteView {
     }
 
     public void mostrarMicrocredencial() {
-        cardLayout.show(cardsPanel, CARD_MICROCREDENCIAL);
+        cardLayout.show(cardsPanel, CARD_SOLICITUD);
         frame.setTitle("Vista Estudiante — Solicitud de Microcredenciales");
     }
 
@@ -231,7 +226,7 @@ public class EstudianteView {
     }
 
     public JPanel getPanelMicrocredencialContainer() {
-        return panelMicrocredencialContainer;
+        return panelSolicitudContainer;
     }
 
     public JLabel getLblTitle() {

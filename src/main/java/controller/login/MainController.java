@@ -7,7 +7,6 @@ import view.secretario.SecretarioView; // Tu vista de secretario
 import view.profesor.ProfesorView;
 import view.revisor.RevisorView;
 import java.awt.EventQueue;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 import java.time.LocalDate;
@@ -17,22 +16,18 @@ import controller.estudiante.EstudianteController;
 import controller.secretario.SecretarioController;
 import controller.profesor.ProfesorController;
 import controller.revisor.RevisorController;
-import model.alumno.AlumnoModel;
-import model.profesor.ProfesorDTO;
-import model.profesor.ProfesorModel;
-import model.acta.ActaModel;
-import model.gestionmatricula.GestionMatriculaModel;
+import repository.ActaRepository;
+import repository.AlumnoRepository;
+import repository.MatriculacionRepository;
 import util.ComboBuscable;
 import util.Database;
 import util.SwingUtil;
 
 public class MainController {
     private MainView view;
-    private final Database db;
 
-    public MainController(MainView view, Database db) {
+    public MainController(MainView view) {
         this.view = view;
-        this.db = db;
         this.initView();
     }
 
@@ -45,11 +40,10 @@ public class MainController {
         UIManager.put("OptionPane.cancelButtonText", "Cancelar");
 
         actualizarEstadosPorFecha();
-        cargarProfesores();
         cargarAlumnos();
 
-        view.getCbRoles().addActionListener(e -> actualizarVisibilidadUsuario());
-        actualizarVisibilidadUsuario();
+        view.getCbRoles().addActionListener(e -> actualizarVisibilidadAlumno());
+        actualizarVisibilidadAlumno();
 
         view.getBtnAcceder().addActionListener(e -> SwingUtil.exceptionWrapper(this::gestionarAcceso));
         view.getBtnRecargarBD().addActionListener(e -> SwingUtil.exceptionWrapper(this::recargarBaseDatos));
@@ -64,12 +58,12 @@ public class MainController {
         // arranque,
         // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA ->
         // FINALIZADA al terminarlo)
-        SwingUtil.exceptionWrapper(() -> new GestionMatriculaModel(db)
+        SwingUtil.exceptionWrapper(() -> new MatriculacionRepository(new Database())
                 .actualizarCicloVida(LocalDate.now().toString()));
         // HU 35239: las actas abiertas cuya convocatoria ya ha terminado las cierra el
         // sistema
         // (cierreAutomatico = 1); secretaria las consulta como avisos en su vista
-        SwingUtil.exceptionWrapper(() -> new ActaModel(db).cerrarActasVencidas(LocalDate.now().toString()));
+        SwingUtil.exceptionWrapper(() -> new ActaRepository().cerrarActasVencidas(LocalDate.now().toString()));
     }
 
     /**
@@ -85,36 +79,26 @@ public class MainController {
         if (confirm != JOptionPane.YES_OPTION)
             return;
 
+        Database db = new Database();
         db.createDatabase(false);
         db.loadDatabase();
         actualizarEstadosPorFecha();
-        cargarProfesores();
         cargarAlumnos();
         JOptionPane.showMessageDialog(view.getFrame(), "Base de datos recargada correctamente.", "Éxito",
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private void cargarProfesores() {
-        ProfesorModel profesorModel = new ProfesorModel(db);
-        view.getCbProfesores().setModel(
-                new DefaultComboBoxModel<>(profesorModel.getProfesores().toArray(new ProfesorDTO[0])));
-        // se puede escribir parte del nombre, apellidos o id para buscar el profesor (como el combo de alumnos)
-        ComboBuscable.hacerBuscable(view.getCbProfesores());
-    }
-
     private void cargarAlumnos() {
-        AlumnoModel alumnoModel = new AlumnoModel(db);
-        view.getCbAlumnos().setModel(SwingUtil.getComboModelFromList(alumnoModel.getListaAlumnos()));
+        AlumnoRepository repo = new AlumnoRepository();
+        view.getCbAlumnos().setModel(SwingUtil.getComboModelFromList(repo.getListaAlumnos()));
         // se puede escribir parte del nombre, apellidos o UO para buscar el alumno
         // (como el combo de profesores)
         ComboBuscable.hacerBuscable(view.getCbAlumnos());
     }
 
-    /** Solo se ve la fila del usuario que corresponde al rol: el profesor o el alumno */
-    private void actualizarVisibilidadUsuario() {
-        Object rol = view.getCbRoles().getSelectedItem();
-        view.getPanelProfesor().setVisible("Profesor".equals(rol));
-        view.getPanelAlumno().setVisible("Estudiante".equals(rol));
+    private void actualizarVisibilidadAlumno() {
+        boolean esEstudiante = "Estudiante".equals(view.getCbRoles().getSelectedItem());
+        view.getPanelAlumno().setVisible(esEstudiante);
         view.getFrame().revalidate();
         view.getFrame().repaint();
     }
@@ -165,7 +149,7 @@ public class MainController {
             }
         }
         EstudianteView estudianteView = new EstudianteView();
-        EstudianteController estudianteController = new EstudianteController(estudianteView, db, uo, nombre, () -> {
+        EstudianteController estudianteController = new EstudianteController(estudianteView, uo, nombre, () -> {
             view.getFrame().setLocationRelativeTo(null);
             view.getFrame().setVisible(true);
         });
@@ -175,7 +159,7 @@ public class MainController {
 
     private void abrirVistaAdministrador() {
         AdminOfertaView adminView = new AdminOfertaView();
-        AdminOfertaController adminController = new AdminOfertaController(adminView, db);
+        AdminOfertaController adminController = new AdminOfertaController(adminView);
         adminController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         adminController.initController();
         view.getFrame().setVisible(false);
@@ -183,23 +167,15 @@ public class MainController {
 
     private void abrirVistaSecretario() {
         SecretarioView secView = new SecretarioView();
-        SecretarioController secController = new SecretarioController(secView, db);
+        SecretarioController secController = new SecretarioController(secView);
         secController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         secController.initController();
         view.getFrame().setVisible(false);
     }
 
     private void abrirVistaProfesor() {
-        // lo escrito tiene que corresponder a un único profesor de la lista
-        ProfesorDTO profesor = ComboBuscable.getSeleccion(view.getCbProfesores());
-        if (profesor == null) {
-            JOptionPane.showMessageDialog(view.getFrame(),
-                    "Escriba o seleccione un profesor de la lista (si hay varios que coinciden, elija uno).",
-                    "Seleccione un profesor", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
         ProfesorView profView = new ProfesorView();
-        ProfesorController profController = new ProfesorController(profView, db, profesor);
+        ProfesorController profController = new ProfesorController(profView);
         profController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         profController.initController();
         view.getFrame().setVisible(false);
@@ -207,7 +183,7 @@ public class MainController {
 
     private void abrirVistaRevisor() {
         RevisorView revisorView = new RevisorView();
-        RevisorController revisorController = new RevisorController(revisorView, db);
+        RevisorController revisorController = new RevisorController(revisorView);
         revisorController.setOnVolverInicio(() -> view.getFrame().setVisible(true));
         revisorController.initController();
         view.getFrame().setVisible(false);
@@ -222,9 +198,8 @@ public class MainController {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
-                    Database db = new Database();
                     MainView vistaPrincipal = new MainView();
-                    MainController controladorPrincipal = new MainController(vistaPrincipal, db);
+                    MainController controladorPrincipal = new MainController(vistaPrincipal);
                     controladorPrincipal.initController();
                 } catch (Exception e) {
                     e.printStackTrace();

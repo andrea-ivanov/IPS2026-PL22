@@ -13,7 +13,8 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import model.fixtures.BaseModelTest;
-import model.matriculacion.MatriculacionModel;
+import repository.CursoRepository;
+import repository.MatriculacionRepository;
 import util.exception.ValidationException;
 
 /**
@@ -257,13 +258,13 @@ public class CursoModelGestionTest extends BaseModelTest {
 		@Test
 		@DisplayName("TF-01 Grado sin cursos: getCursosPorGrado devuelve una lista vacía")
 		public void testGetCursosPorGrado_SinCursos_ListaVacia() {
-			assertTrue(new CursoModel(db).getCursosPorGrado("2").isEmpty());
+			assertTrue(new CursoRepository(db).getCursosPorGrado("2").isEmpty());
 		}
 
 		@Test
 		@DisplayName("TF-02 Curso sin matrículas en el año: getMatriculacionesPorCursoYAnoActual devuelve una lista vacía")
 		public void testGetMatriculaciones_SinMatriculas_ListaVacia() {
-			assertTrue(new MatriculacionModel(db).getMatriculacionesPorCursoYAnoActual("1", "2").isEmpty());
+			assertTrue(new MatriculacionRepository(db).getMatriculacionesPorCursoYAnoActual("1", "2").isEmpty());
 		}
 	}
 
