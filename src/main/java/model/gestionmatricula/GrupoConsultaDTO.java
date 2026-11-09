@@ -1,4 +1,4 @@
-package model.matriculacion;
+package model.gestionmatricula;
 
 /**
  * Grupo de un curso para la consulta de grupos de la Secretaría (HU 35226): grados en los que

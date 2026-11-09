@@ -3,7 +3,6 @@ package view.profesor;
 import model.asignaciondocente.RolDocente;
 import model.grado.GradoDisplayDTO;
 import model.grupo.TipoGrupo;
-import model.profesor.ProfesorDTO;
 import view.comun.Estilo;
 
 import javax.swing.*;
@@ -18,8 +17,8 @@ public class ProfesorView {
     public static final String FILTRO_TODOS = "TODOS";
 
     private JFrame frame;
-    private JComboBox<ProfesorDTO> cbProfesores;
-    private JButton btnCargarAsignaciones;
+    // profesor que ha entrado desde la pantalla de inicio (lo rellena el controlador)
+    private JLabel lblProfesor;
     private JButton btnVolverInicio;
     private JComboBox<String> cbFiltroGrado;
     private JComboBox<String> cbFiltroCurso;
@@ -40,6 +39,10 @@ public class ProfesorView {
     private JLabel lblProfesorPropuesta;
     private JButton btnEnviarPropuesta;
     private JTable tabPropuestas;
+    // Pestaña de microcredenciales (HU 35988)
+    private JLabel lblProfesorMicrocredencial;
+    private JButton btnProponerMicrocredencial;
+    private JTable tabMicrocredenciales;
 
     public ProfesorView() {
         initialize();
@@ -57,34 +60,15 @@ public class ProfesorView {
 
         btnVolverInicio = Estilo.botonSecundario("Volver al inicio");
         btnVolverInicio.setToolTipText("Volver a la pantalla de selección de rol");
-        JPanel panelProfesor = Estilo.cabecera("PANEL DE PROFESOR", new JLabel("Asignaciones Docentes y Propuestas"),
-                btnVolverInicio);
-
-        JPanel panelSelecProfesor = Estilo.tarjeta(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        panelSelecProfesor.setBorder(Estilo.bordeTarjeta(10, 14));
-        panelSelecProfesor.add(Estilo.etiqueta("Profesor"));
-        // se puede escribir para buscar (ComboBuscable, lo configura el controlador al cargar los profesores)
-        cbProfesores = new JComboBox<>();
-        Estilo.estilizarCampo(cbProfesores);
-        cbProfesores.setPreferredSize(new Dimension(360, 30));
-        panelSelecProfesor.add(cbProfesores);
-
-        // carga las dos pestañas (asignaciones y propuestas) del profesor elegido
-        btnCargarAsignaciones = Estilo.botonPrimario("Cargar profesor");
-        panelSelecProfesor.add(btnCargarAsignaciones);
-        panelSelecProfesor.add(Estilo.textoSecundario("Puede escribir en el desplegable para buscar un profesor"));
-
-        JPanel panelSur = new JPanel(new BorderLayout());
-        panelSur.setOpaque(false);
-        panelSur.setBorder(new EmptyBorder(10, 0, 0, 0));
-        panelSur.add(panelSelecProfesor, BorderLayout.CENTER);
-        panelProfesor.add(panelSur, BorderLayout.SOUTH);
+        lblProfesor = new JLabel("Asignaciones Docentes y Propuestas");
+        JPanel panelProfesor = Estilo.cabecera("PANEL DE PROFESOR", lblProfesor, btnVolverInicio);
         contenido.add(panelProfesor, BorderLayout.NORTH);
 
         JTabbedPane tabs = new JTabbedPane();
         Estilo.estilizarPestanas(tabs);
         tabs.addTab("  Mis asignaciones  ", createAsignacionesPanel());
         tabs.addTab("  Proponer asignatura  ", createPropuestasPanel());
+        tabs.addTab("  Microcredenciales  ", createMicrocredencialesPanel());
         contenido.add(tabs, BorderLayout.CENTER);
     }
 
@@ -245,6 +229,37 @@ public class ProfesorView {
         return panel;
     }
 
+    /**
+     * Pestaña de la HU 35988: botón para proponer una microcredencial (abre MicrocredencialFormDialog)
+     * y listado "Mis microcredenciales" con su estado
+     */
+    private JPanel createMicrocredencialesPanel() {
+        JPanel panel = panelPestana();
+
+        JPanel panelAcciones = Estilo.tarjeta(new BorderLayout(20, 0));
+        panelAcciones.setBorder(Estilo.bordeTarjeta(14, 18));
+        panelAcciones.add(Estilo.tituloTarjeta("Nueva microcredencial"), BorderLayout.WEST);
+        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        panelBotones.setOpaque(false);
+        lblProfesorMicrocredencial = Estilo.textoSecundario("Carga un profesor para proponer microcredenciales");
+        lblProfesorMicrocredencial.setFont(Estilo.ETIQUETA);
+        panelBotones.add(lblProfesorMicrocredencial);
+        btnProponerMicrocredencial = Estilo.botonPrimario("Proponer microcredencial");
+        btnProponerMicrocredencial.setEnabled(false);
+        panelBotones.add(btnProponerMicrocredencial);
+        panelAcciones.add(panelBotones, BorderLayout.EAST);
+        panel.add(panelAcciones, BorderLayout.NORTH);
+
+        JPanel panelMisMicrocredenciales = Estilo.tarjeta(new BorderLayout(0, 10));
+        panelMisMicrocredenciales.add(Estilo.tituloTarjeta("Mis microcredenciales"), BorderLayout.NORTH);
+        tabMicrocredenciales = Estilo.tablaQueLlena();
+        Estilo.estilizarTabla(tabMicrocredenciales);
+        tabMicrocredenciales.setDefaultEditor(Object.class, null);
+        panelMisMicrocredenciales.add(Estilo.scrollTabla(tabMicrocredenciales), BorderLayout.CENTER);
+        panel.add(panelMisMicrocredenciales, BorderLayout.CENTER);
+        return panel;
+    }
+
     private static JPanel panelPestana() {
         JPanel panel = new JPanel(new BorderLayout(0, 12));
         panel.setBackground(Estilo.FONDO);
@@ -281,12 +296,8 @@ public class ProfesorView {
         return frame;
     }
 
-    public JComboBox<ProfesorDTO> getCbProfesores() {
-        return cbProfesores;
-    }
-
-    public JButton getBtnCargarAsignaciones() {
-        return btnCargarAsignaciones;
+    public JLabel getLblProfesor() {
+        return lblProfesor;
     }
 
     public JButton getBtnVolverInicio() {
@@ -363,5 +374,17 @@ public class ProfesorView {
 
     public JTable getTabPropuestas() {
         return tabPropuestas;
+    }
+
+    public JLabel getLblProfesorMicrocredencial() {
+        return lblProfesorMicrocredencial;
+    }
+
+    public JButton getBtnProponerMicrocredencial() {
+        return btnProponerMicrocredencial;
+    }
+
+    public JTable getTabMicrocredenciales() {
+        return tabMicrocredenciales;
     }
 }
