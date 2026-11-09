@@ -14,3 +14,7 @@ target
 CLAUDE.md
 CLAUDE.local.md
 graphify-out/
+
+# Documentos de diseno de superpowers (locales)
+docs/superpowers/specs/
+docs/superpowers/plans/

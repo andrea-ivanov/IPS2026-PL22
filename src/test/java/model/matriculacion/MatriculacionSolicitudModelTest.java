@@ -1,5 +1,6 @@
 package model.matriculacion;
 
+import model.grado.GradoDisplayDTO;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
@@ -36,11 +37,11 @@ public class MatriculacionSolicitudModelTest extends BaseModelTest {
 		db.executeUpdate("INSERT INTO Grado (gradoId, nombre, facultad, ramaConocimiento, estado, fechaInicioVigencia) "
 				+ "VALUES ('5', 'Grado Renovación', 'Facultad X', 'Ciencias', 'PENDIENTE_RENOVACION', '2024-09-01')");
 
-		List<OfertaGradoDTO> disponibles = matriculacionModel.getOfertaGradosDisponibles();
+		List<GradoDisplayDTO> disponibles = matriculacionModel.getOfertaGradosDisponibles();
 		assertNotNull(disponibles, "La lista de grados disponibles no debe ser nula");
 		assertFalse(disponibles.isEmpty(), "Debe contener grados disponibles");
 
-		for (OfertaGradoDTO g : disponibles) {
+		for (GradoDisplayDTO g : disponibles) {
 			assertNotEquals("EXTINTO", g.getEstado(), "No debe incluir grados extintos");
 			assertNotEquals("EN_EXTINCION", g.getEstado(), "No debe incluir grados en extinción");
 			assertTrue("VIGENTE".equals(g.getEstado()) || "PENDIENTE_RENOVACION".equals(g.getEstado()),

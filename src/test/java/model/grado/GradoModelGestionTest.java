@@ -13,7 +13,6 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import model.fixtures.BaseModelTest;
-import repository.GradoRepository;
 import util.exception.ValidationException;
 
 /**
@@ -264,7 +263,7 @@ public class GradoModelGestionTest extends BaseModelTest {
 		public void testGetTodosLosGrados_ExtintoComoEnExtincion() {
 			db.executeUpdate("UPDATE Grado SET estado = 'EXTINTO' WHERE gradoId = '2'");
 
-			String estado = new GradoRepository(db).getTodosLosGrados().stream()
+			String estado = new GradoModel(db).getTodosLosGrados().stream()
 					.filter(g -> "2".equals(g.getId()))
 					.findFirst().orElseThrow().getEstado();
 

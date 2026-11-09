@@ -1,4 +1,4 @@
-package model.matriculacion;
+package model.gestionmatricula;
 
 /**
  * Grupo de un curso con sus plazas ocupadas en un año académico y si está asignado
