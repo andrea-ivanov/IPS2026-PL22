@@ -1,6 +1,5 @@
 package controller.revisor;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -11,8 +10,8 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 import model.grado.GradoAnioRevisorDisplayDTO;
-import model.grado.MetricasGradoModel;
-import util.Database;
+import repository.MatriculacionRepository;
+import repository.MetricasGradoRepository;
 import view.revisor.RevisorView;
 
 /**
@@ -24,15 +23,22 @@ public class RevisorController {
 	private static final String TODOS = "Todos";
 
 	private RevisorView view;
-	private MetricasGradoModel metricasModel;
+	private MetricasGradoRepository metricasGradoRepository;
+	private MatriculacionRepository matriculacionRepository;
 
 	private Runnable onVolverInicio = () -> { };
 
 	private List<GradoAnioRevisorDisplayDTO> todasLasMetricas = new ArrayList<>();
 
-	public RevisorController(RevisorView view, Database db) {
+	public RevisorController(RevisorView view) {
+		this(view, new MetricasGradoRepository(), new MatriculacionRepository());
+	}
+
+	public RevisorController(RevisorView view, MetricasGradoRepository metricasGradoRepository,
+			MatriculacionRepository matriculacionRepository) {
 		this.view = view;
-		this.metricasModel = new MetricasGradoModel(db);
+		this.metricasGradoRepository = metricasGradoRepository;
+		this.matriculacionRepository = matriculacionRepository;
 	}
 
 	public void setOnVolverInicio(Runnable onVolverInicio) {
@@ -43,7 +49,7 @@ public class RevisorController {
 		view.getBtnVolverInicio().addActionListener(e -> volverInicio());
 
 		cargarAnios();
-		todasLasMetricas = metricasModel.getMetricasGrados(null, null, null, LocalDate.now().toString());
+		todasLasMetricas = metricasGradoRepository.getMetricasGrados(null, null, null);
 
 		view.getCbAnioAcademico().addActionListener(e -> aplicarFiltros());
 		addDocumentListener(view.getTxtFiltroRama(), this::aplicarFiltros);
@@ -64,10 +70,10 @@ public class RevisorController {
 	private void cargarAnios() {
 		DefaultComboBoxModel<String> anios = new DefaultComboBoxModel<>();
 		anios.addElement(TODOS);
-		for (String anio : metricasModel.getAniosAcademicos()) {
+		for (String anio : matriculacionRepository.getAniosAcademicos()) {
 			anios.addElement(anio);
 		}
-		String porDefecto = metricasModel.getAnioAcademicoPorDefecto();
+		String porDefecto = metricasGradoRepository.getAnioAcademicoPorDefecto();
 		anios.setSelectedItem(porDefecto == null ? TODOS : porDefecto);
 		view.getCbAnioAcademico().setModel(anios);
 	}

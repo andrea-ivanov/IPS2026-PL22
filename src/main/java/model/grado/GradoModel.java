@@ -1,46 +1,38 @@
 package model.grado;
 
+import static util.DbUtil.update;
+
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
+import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.handlers.ColumnListHandler;
+import org.apache.commons.dbutils.handlers.ScalarHandler;
+
 import model.curso.EstadoCurso;
-import repository.AnoAcademicoRepository;
-import repository.GradoRepository;
-import repository.MatriculaRepository;
 import util.Database;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
 
 /**
  * Modelo de negocio y caso de uso para la gestión y búsqueda de Grados.
- * Maneja validaciones de entrada y orquesta las transacciones; el SQL está en GradoRepository.
+ * Maneja validaciones de entrada, consultas a base de datos y mapeo a entidades de dominio.
  */
 public class GradoModel {
-	/** Años de vigencia de un grado desde su fechaInicioVigencia, pasados los cuales debe renovarse */
+	/** Años académicos de vigencia de un grado desde su fechaInicioVigencia, pasados los cuales debe renovarse */
 	public static final int ANIOS_VIGENCIA = 4;
 	/** Motivo con el que se cancelan las matrículas del año de un grado que se extingue */
 	private static final String MOTIVO_EXTINCION_GRADO = "EXTINCION_GRADO";
 
-	private final Database db;
-	private final GradoRepository gradoRepository;
-	private final AnoAcademicoRepository anoAcademicoRepository;
-	private final MatriculaRepository matriculaRepository;
+	private Database db;
+
+	public GradoModel() {
+		this.db = new Database();
+	}
 
 	public GradoModel(Database db) {
 		this.db = db;
-		this.gradoRepository = new GradoRepository(db);
-		this.anoAcademicoRepository = new AnoAcademicoRepository(db);
-		this.matriculaRepository = new MatriculaRepository(db);
-	}
-
-	/**
-	 * Obtiene todos los grados para la tabla de AdminOfertaView.
-	 */
-	public List<GradoDisplayDTO> getTodosLosGrados() {
-		return gradoRepository.findAll();
 	}
 
 	/**
@@ -80,11 +72,15 @@ public class GradoModel {
 		return db.enTransaccion(conn -> {
 			String fechaInicio = comprobarAnioAdmiteGrados(conn, anioAcademicoId.trim(), fechaHoy);
 			String gradoId = generarId(conn);
-			if (gradoRepository.existe(conn, gradoId)) {
+			Number existentes = new QueryRunner().query(conn, "SELECT COUNT(*) FROM Grado WHERE gradoId = ?",
+					new ScalarHandler<Number>(), gradoId);
+			if (existentes.intValue() > 0) {
 				throw new ValidationException("Ya existe un grado con el código " + gradoId);
 			}
-			gradoRepository.insertar(conn, gradoId, nombre.trim(), facultad.trim(), ramaConocimiento.trim(),
-					EstadoGrado.VIGENTE.name(), fechaInicio);
+			update(conn, "INSERT INTO Grado (gradoId, nombre, facultad, ramaConocimiento, estado, fechaInicioVigencia) "
+					+ "VALUES (?, ?, ?, ?, ?, ?)",
+					gradoId, nombre.trim(), facultad.trim(), ramaConocimiento.trim(), EstadoGrado.VIGENTE.name(),
+					fechaInicio);
 			return gradoId;
 		});
 	}
@@ -102,8 +98,8 @@ public class GradoModel {
 		validarObligatorio(ramaConocimiento, "La rama de conocimiento del grado es obligatoria");
 
 		db.enTransaccion(conn -> {
-			int filas = gradoRepository.actualizar(conn, gradoId, nombre.trim(), facultad.trim(),
-					ramaConocimiento.trim());
+			int filas = update(conn, "UPDATE Grado SET nombre = ?, facultad = ?, ramaConocimiento = ? WHERE gradoId = ?",
+					nombre.trim(), facultad.trim(), ramaConocimiento.trim(), gradoId);
 			if (filas == 0) {
 				throw new ResourceNotFoundException("Grado", gradoId);
 			}
@@ -114,7 +110,8 @@ public class GradoModel {
 	/**
 	 * Comprueba que el grado se puede eliminar en el año académico indicado.
 	 *
-	 * @throws ValidationException Si el grado ya está en extinción o alguno de sus cursos tiene matrículas en el año
+	 * @throws ValidationException Si el grado ya está en extinción o extinto, o alguno de sus cursos tiene matrículas
+	 *         en el año
 	 */
 	public void validarEliminacion(String gradoId, String anioAcademicoId) {
 		db.enTransaccion(conn -> {
@@ -131,8 +128,8 @@ public class GradoModel {
 	public void eliminarGrado(String gradoId, String anioAcademicoId) {
 		db.enTransaccion(conn -> {
 			comprobarEliminable(conn, gradoId, anioAcademicoId);
-			gradoRepository.actualizarEstado(conn, gradoId, EstadoGrado.EXTINTO.name());
-			gradoRepository.actualizarEstadoCursos(conn, gradoId, EstadoCurso.INACTIVO.name());
+			update(conn, "UPDATE Grado SET estado = ? WHERE gradoId = ?", EstadoGrado.EXTINTO.name(), gradoId);
+			update(conn, "UPDATE GradoCurso SET estado = ? WHERE gradoId = ?", EstadoCurso.INACTIVO.name(), gradoId);
 			return null;
 		});
 	}
@@ -140,14 +137,26 @@ public class GradoModel {
 	/**
 	 * Datos del grado para la pantalla de revisión (HU 36455). La decisión es el resultado de su dictamen para el año
 	 * actual; si no lo tiene y está PENDIENTE_RENOVACION, DESFAVORABLE (lo que pasará si nadie decide); si no, nula.
+	 * La fecha de la última revisión es la del dictamen de su año más reciente.
 	 *
 	 * @throws ResourceNotFoundException Si no existe el grado
 	 */
 	public GradoRevisionDisplayDTO getGradoRevision(String gradoId) {
-		GradoRevisionDisplayDTO grado = gradoRepository.findRevision(gradoId, anoAcademicoRepository.findActualId());
-		if (grado == null) {
+		List<Object[]> actual = db.executeQueryArray(
+				"SELECT anioAcademicoId FROM AnioAcademico ORDER BY fechaInicio DESC LIMIT 1");
+		String anioActual = actual.isEmpty() ? null : (String) actual.get(0)[0];
+		List<GradoRevisionDisplayDTO> filas = db.executeQueryPojo(GradoRevisionDisplayDTO.class,
+				"SELECT g.gradoId AS idGrado, g.nombre, g.facultad, g.ramaConocimiento AS rama, g.estado, "
+						+ "(SELECT r.resultado FROM RevisionGrado r WHERE r.gradoId = g.gradoId "
+						+ "AND r.anioAcademicoId = ?) AS decision, "
+						+ "(SELECT r.fechaRevision FROM RevisionGrado r WHERE r.gradoId = g.gradoId "
+						+ "ORDER BY r.anioAcademicoId DESC LIMIT 1) AS fechaUltimaRevision "
+						+ "FROM Grado g WHERE g.gradoId = ?",
+				anioActual, gradoId);
+		if (filas.isEmpty()) {
 			throw new ResourceNotFoundException("Grado", gradoId);
 		}
+		GradoRevisionDisplayDTO grado = filas.get(0);
 		if (grado.getDecision() == null && EstadoGrado.PENDIENTE_RENOVACION.name().equals(grado.getEstado())) {
 			grado.setDecision(ResultadoRevision.DESFAVORABLE.name());
 		}
@@ -163,7 +172,7 @@ public class GradoModel {
 	 */
 	public boolean admiteDictamen(String gradoId, String fechaHoy) {
 		return db.enTransaccion(conn -> {
-			String estado = gradoRepository.findEstado(conn, gradoId);
+			String estado = findEstado(conn, gradoId);
 			String anioNuevo = anioEnVentana(conn, fechaHoy);
 			return estado != null && anioNuevo != null && estadoAdmiteDictamen(conn, gradoId, estado, anioNuevo);
 		});
@@ -184,7 +193,7 @@ public class GradoModel {
 		validarObligatorio(fechaHoy, "Debe indicarse la fecha de hoy");
 
 		db.enTransaccion(conn -> {
-			String estado = gradoRepository.findEstado(conn, gradoId);
+			String estado = findEstado(conn, gradoId);
 			if (estado == null) {
 				throw new ResourceNotFoundException("Grado", gradoId);
 			}
@@ -198,16 +207,18 @@ public class GradoModel {
 						+ " no está pendiente de renovación ni tiene un dictamen de este periodo que se pueda cambiar");
 			}
 
-			if (gradoRepository.findResultadoRevision(conn, gradoId, anioNuevo) == null) {
-				gradoRepository.insertarRevision(conn, gradoId, anioNuevo, dictamen.name(), fechaHoy.trim());
+			if (findResultadoRevision(conn, gradoId, anioNuevo) == null) {
+				update(conn, "INSERT INTO RevisionGrado (gradoId, anioAcademicoId, resultado, fechaRevision) "
+						+ "VALUES (?, ?, ?, ?)", gradoId, anioNuevo, dictamen.name(), fechaHoy.trim());
 			} else {
-				gradoRepository.actualizarRevision(conn, gradoId, anioNuevo, dictamen.name(), fechaHoy.trim());
+				update(conn, "UPDATE RevisionGrado SET resultado = ?, fechaRevision = ? "
+						+ "WHERE gradoId = ? AND anioAcademicoId = ?", dictamen.name(), fechaHoy.trim(), gradoId, anioNuevo);
 			}
 			if (dictamen == ResultadoRevision.FAVORABLE) {
-				gradoRepository.actualizarEstadoYVigencia(conn, gradoId, EstadoGrado.VIGENTE.name(),
-						gradoRepository.findFechaInicioAnio(conn, anioNuevo));
+				update(conn, "UPDATE Grado SET estado = ?, fechaInicioVigencia = ? WHERE gradoId = ?",
+						EstadoGrado.VIGENTE.name(), findFechaInicioAnio(conn, anioNuevo), gradoId);
 			} else {
-				gradoRepository.actualizarEstado(conn, gradoId, EstadoGrado.EN_EXTINCION.name());
+				update(conn, "UPDATE Grado SET estado = ? WHERE gradoId = ?", EstadoGrado.EN_EXTINCION.name(), gradoId);
 			}
 			return null;
 		});
@@ -217,7 +228,8 @@ public class GradoModel {
 	 * Al iniciar el año académico actual (hoy igual o posterior a su fecha de inicio) pasan a EXTINTO, con sus cursos
 	 * a INACTIVO:
 	 * - los grados EN_EXTINCION (dictamen desfavorable) y PENDIENTE_RENOVACION (sin dictamen)
-	 * - los grados VIGENTES que empezaron el año sin ninguna matrícula con alguna asignatura pagada
+	 * - los grados VIGENTES que empezaron el año sin ninguna matrícula con alguna asignatura pagada (pago validado y
+	 *   no cancelada antes de esa fecha)
 	 * Las matrículas abiertas de ese año de los grados extinguidos se cancelan, con todas sus asignaturas abiertas,
 	 * con motivo EXTINCION_GRADO y fecha de inicio del año. Se ejecuta en cada arranque: una segunda ejecución no
 	 * encuentra nada que extinguir.
@@ -228,24 +240,36 @@ public class GradoModel {
 	public int extinguirGradosAlIniciarAnio(String fechaHoy) {
 		validarObligatorio(fechaHoy, "Debe indicarse la fecha de hoy");
 		return db.enTransaccion(conn -> {
-			String anio = anoAcademicoRepository.findActualId(conn);
+			String anio = findAnioActualId(conn);
 			if (anio == null) {
 				return 0;
 			}
-			String inicio = gradoRepository.findFechaInicioAnio(conn, anio);
+			String inicio = findFechaInicioAnio(conn, anio);
 			if (fechaHoy.trim().compareTo(inicio) < 0) {
 				return 0;
 			}
-			List<String> grados = new ArrayList<>(gradoRepository.findIdsPorEstados(conn,
-					Arrays.asList(EstadoGrado.EN_EXTINCION.name(), EstadoGrado.PENDIENTE_RENOVACION.name())));
-			grados.addAll(gradoRepository.findIdsVigentesSinMatriculaPagada(conn, anio, inicio));
+			List<String> grados = new QueryRunner().query(conn,
+					"SELECT g.gradoId FROM Grado g WHERE g.estado IN (?, ?) "
+							+ "OR (g.estado = ? AND NOT EXISTS (SELECT 1 FROM MatriculaCurso mc "
+							+ "JOIN Matricula m ON m.matriculaId = mc.matriculaId "
+							+ "WHERE m.gradoId = g.gradoId AND m.anioAcademicoId = ? AND mc.pagoValidado = 1 "
+							+ "AND (mc.estado <> 'CANCELADA' OR mc.fechaCancelacion >= ?))) ORDER BY g.gradoId",
+					new ColumnListHandler<String>(), EstadoGrado.EN_EXTINCION.name(),
+					EstadoGrado.PENDIENTE_RENOVACION.name(), EstadoGrado.VIGENTE.name(), anio, inicio);
 
 			for (String gradoId : grados) {
-				gradoRepository.actualizarEstado(conn, gradoId, EstadoGrado.EXTINTO.name());
-				gradoRepository.actualizarEstadoCursos(conn, gradoId, EstadoCurso.INACTIVO.name());
-				for (String matriculaId : matriculaRepository.findIdsAbiertasDeGrado(conn, gradoId, anio)) {
-					matriculaRepository.cancelarCursosAbiertos(conn, matriculaId, MOTIVO_EXTINCION_GRADO, inicio);
-					matriculaRepository.cancelarMatricula(conn, matriculaId, MOTIVO_EXTINCION_GRADO, inicio);
+				update(conn, "UPDATE Grado SET estado = ? WHERE gradoId = ?", EstadoGrado.EXTINTO.name(), gradoId);
+				update(conn, "UPDATE GradoCurso SET estado = ? WHERE gradoId = ?", EstadoCurso.INACTIVO.name(), gradoId);
+				List<String> matriculas = new QueryRunner().query(conn,
+						"SELECT matriculaId FROM Matricula WHERE gradoId = ? AND anioAcademicoId = ? "
+								+ "AND estado NOT IN ('CANCELADA', 'FINALIZADA') ORDER BY matriculaId",
+						new ColumnListHandler<String>(), gradoId, anio);
+				for (String matriculaId : matriculas) {
+					update(conn, "UPDATE MatriculaCurso SET estado = 'CANCELADA', motivoCancelacion = ?, "
+							+ "fechaCancelacion = ? WHERE matriculaId = ? AND estado NOT IN ('CANCELADA', 'FINALIZADA')",
+							MOTIVO_EXTINCION_GRADO, inicio, matriculaId);
+					update(conn, "UPDATE Matricula SET estado = 'CANCELADA', motivoCancelacion = ?, fechaCancelacion = ? "
+							+ "WHERE matriculaId = ?", MOTIVO_EXTINCION_GRADO, inicio, matriculaId);
 				}
 			}
 			return grados.size();
@@ -257,14 +281,17 @@ public class GradoModel {
 	 * si hay año anterior, después de su fin. Nulo si no hay años o hoy está fuera de la ventana.
 	 */
 	private String anioEnVentana(Connection conn, String fechaHoy) throws SQLException {
-		String anioNuevo = anoAcademicoRepository.findActualId(conn);
+		String anioNuevo = findAnioActualId(conn);
 		if (anioNuevo == null || fechaHoy == null) {
 			return null;
 		}
 		String hoy = fechaHoy.trim();
-		String inicio = gradoRepository.findFechaInicioAnio(conn, anioNuevo);
-		String finAnterior = anoAcademicoRepository.findFechaFinAnterior(conn, inicio);
-		boolean enVentana = hoy.compareTo(inicio) < 0 && (finAnterior == null || hoy.compareTo(finAnterior) > 0);
+		String inicio = findFechaInicioAnio(conn, anioNuevo);
+		Object finAnterior = new QueryRunner().query(conn,
+				"SELECT fechaFin FROM AnioAcademico WHERE fechaInicio < ? ORDER BY fechaInicio DESC LIMIT 1",
+				new ScalarHandler<Object>(), inicio);
+		boolean enVentana = hoy.compareTo(inicio) < 0
+				&& (finAnterior == null || hoy.compareTo(finAnterior.toString()) > 0);
 		return enVentana ? anioNuevo : null;
 	}
 
@@ -275,8 +302,7 @@ public class GradoModel {
 		if (estadoGrado == EstadoGrado.PENDIENTE_RENOVACION || estadoGrado == EstadoGrado.EN_EXTINCION) {
 			return true;
 		}
-		return estadoGrado == EstadoGrado.VIGENTE
-				&& gradoRepository.findResultadoRevision(conn, gradoId, anioNuevo) != null;
+		return estadoGrado == EstadoGrado.VIGENTE && findResultadoRevision(conn, gradoId, anioNuevo) != null;
 	}
 
 	private ResultadoRevision parsearResultado(String resultado) {
@@ -293,7 +319,7 @@ public class GradoModel {
 		validarObligatorio(anioAcademicoId, "No hay un año académico actual configurado");
 		validarObligatorio(gradoId, "Debe indicarse el grado a eliminar");
 
-		String estado = gradoRepository.findEstado(conn, gradoId);
+		String estado = findEstado(conn, gradoId);
 		if (estado == null) {
 			throw new ResourceNotFoundException("Grado", gradoId);
 		}
@@ -304,7 +330,11 @@ public class GradoModel {
 			throw new ValidationException("El grado " + gradoId + " ya está extinto");
 		}
 
-		if (gradoRepository.contarMatriculasActivas(conn, gradoId, anioAcademicoId) > 0) {
+		Number matriculas = new QueryRunner().query(conn,
+				"SELECT COUNT(*) FROM MatriculaCurso mc JOIN Matricula m ON m.matriculaId = mc.matriculaId "
+						+ "WHERE mc.gradoId = ? AND m.anioAcademicoId = ? AND mc.estado <> 'CANCELADA'",
+				new ScalarHandler<Number>(), gradoId, anioAcademicoId);
+		if (matriculas.intValue() > 0) {
 			throw new ValidationException("No se puede eliminar el grado " + gradoId
 					+ ": tiene cursos con matrículas en el año académico " + anioAcademicoId);
 		}
@@ -318,24 +348,55 @@ public class GradoModel {
 	private String comprobarAnioAdmiteGrados(Connection conn, String anioAcademicoId, String fechaHoy)
 			throws SQLException {
 		validarObligatorio(fechaHoy, "Debe indicarse la fecha de hoy");
-		String fechaInicio = gradoRepository.findFechaInicioAnio(conn, anioAcademicoId);
+		String fechaInicio = findFechaInicioAnio(conn, anioAcademicoId);
 		if (fechaInicio == null) {
 			throw new ValidationException("El año académico " + anioAcademicoId + " no existe");
 		}
-		String inicioMatriculacion = gradoRepository.findInicioMatriculacionAnio(conn, anioAcademicoId);
+		Object inicioMatriculacion = new QueryRunner().query(conn,
+				"SELECT inicioMatriculacion FROM AnioAcademico WHERE anioAcademicoId = ?",
+				new ScalarHandler<Object>(), anioAcademicoId);
 		if (inicioMatriculacion == null) {
 			throw new ValidationException("El año académico " + anioAcademicoId
 					+ " no tiene periodo de matriculación configurado");
 		}
-		if (fechaHoy.trim().compareTo(inicioMatriculacion) >= 0) {
+		if (fechaHoy.trim().compareTo(inicioMatriculacion.toString()) >= 0) {
 			throw new ValidationException("Solo se pueden crear grados antes de que empiece la matriculación del año académico "
 					+ anioAcademicoId + " (" + inicioMatriculacion + ")");
 		}
 		return fechaInicio;
 	}
 
+	/** Estado del grado tal y como está en la base de datos. Nulo si no existe */
+	private String findEstado(Connection conn, String gradoId) throws SQLException {
+		return new QueryRunner().query(conn, "SELECT estado FROM Grado WHERE gradoId = ?",
+				new ScalarHandler<String>(), gradoId);
+	}
+
+	/** Id del año académico actual (el de mayor fecha de inicio). Nulo si no hay ninguno */
+	private String findAnioActualId(Connection conn) throws SQLException {
+		return new QueryRunner().query(conn,
+				"SELECT anioAcademicoId FROM AnioAcademico ORDER BY fechaInicio DESC LIMIT 1",
+				new ScalarHandler<String>());
+	}
+
+	/** Fecha de inicio (ISO) del año académico. Nulo si no existe */
+	private String findFechaInicioAnio(Connection conn, String anioAcademicoId) throws SQLException {
+		Object inicio = new QueryRunner().query(conn,
+				"SELECT fechaInicio FROM AnioAcademico WHERE anioAcademicoId = ?",
+				new ScalarHandler<Object>(), anioAcademicoId);
+		return inicio == null ? null : inicio.toString();
+	}
+
+	/** Resultado del dictamen del grado para el año académico; nulo si no tiene */
+	private String findResultadoRevision(Connection conn, String gradoId, String anioAcademicoId) throws SQLException {
+		return new QueryRunner().query(conn,
+				"SELECT resultado FROM RevisionGrado WHERE gradoId = ? AND anioAcademicoId = ?",
+				new ScalarHandler<String>(), gradoId, anioAcademicoId);
+	}
+
 	private String generarId(Connection conn) throws SQLException {
-		List<String> ids = gradoRepository.findIdsNumerados(conn);
+		List<String> ids = new QueryRunner().query(conn, "SELECT gradoId FROM Grado WHERE gradoId GLOB 'G[0-9]*'",
+				new ColumnListHandler<String>());
 		int max = 0;
 		for (String id : ids) {
 			if (id.matches("^G\\d+$")) {
@@ -352,4 +413,3 @@ public class GradoModel {
 	}
 
 }
-

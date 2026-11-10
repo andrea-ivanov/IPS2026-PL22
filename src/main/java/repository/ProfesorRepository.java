@@ -13,6 +13,10 @@ import util.Database;
 public class ProfesorRepository {
     private final Database db;
 
+    public ProfesorRepository() {
+        this(new Database());
+    }
+
     public ProfesorRepository(Database db) {
         this.db = db;
     }

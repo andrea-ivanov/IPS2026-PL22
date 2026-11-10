@@ -7,11 +7,10 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 
-import model.profesor.ProfesorDTO;
 import view.comun.Estilo;
 
 /**
- * Pantalla de acceso: selección del rol (y del profesor o el alumno si el rol es Profesor o Estudiante).
+ * Pantalla de acceso: selección del rol (y del alumno si el rol es Estudiante).
  * Tiene la barra de menús estándar de la aplicación (Archivo y Ayuda) y no se puede maximizar.
  */
 public class MainView {
@@ -21,8 +20,6 @@ public class MainView {
     private JComboBox<String> cbRoles;
     private JPanel panelAlumno;
     private JComboBox<Object> cbAlumnos;
-    private JPanel panelProfesor;
-    private JComboBox<ProfesorDTO> cbProfesores;
     private JButton btnAcceder;
     private JMenuItem btnRecargarBD;
 
@@ -43,7 +40,7 @@ public class MainView {
         contenido.add(Estilo.cabecera(NOMBRE_APLICACION.toUpperCase(), lblTitulo), BorderLayout.NORTH);
         contenido.add(crearTarjetaAcceso(), BorderLayout.CENTER);
 
-        // Tamaño fijo con hueco para la fila del profesor o del alumno, que aparece y desaparece según el rol
+        // Tamaño fijo con hueco para la fila del alumno, que aparece y desaparece según el rol
         frame.setSize(480, 400);
         frame.setResizable(false);
         frame.setLocationRelativeTo(null);
@@ -68,13 +65,6 @@ public class MainView {
         anadirCampo(panelRol, cbRoles);
         campos.add(panelRol);
         campos.add(Box.createVerticalStrut(12));
-
-        // Panel selección de profesor (visible cuando se selecciona Profesor)
-        panelProfesor = filaCampo("Profesor");
-        cbProfesores = new JComboBox<>();
-        anadirCampo(panelProfesor, cbProfesores);
-        panelProfesor.setVisible(false);
-        campos.add(panelProfesor);
 
         // Panel selección de alumno (visible cuando se selecciona Estudiante)
         panelAlumno = filaCampo("Alumno");
@@ -165,8 +155,7 @@ public class MainView {
                 + "<li><b>Administrador</b>: oferta académica (grados, cursos y años académicos).</li>"
                 + "<li><b>Secretario</b>: consulta de matrículas y grupos y gestión de su ciclo de vida "
                 + "(aceptar solicitudes, modificar, asignar grupos y cancelar).</li>"
-                + "<li><b>Profesor</b>: elija también el profesor para ver sus asignaciones docentes, actas, "
-                + "propuestas de asignaturas y microcredenciales.</li>"
+                + "<li><b>Profesor</b>: asignaciones docentes, actas de las asignaturas y propuestas de asignaturas.</li>"
                 + "<li><b>Estudiante</b>: elija también el alumno para consultar su expediente o solicitar una matrícula.</li>"
                 + "<li><b>Revisor externo</b>: métricas de rendimiento de los grados por año académico "
                 + "(tasas de éxito y abandono, aprobados y matriculados).</li>"
@@ -199,14 +188,6 @@ public class MainView {
 
     public JComboBox<Object> getCbAlumnos() {
         return cbAlumnos;
-    }
-
-    public JPanel getPanelProfesor() {
-        return panelProfesor;
-    }
-
-    public JComboBox<ProfesorDTO> getCbProfesores() {
-        return cbProfesores;
     }
 
     public JButton getBtnAcceder() {
