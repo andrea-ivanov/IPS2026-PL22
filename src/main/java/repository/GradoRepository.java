@@ -71,4 +71,8 @@ public class GradoRepository {
 	public void emitirDictamen(String gradoId, String resultado) {
 		gradoModel.emitirDictamen(gradoId, resultado, LocalDate.now().toString());
 	}
+
+	public int extinguirGradosAlIniciarAnio() {
+		return gradoModel.extinguirGradosAlIniciarAnio(LocalDate.now().toString());
+	}
 }
