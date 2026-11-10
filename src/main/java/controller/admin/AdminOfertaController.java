@@ -175,6 +175,7 @@ public class AdminOfertaController {
 	// TODO: cuando GradoFormDialog tenga el desplegable de ramas, leer aqui y en onModificarGrado el valor de BD
 	// de la rama seleccionada (sin tilde) en lugar de getTxtRama().getText(), y preseleccionar la actual al modificar
 	private void onAnadirGrado() {
+		gradoRepository.validarCreacionGrado(getAnioActualId());
 		GradoFormDialog form = new GradoFormDialog(view.getFrame());
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
 			String nombre = form.getTxtNombre().getText();
@@ -268,7 +269,7 @@ public class AdminOfertaController {
 
 		int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
 				"¿Desea eliminar el grado " + gradoActualNombre + "?\n"
-						+ "El grado pasará a EN_EXTINCION y todos sus cursos a INACTIVO.",
+						+ "El grado pasará a EXTINTO y todos sus cursos a INACTIVO.",
 				"Eliminar grado", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 		if (confirm != JOptionPane.YES_OPTION) {
 			return;

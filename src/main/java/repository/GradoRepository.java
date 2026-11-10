@@ -6,6 +6,7 @@ import java.util.List;
 import model.grado.EstadoGrado;
 import model.grado.GradoDisplayDTO;
 import model.grado.GradoModel;
+import model.grado.GradoRevisionDisplayDTO;
 import util.Database;
 
 /**
@@ -39,6 +40,10 @@ public class GradoRepository {
 		return list;
 	}
 
+	public void validarCreacionGrado(String anioAcademicoId) {
+		gradoModel.validarCreacionGrado(anioAcademicoId, LocalDate.now().toString());
+	}
+
 	public String crearGrado(String nombre, String facultad, String ramaConocimiento, String anioAcademicoId) {
 		return gradoModel.crearGrado(nombre, facultad, ramaConocimiento, anioAcademicoId, LocalDate.now().toString());
 	}
@@ -53,5 +58,17 @@ public class GradoRepository {
 
 	public void eliminarGrado(String gradoId, String anioAcademicoId) {
 		gradoModel.eliminarGrado(gradoId, anioAcademicoId);
+	}
+
+	public GradoRevisionDisplayDTO getGradoRevision(String gradoId) {
+		return gradoModel.getGradoRevision(gradoId);
+	}
+
+	public boolean admiteDictamen(String gradoId) {
+		return gradoModel.admiteDictamen(gradoId, LocalDate.now().toString());
+	}
+
+	public void emitirDictamen(String gradoId, String resultado) {
+		gradoModel.emitirDictamen(gradoId, resultado, LocalDate.now().toString());
 	}
 }

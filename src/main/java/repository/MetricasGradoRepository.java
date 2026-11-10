@@ -25,6 +25,11 @@ public class MetricasGradoRepository {
 		return metricasGradoModel.getMetricasGrados(rama, nombreGrado, anioAcademicoId, LocalDate.now().toString());
 	}
 
+	public List<GradoAnioRevisorDisplayDTO> metricasDelAnio(List<GradoAnioRevisorDisplayDTO> todas,
+			String anioAcademicoId) {
+		return metricasGradoModel.metricasDelAnio(todas, anioAcademicoId);
+	}
+
 	public String getAnioAcademicoPorDefecto() {
 		return metricasGradoModel.getAnioAcademicoPorDefecto();
 	}
