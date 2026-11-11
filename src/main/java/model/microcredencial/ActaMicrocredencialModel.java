@@ -2,7 +2,9 @@ package model.microcredencial;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
+import model.acta.ActaModel;
 import repository.ActaMicrocredencialRepository;
 import util.Database;
 import util.exception.ValidationException;
@@ -21,9 +23,11 @@ public class ActaMicrocredencialModel {
 	static final String INSCRITA = "INSCRITA";
 	static final String FINALIZADA = "FINALIZADA";
 
+	private Database db;
 	private ActaMicrocredencialRepository repository;
 
 	public ActaMicrocredencialModel(Database db) {
+		this.db = db;
 		this.repository = new ActaMicrocredencialRepository(db);
 	}
 
@@ -53,6 +57,39 @@ public class ActaMicrocredencialModel {
 	}
 
 	// =========================================================================
+	// Notas
+	// =========================================================================
+
+	/**
+	 * Guarda las notas del acta (clave: matriculaId, valor: nota escrita en la tabla). Vacío o NP: sin nota.
+	 * Se validan todas antes de guardar y se guardan en una única transacción: o todas o ninguna.
+	 * @throws ValidationException si el profesor no la imparte, el acta está cerrada, no ha empezado la
+	 *         impartición, alguna nota no es válida o alguna matrícula no está en el acta
+	 */
+	public void guardarNotas(String profesorId, String microcredencialId, Map<String, String> notas, String fechaHoy) {
+		MicrocredencialDisplayDTO mc = getMicrocredencialDelProfesor(profesorId, microcredencialId);
+		comprobarActaAbierta(mc);
+		if (!puedeEditarNotas(mc, fechaHoy)) {
+			throw new ValidationException("La microcredencial todavía no ha empezado (inicio: "
+					+ mc.getInicioImparticion() + ")");
+		}
+		for (Map.Entry<String, String> n : notas.entrySet()) {
+			ActaModel.parseNota(n.getKey(), n.getValue());
+		}
+
+		db.enTransaccion(conn -> {
+			for (Map.Entry<String, String> n : notas.entrySet()) {
+				Double nota = ActaModel.parseNota(n.getKey(), n.getValue());
+				if (repository.guardarNota(conn, microcredencialId, n.getKey(), nota, INSCRITA) == 0) {
+					// se lanza dentro de la transacción para deshacer las notas ya guardadas
+					throw new ValidationException("La matrícula " + n.getKey() + " no está en el acta");
+				}
+			}
+			return null;
+		});
+	}
+
+	// =========================================================================
 	// Reglas
 	// =========================================================================
 
@@ -70,6 +107,12 @@ public class ActaMicrocredencialModel {
 	public static boolean puedeCerrarActa(MicrocredencialDisplayDTO mc, String fechaHoy) {
 		return actaAbierta(mc) && fechaHoy.compareTo(mc.getFinImparticion()) >= 0
 				&& fechaHoy.compareTo(finPlazoCierre(mc)) <= 0;
+	}
+
+	private static void comprobarActaAbierta(MicrocredencialDisplayDTO mc) {
+		if (!actaAbierta(mc)) {
+			throw new ValidationException("El acta está cerrada: las notas ya no se pueden cambiar");
+		}
 	}
 
 	/** Último día en que el profesor puede cerrar el acta: fin de la impartición + 15 días */

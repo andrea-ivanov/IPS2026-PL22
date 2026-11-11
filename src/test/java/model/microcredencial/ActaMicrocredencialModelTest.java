@@ -3,11 +3,14 @@ package model.microcredencial;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -197,8 +200,101 @@ public class ActaMicrocredencialModelTest {
 	}
 
 	// =========================================================================
+	// Poner y cambiar notas
+	// =========================================================================
+
+	@Test
+	@DisplayName("El profesor pone y cambia notas; vacío o NP dejan al alumno sin nota")
+	public void testGuardarYCambiarNotas() {
+		model.guardarNotas("P001", "MC1", notas("M1", "9,25", "M2", "5", "M5", ""), "2026-10-20");
+		assertEquals(9.25, nota("M1", "MC1"));
+		assertEquals(5.0, nota("M2", "MC1"));
+		assertNull(nota("M5", "MC1"));
+
+		model.guardarNotas("P001", "MC1", notas("M2", "NP"), "2026-10-20");
+		assertNull(nota("M2", "MC1"));
+		assertEquals(9.25, nota("M1", "MC1"), "Las notas que no se envían no cambian");
+	}
+
+	@Test
+	@DisplayName("Las notas van de 0 a 10")
+	public void testNotasFueraDeRango() {
+		for (String mala : List.of("10.5", "-1", "abc")) {
+			ValidationException e = assertThrows(ValidationException.class,
+					() -> model.guardarNotas("P001", "MC1", notas("M1", mala), "2026-10-20"));
+			assertTrue(e.getMessage().contains("entre 0 y 10"), e.getMessage());
+		}
+		model.guardarNotas("P001", "MC1", notas("M1", "0", "M2", "10"), "2026-10-20");
+		assertEquals(0.0, nota("M1", "MC1"));
+		assertEquals(10.0, nota("M2", "MC1"));
+	}
+
+	@Test
+	@DisplayName("Si una nota no es válida no se guarda ninguna")
+	public void testNotaInvalidaNoGuardaNinguna() {
+		assertThrows(ValidationException.class,
+				() -> model.guardarNotas("P001", "MC1", notas("M1", "7", "M2", "11"), "2026-10-20"));
+		assertEquals(8.5, nota("M1", "MC1"));
+		assertNull(nota("M2", "MC1"));
+	}
+
+	@Test
+	@DisplayName("No se ponen notas antes de que empiece la microcredencial")
+	public void testNotasAntesDeEmpezarImparticion() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.guardarNotas("P001", "MC2", notas("M1", "7"), "2026-11-11"));
+		assertEquals("La microcredencial todavía no ha empezado (inicio: 2026-11-16)", e.getMessage());
+		assertNull(nota("M1", "MC2"));
+	}
+
+	@Test
+	@DisplayName("Con el acta cerrada las notas no se pueden cambiar")
+	public void testNotasConActaCerrada() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.guardarNotas("P001", "MC4", notas("M5", "9"), "2026-11-01"));
+		assertEquals("El acta está cerrada: las notas ya no se pueden cambiar", e.getMessage());
+		assertEquals(6.0, nota("M5", "MC4"));
+	}
+
+	@Test
+	@DisplayName("Solo el profesor que imparte la microcredencial pone notas")
+	public void testOtroProfesorNoPuedeCalificar() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.guardarNotas("P002", "MC1", notas("M1", "2"), "2026-10-20"));
+		assertTrue(e.getMessage().contains(SOLO_SU_PROFESOR), e.getMessage());
+		assertEquals(8.5, nota("M1", "MC1"));
+	}
+
+	@Test
+	@DisplayName("No se califica a quien no está en el acta (abandonó, sin pagar u otra matrícula)")
+	public void testNotaDeInscripcionFueraDelActaNoGuardaNada() {
+		for (String fuera : List.of("M3", "M4", "M6", "M999")) {
+			ValidationException e = assertThrows(ValidationException.class,
+					() -> model.guardarNotas("P001", "MC1", notas("M1", "7", fuera, "6"), "2026-10-20"));
+			assertEquals("La matrícula " + fuera + " no está en el acta", e.getMessage());
+			assertEquals(8.5, nota("M1", "MC1"), "No se guarda ninguna nota del lote");
+		}
+		assertNull(nota("M3", "MC1"));
+	}
+
+	// =========================================================================
 	// Auxiliares
 	// =========================================================================
+
+	/** Notas como las envía la tabla: matrícula, texto, matrícula, texto... */
+	private static Map<String, String> notas(String... pares) {
+		Map<String, String> notas = new LinkedHashMap<>();
+		for (int i = 0; i < pares.length; i += 2) {
+			notas.put(pares[i], pares[i + 1]);
+		}
+		return notas;
+	}
+
+	private static Double nota(String matriculaId, String microcredencialId) {
+		Object valor = db.executeQueryArray("SELECT CAST(nota AS REAL) FROM MatriculaMicrocredencial "
+				+ "WHERE matriculaId = ? AND microcredencialId = ?", matriculaId, microcredencialId).get(0)[0];
+		return valor == null ? null : ((Number) valor).doubleValue();
+	}
 
 	private static List<String> matriculas(List<CalificacionMicrocredencialDTO> acta) {
 		List<String> ids = new ArrayList<>();

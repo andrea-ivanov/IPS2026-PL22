@@ -1,5 +1,9 @@
 package repository;
 
+import static util.DbUtil.update;
+
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 
@@ -47,5 +51,17 @@ public class ActaMicrocredencialRepository {
 						+ "WHERE mm.microcredencialId = ? AND mm.estado IN (" + marcas + ") "
 						+ "ORDER BY a.apellidos, a.nombre",
 				params);
+	}
+
+	/**
+	 * Pone o quita (nota nula) la nota de una inscripción que está en el estado indicado
+	 * (dentro de la transacción del modelo).
+	 * @return filas cambiadas: 0 si la matrícula no tiene esa inscripción en ese estado
+	 */
+	public int guardarNota(Connection conn, String microcredencialId, String matriculaId, Double nota,
+			String estadoInscripcion) throws SQLException {
+		return update(conn, "UPDATE MatriculaMicrocredencial SET nota = ? "
+				+ "WHERE microcredencialId = ? AND matriculaId = ? AND estado = ?",
+				nota, microcredencialId, matriculaId, estadoInscripcion);
 	}
 }
