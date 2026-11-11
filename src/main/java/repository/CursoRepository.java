@@ -13,7 +13,6 @@ import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.curso.CursoDisplayDTO;
 import model.curso.CursoEdicionDTO;
-import model.curso.EstadoCurso;
 import util.Database;
 
 /**
