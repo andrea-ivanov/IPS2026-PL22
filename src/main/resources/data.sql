@@ -88000,7 +88000,7 @@ INSERT INTO Microcredencial VALUES
 ('MC049','2026-2027','P039','Analisis de Datos con Python','Ingenieria y Arquitectura',3,20,'2027-02-02','2027-02-16','2027-03-01','2027-04-19','PROPUESTA','2026-10-29',NULL,NULL,NULL,NULL,0),
 ('MC050','2026-2027','P012','Introduccion a Docker','Ingenieria y Arquitectura',4,40,'2027-02-28','2027-03-14','2027-03-28','2027-05-09','PROPUESTA','2026-10-29',NULL,NULL,NULL,NULL,0),
 ('MC051','2026-2027','P001','Taller de Testing con JUnit','Ingenieria y Arquitectura',3,30,'2026-10-26','2026-11-09','2026-11-16','2026-12-18','ACEPTADA','2026-09-16','2026-09-26',NULL,NULL,NULL,0),
-('MC052','2026-2027','P001','Taller de Git Avanzado','Ingenieria y Arquitectura',3,30,'2026-09-14','2026-09-28','2026-10-05','2026-10-23','ACEPTADA','2026-08-05','2026-08-15',NULL,NULL,NULL,0);
+('MC052','2026-2027','P001','Taller de Git Avanzado','Ingenieria y Arquitectura',3,30,'2026-09-14','2026-09-28','2026-10-05','2026-11-06','ACEPTADA','2026-08-05','2026-08-15',NULL,NULL,NULL,0);
 
 -- =========================
 -- MATRICULAMICROCREDENCIAL (571 filas)

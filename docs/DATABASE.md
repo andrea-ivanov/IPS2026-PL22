@@ -518,7 +518,7 @@ stateDiagram-v2
 `abierta` (`fechaCierreActa` nula) → `cerrada`
 
 - Solo el profesor de la microcredencial ve su acta, pone notas y la cierra. En el acta salen solo las inscripciones con el pago validado (INSCRITA o FINALIZADA); las abandonadas y canceladas no aparecen.
-- Puede poner y cambiar notas desde que empieza la impartición hasta que cierra el acta. Una inscripción sin nota al cerrar queda como no presentado.
+- Puede poner y cambiar notas desde que empieza la impartición hasta que cierra el acta (de 0 a 10; vacía o `NP` = sin nota). Una inscripción sin nota al cerrar queda como no presentado.
 - **Cierre manual:** con confirmación, desde el día de fin de la impartición (nunca antes, confirmado por el PO) hasta 15 días después. Las inscripciones INSCRITAS pasan a FINALIZADA, la microcredencial a FINALIZADA y se guarda la fecha (`cierreAutomatico = 0`).
 - **Cierre automático:** si el profesor no la cierra en los 15 días siguientes al fin de la impartición (plazo aprobado por el cliente), la cierra el sistema con las notas que haya, con fecha de fin de impartición + 15 días (`cierreAutomatico = 1`).
 - **Una única convocatoria:** no hay extraordinaria. *(Supuesto, pendiente de confirmar con el PO.)*
@@ -1086,7 +1086,7 @@ WHERE microcredencialId = 'MC052' AND matriculaId = 'M01377' AND estado = 'INSCR
 -- Cerrar el acta (el profesor, tras confirmar), en una transaccion
 UPDATE MatriculaMicrocredencial SET estado = 'FINALIZADA'
 WHERE microcredencialId = 'MC052' AND estado = 'INSCRITA';
-UPDATE Microcredencial SET estado = 'FINALIZADA', fechaCierreActa = '2026-10-29', cierreAutomatico = 0
+UPDATE Microcredencial SET estado = 'FINALIZADA', fechaCierreActa = '2026-11-10', cierreAutomatico = 0
 WHERE microcredencialId = 'MC052' AND estado = 'ACEPTADA' AND profesorId = 'P001';
 
 -- Cierre automatico al arrancar (fecha actual: '2026-11-10'): plazo de 15 dias vencido
@@ -1245,7 +1245,7 @@ Los dobles grados comparten asignaturas con sus grados de origen. Hay 6 dictáme
 - **Inscripciones:** 571. Hay 419 FINALIZADA, 46 INSCRITA, 42 ABANDONADA, 54 CANCELADA por IMPAGO, 7 CANCELADA por BAJA_DEMANDA y 3 SOLICITADA.
 - **Dos microcredenciales de demostración** del profesor P001, de 3 créditos (60 €) y 30 plazas:
   - **MC051 "Taller de Testing con JUnit"**, con la matriculación abierta del 26 de octubre al 9 de noviembre de 2026 (HU 35987 y 36410). Tiene 2 inscripciones pagadas con tarjeta, 1 transferencia y 1 carta de pago pendientes de validar, y 1 sin pagar. Con 2 pagadas de 30 está por debajo del 10 %: si nadie más paga, el lote del 15 de noviembre la cancelará por baja demanda. Basta con validar una transferencia para salvarla.
-  - **MC052 "Taller de Git Avanzado"**, con la impartición terminada el 23 de octubre y el **acta abierta** (HU 36459). Tiene 5 alumnos, 3 con nota. El profesor puede cerrarla hasta el 7 de noviembre; después la cierra el sistema.
+  - **MC052 "Taller de Git Avanzado"**, con la impartición del 5 de octubre al 6 de noviembre de 2026 y el **acta abierta** (HU 36459). Tiene 5 alumnos, 3 con nota. El profesor puede cerrarla del 6 al 21 de noviembre; después la cierra el sistema.
 
 ### Pruebas automáticas
 
