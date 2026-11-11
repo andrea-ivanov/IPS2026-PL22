@@ -115,6 +115,22 @@ public class ActaMicrocredencialModel {
 						EstadoMicrocredencial.FINALIZADA.name(), fechaHoy, false));
 	}
 
+	/**
+	 * Cierre automático (cierreAutomatico = 1): las actas abiertas que el profesor no cerró en los
+	 * DIAS_CIERRE_ACTA_MICROCREDENCIAL días siguientes al fin de la impartición se cierran con las notas que haya,
+	 * con fecha fin + 15 días aunque el sistema lo haga más tarde. Se ejecuta al arrancar y al recargar la BD.
+	 * @return el número de actas cerradas
+	 */
+	public int cerrarActasVencidas(String fechaHoy) {
+		String abierta = EstadoMicrocredencial.ACEPTADA.name();
+		return db.enTransaccion(conn -> {
+			repository.cambiarEstadoInscripcionesVencidas(conn, fechaHoy, DIAS_CIERRE_ACTA_MICROCREDENCIAL, abierta,
+					INSCRITA, FINALIZADA);
+			return repository.cerrarActasVencidas(conn, fechaHoy, DIAS_CIERRE_ACTA_MICROCREDENCIAL, abierta,
+					EstadoMicrocredencial.FINALIZADA.name());
+		});
+	}
+
 	// =========================================================================
 	// Reglas
 	// =========================================================================

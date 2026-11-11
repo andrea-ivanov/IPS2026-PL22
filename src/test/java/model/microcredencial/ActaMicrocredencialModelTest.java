@@ -363,6 +363,58 @@ public class ActaMicrocredencialModelTest {
 	}
 
 	// =========================================================================
+	// Cierre automático
+	// =========================================================================
+
+	@Test
+	@DisplayName("El sistema cierra el acta cuando pasan 15 días del fin, no antes, con fecha fin + 15")
+	public void testCierreAutomaticoRespetaElPlazo() {
+		assertEquals(0, model.cerrarActasVencidas("2026-11-07"));
+		assertEquals(Arrays.asList("ACEPTADA", null, "0"), microcredencial("MC1"));
+
+		assertEquals(2, model.cerrarActasVencidas("2026-11-08"));
+		assertEquals(List.of("FINALIZADA", "2026-11-07", "1"), microcredencial("MC1"));
+		assertEquals(List.of("FINALIZADA", "2026-11-07", "1"), microcredencial("MC3"));
+		assertEquals(Arrays.asList("ACEPTADA", null, "0"), microcredencial("MC2"));
+		assertEquals(List.of("FINALIZADA", "2026-10-30", "0"), microcredencial("MC4"));
+	}
+
+	@Test
+	@DisplayName("Aunque el sistema la cierre más tarde, la fecha de cierre es fin + 15")
+	public void testCierreAutomaticoTardioGuardaFechaDelPlazo() {
+		assertEquals(2, model.cerrarActasVencidas("2026-12-01"));
+		assertEquals(List.of("FINALIZADA", "2026-11-07", "1"), microcredencial("MC1"));
+	}
+
+	@Test
+	@DisplayName("El cierre automático conserva las notas puestas; quien no tiene nota queda como NP")
+	public void testCierreAutomaticoConservaNotas() {
+		model.cerrarActasVencidas("2026-11-08");
+		assertEquals(List.of("8.5", "NP", "4"), notas(model.getCalificaciones("P001", "MC1")));
+		assertEquals("FINALIZADA", estado("M1", "MC1"));
+		assertEquals("FINALIZADA", estado("M2", "MC3"));
+		assertEquals(7.0, nota("M2", "MC3"));
+		assertEquals("INSCRITA", estado("M1", "MC2"), "Las inscripciones de actas abiertas no cambian");
+	}
+
+	@Test
+	@DisplayName("El cierre automático no toca abandonadas, canceladas ni solicitadas")
+	public void testCierreAutomaticoNoTocaSolicitadasNiAbandonadas() {
+		model.cerrarActasVencidas("2026-11-08");
+		assertEquals("ABANDONADA", estado("M3", "MC1"));
+		assertEquals("CANCELADA", estado("M4", "MC1"));
+		assertEquals("SOLICITADA", estado("M6", "MC1"));
+	}
+
+	@Test
+	@DisplayName("Volver a ejecutar el cierre automático no cambia nada")
+	public void testCierreAutomaticoIdempotente() {
+		assertEquals(2, model.cerrarActasVencidas("2026-11-08"));
+		assertEquals(0, model.cerrarActasVencidas("2026-11-09"));
+		assertEquals(List.of("FINALIZADA", "2026-11-07", "1"), microcredencial("MC1"));
+	}
+
+	// =========================================================================
 	// Auxiliares
 	// =========================================================================
 

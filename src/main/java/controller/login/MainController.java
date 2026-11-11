@@ -23,6 +23,7 @@ import model.profesor.ProfesorModel;
 import model.acta.ActaModel;
 import model.gestionmatricula.GestionMatriculaModel;
 import model.grado.GradoModel;
+import model.microcredencial.ActaMicrocredencialModel;
 import model.microcredencial.MicrocredencialModel;
 import util.ComboBuscable;
 import util.Database;
@@ -80,6 +81,11 @@ public class MainController {
         // que no alcancen el 10% de plazas pagadas el día antes de cerrar su periodo de matriculación
         SwingUtil.exceptionWrapper(() -> new MicrocredencialModel(db)
                 .cancelarPorBajaDemanda(LocalDate.now().toString()));
+        // HU 36459: el sistema cierra las actas de microcredenciales que el profesor no cerró en los 15 días
+        // siguientes al fin de la impartición. Va después de la baja demanda, que cancela antes las inscripciones
+        // sin pagar
+        SwingUtil.exceptionWrapper(() -> new ActaMicrocredencialModel(db)
+                .cerrarActasVencidas(LocalDate.now().toString()));
     }
 
     /**

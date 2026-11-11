@@ -82,4 +82,34 @@ public class ActaMicrocredencialRepository {
 				+ "WHERE microcredencialId = ? AND estado = ?",
 				estadoCerrada, fechaCierre, automatico ? 1 : 0, microcredencialId, estadoAbierta);
 	}
+
+	// =========================================================================
+	// Cierre automático
+	// =========================================================================
+
+	/**
+	 * Pasa de estadoActual a estadoNuevo las inscripciones de las microcredenciales con el acta abierta
+	 * (estadoAbierta) cuyo plazo de cierre venció antes de fechaHoy (date(finImparticion, '+dias days') < fechaHoy).
+	 * Va antes que cerrarActasVencidas, que es la que cambia el estado de la microcredencial.
+	 */
+	public int cambiarEstadoInscripcionesVencidas(Connection conn, String fechaHoy, int dias, String estadoAbierta,
+			String estadoActual, String estadoNuevo) throws SQLException {
+		return update(conn, "UPDATE MatriculaMicrocredencial SET estado = ? "
+				+ "WHERE estado = ? AND microcredencialId IN (SELECT microcredencialId FROM Microcredencial "
+				+ "    WHERE estado = ? AND date(finImparticion, '+' || ? || ' days') < ?)",
+				estadoNuevo, estadoActual, estadoAbierta, dias, fechaHoy);
+	}
+
+	/**
+	 * Cierra (cierreAutomatico = 1) las actas abiertas cuyo plazo venció antes de fechaHoy, con fecha de cierre
+	 * el último día del plazo (fin de la impartición + dias)
+	 * @return microcredenciales cerradas
+	 */
+	public int cerrarActasVencidas(Connection conn, String fechaHoy, int dias, String estadoAbierta,
+			String estadoCerrada) throws SQLException {
+		return update(conn, "UPDATE Microcredencial "
+				+ "SET estado = ?, fechaCierreActa = date(finImparticion, '+' || ? || ' days'), cierreAutomatico = 1 "
+				+ "WHERE estado = ? AND date(finImparticion, '+' || ? || ' days') < ?",
+				estadoCerrada, dias, estadoAbierta, dias, fechaHoy);
+	}
 }
