@@ -22,6 +22,10 @@ public class MicrocredencialDisplayDTO {
 	private String fechaResolucion;
 	private String motivoRechazo;
 	private String fechaCancelacion;
+	/** Fecha de cierre del acta (HU 36459); nula mientras está abierta */
+	private String fechaCierreActa;
+	/** 1 si cerró el acta el sistema, 0 si la cerró el profesor o sigue abierta */
+	private Integer cierreAutomatico;
 	private String estado;
 
 	public MicrocredencialDisplayDTO() {
@@ -42,6 +46,10 @@ public class MicrocredencialDisplayDTO {
 		if (EstadoMicrocredencial.CANCELADA_BAJA_DEMANDA.name().equals(estado)) {
 			return "Baja demanda (< 10% plazas)"
 					+ (fechaCancelacion != null ? " · " + fechaCancelacion : "");
+		}
+		if (EstadoMicrocredencial.FINALIZADA.name().equals(estado) && fechaCierreActa != null) {
+			return (Integer.valueOf(1).equals(cierreAutomatico) ? "Acta cerrada por el sistema el " : "Acta cerrada el ")
+					+ fechaCierreActa;
 		}
 		if (EstadoMicrocredencial.RECHAZADA.name().equals(estado) && motivoRechazo != null) {
 			return motivoRechazo;
