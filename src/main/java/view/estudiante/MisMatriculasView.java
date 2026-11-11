@@ -38,6 +38,10 @@ public class MisMatriculasView {
     private JButton btnVerNotasSeleccionada;
     private JButton btnVerTodasNotas;
 
+    // Pestaña de microcredenciales (HU 35987, HU 36410 y HU 36459)
+    private JTable tableMicrocredenciales;
+    private DefaultTableModel tableModelMicrocredenciales;
+
     private JButton btnVolver;
     private JPanel panelPrincipal;
 
@@ -137,6 +141,27 @@ public class MisMatriculasView {
         tabbedPane.addTab("  Calificaciones por Convocatoria  ", crearPestanaTabla("Calificaciones por convocatoria",
                 "Convocatorias presentadas en el grado consultado", tableCalificaciones, btnVerTodasNotas));
 
+        // --- Pestaña 3: Microcredenciales (HU 35987, HU 36410 y HU 36459) ---
+        String[] colMicrocredenciales = { "Año Académico", "Código", "Microcredencial", "Rama", "Créditos",
+                "Inicio Impartición", "Fin Impartición", "Estado", "Detalle / Motivo", "Nota" };
+        tableModelMicrocredenciales = new DefaultTableModel(colMicrocredenciales, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        tableMicrocredenciales = Estilo.tablaQueLlena(tableModelMicrocredenciales);
+        Estilo.estilizarTabla(tableMicrocredenciales);
+        tableMicrocredenciales.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tableMicrocredenciales.getTableHeader().setReorderingAllowed(false);
+        centrar(tableMicrocredenciales, 0, 1, 4, 5, 6, 9);
+        tableMicrocredenciales.getColumnModel().getColumn(7).setCellRenderer(new Estilo.RendererEstado());
+
+        tabbedPane.addTab("  Microcredenciales  ", crearPestanaTabla("Mis microcredenciales",
+                "Inscripciones en microcredenciales, su estado (incluyendo cancelaciones por baja demanda) y calificaciones",
+                tableMicrocredenciales, null));
+
         panelPrincipal.add(tabbedPane, BorderLayout.CENTER);
 
         frame.getContentPane().add(panelPrincipal, BorderLayout.CENTER);
@@ -166,7 +191,9 @@ public class MisMatriculasView {
         cabecera.add(Estilo.textoSecundario(ayuda), BorderLayout.EAST);
         tarjeta.add(cabecera, BorderLayout.NORTH);
         tarjeta.add(Estilo.scrollTabla(tabla), BorderLayout.CENTER);
-        tarjeta.add(Estilo.barraAcciones(accion), BorderLayout.SOUTH);
+        if (accion != null) {
+            tarjeta.add(Estilo.barraAcciones(accion), BorderLayout.SOUTH);
+        }
         pestana.add(tarjeta, BorderLayout.CENTER);
         return pestana;
     }
@@ -227,5 +254,13 @@ public class MisMatriculasView {
 
     public JButton getBtnVolver() {
         return btnVolver;
+    }
+
+    public JTable getTableMicrocredenciales() {
+        return tableMicrocredenciales;
+    }
+
+    public DefaultTableModel getTableModelMicrocredenciales() {
+        return tableModelMicrocredenciales;
     }
 }

@@ -17,6 +17,7 @@ import util.Database;
 import util.SwingUtil;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
+import view.comun.Estilo;
 import view.profesor.MicrocredencialFormDialog;
 import view.profesor.ProfesorView;
 
@@ -332,7 +333,7 @@ public class ProfesorController {
     // HU 35988: propuestas de microcredenciales
     // =========================================================================
 
-    /** Listado "Mis microcredenciales" del profesor cargado, con su estado */
+    /** Listado "Mis microcredenciales" del profesor cargado, con su estado (HU 35988 y HU 36410) */
     private void cargarMicrocredenciales() {
         List<MicrocredencialDisplayDTO> microcredenciales = microcredencialModel.getMicrocredenciales(profesorId);
         view.getLblProfesorMicrocredencial().setText("Microcredenciales de " + profesor
@@ -340,11 +341,13 @@ public class ProfesorController {
         TableModel tmodel = SwingUtil.getTableModelFromPojos(microcredenciales,
                 new String[] { "microcredencialId", "anioAcademicoId", "nombre", "ramaConocimiento", "creditos", "plazas",
                         "inicioMatriculacion", "finMatriculacion", "inicioImparticion", "finImparticion",
-                        "fechaPropuesta", "estado" });
+                        "fechaPropuesta", "estadoLegible", "detalleEstado" });
         ((DefaultTableModel) tmodel).setColumnIdentifiers(
                 new String[] { "Código", "Año", "Nombre", "Rama", "Créditos", "Plazas", "Inicio matrícula",
-                        "Fin matrícula", "Inicio impartición", "Fin impartición", "Propuesta", "Estado" });
+                        "Fin matrícula", "Inicio impartición", "Fin impartición", "Propuesta", "Estado",
+                        "Detalle / Resolución" });
         view.getTabMicrocredenciales().setModel(tmodel);
+        view.getTabMicrocredenciales().getColumnModel().getColumn(11).setCellRenderer(new Estilo.RendererEstado());
         SwingUtil.autoAdjustColumns(view.getTabMicrocredenciales());
         view.getBtnProponerMicrocredencial().setEnabled(true);
     }

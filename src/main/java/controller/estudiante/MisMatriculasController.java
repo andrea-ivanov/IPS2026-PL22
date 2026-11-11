@@ -5,6 +5,9 @@ import model.matriculacion.MatriculacionModel;
 import model.matriculacion.MatriculacionDisplayDTO;
 import model.matriculacion.CalificacionDisplayDTO;
 import model.matriculacion.HitosPermanenciaDTO;
+import model.microcredencial.InscripcionMicrocredencialModel;
+import model.microcredencial.MatriculaMicrocredencialDisplayDTO;
+import model.microcredencial.MicrocredencialModel;
 
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -25,16 +28,25 @@ import util.SwingUtil;
 public class MisMatriculasController {
     private MisMatriculasView view;
     private MatriculacionModel model;
+    private InscripcionMicrocredencialModel microcredencialModel;
     private String uo;
     private Runnable onVolver;
 
     public MisMatriculasController(MisMatriculasView view, MatriculacionModel model, String uo) {
-        this(view, model, uo, null);
+        this(view, model, null, uo, null);
     }
 
     public MisMatriculasController(MisMatriculasView view, MatriculacionModel model, String uo, Runnable onVolver) {
+        this(view, model, null, uo, onVolver);
+    }
+
+    public MisMatriculasController(MisMatriculasView view, MatriculacionModel model,
+            InscripcionMicrocredencialModel microcredencialModel, String uo, Runnable onVolver) {
         this.view = view;
         this.model = model;
+        this.microcredencialModel = microcredencialModel != null
+                ? microcredencialModel
+                : (model != null && model.getDb() != null ? new InscripcionMicrocredencialModel(model.getDb()) : null);
         this.uo = uo;
         this.onVolver = onVolver;
     }
@@ -77,6 +89,7 @@ public class MisMatriculasController {
         cargarMatriculas(gradoId);
         cargarHitosPermanencia(gradoId);
         cargarCalificaciones(gradoId);
+        cargarMicrocredenciales();
     }
 
     private String getGradoIdSeleccionado() {
@@ -168,6 +181,34 @@ public class MisMatriculasController {
             modelCalificaciones.addRow(row);
         }
         SwingUtil.autoAdjustColumns(view.getTableCalificaciones());
+    }
+
+    private void cargarMicrocredenciales() {
+        if (view.getTableModelMicrocredenciales() == null || microcredencialModel == null) {
+            return;
+        }
+        DefaultTableModel modelMicro = view.getTableModelMicrocredenciales();
+        modelMicro.setRowCount(0);
+
+        String alumnoId = model != null ? model.resolverAlumnoId(uo) : uo;
+        List<MatriculaMicrocredencialDisplayDTO> microcredenciales = microcredencialModel.getMatriculasAlumno(alumnoId);
+
+        for (MatriculaMicrocredencialDisplayDTO mc : microcredenciales) {
+            Object[] row = new Object[] {
+                    mc.getAnioAcademicoId(),
+                    mc.getMicrocredencialId(),
+                    mc.getNombre(),
+                    mc.getRamaConocimiento(),
+                    mc.getCreditos() != null ? MicrocredencialModel.formatearCreditos(mc.getCreditos()) : "-",
+                    mc.getInicioImparticion(),
+                    mc.getFinImparticion(),
+                    mc.getEstadoLegible(),
+                    mc.getDetalleTexto(),
+                    mc.getNotaTexto()
+            };
+            modelMicro.addRow(row);
+        }
+        SwingUtil.autoAdjustColumns(view.getTableMicrocredenciales());
     }
 
     private void verNotasDeAsignaturaSeleccionada() {
