@@ -129,14 +129,14 @@ public class GradoModelRevisionTest {
 	public class EmitirDictamen {
 
 		@Test
-		@DisplayName("TR-01 Favorable: se guarda el dictamen y el grado pasa a VIGENTE desde el inicio del año nuevo")
+		@DisplayName("TR-01 Favorable: se guarda el dictamen y el grado sigue PENDIENTE_RENOVACION hasta el inicio del año")
 		public void testFavorable() {
 			gradoModel.emitirDictamen("G001", "FAVORABLE", EN_VENTANA);
 
 			assertAll(
 					() -> assertEquals(List.of("2026-2027 FAVORABLE 2026-08-15"), dictamenes("G001")),
-					() -> assertEquals("VIGENTE", estadoGrado("G001")),
-					() -> assertEquals("2026-09-08", vigenciaGrado("G001")));
+					() -> assertEquals("PENDIENTE_RENOVACION", estadoGrado("G001")),
+					() -> assertEquals("2022-09-08", vigenciaGrado("G001")));
 		}
 
 		@Test
@@ -151,15 +151,15 @@ public class GradoModelRevisionTest {
 		}
 
 		@Test
-		@DisplayName("TR-03 Cambiar un desfavorable a favorable sobrescribe el dictamen con la fecha del cambio")
+		@DisplayName("TR-03 Cambiar un desfavorable a favorable sobrescribe el dictamen y el grado vuelve a PENDIENTE_RENOVACION")
 		public void testCambioDesfavorableAFavorable() {
 			gradoModel.emitirDictamen("G002", "DESFAVORABLE", EN_VENTANA);
 			gradoModel.emitirDictamen("G002", "FAVORABLE", "2026-08-20");
 
 			assertAll(
 					() -> assertEquals(List.of("2026-2027 FAVORABLE 2026-08-20"), dictamenes("G002")),
-					() -> assertEquals("VIGENTE", estadoGrado("G002")),
-					() -> assertEquals("2026-09-08", vigenciaGrado("G002")));
+					() -> assertEquals("PENDIENTE_RENOVACION", estadoGrado("G002")),
+					() -> assertEquals("2022-09-08", vigenciaGrado("G002")));
 		}
 
 		@Test
@@ -169,7 +169,7 @@ public class GradoModelRevisionTest {
 
 			assertAll(
 					() -> assertEquals(List.of("2026-2027 FAVORABLE 2026-08-15"), dictamenes("G004")),
-					() -> assertEquals("VIGENTE", estadoGrado("G004")));
+					() -> assertEquals("PENDIENTE_RENOVACION", estadoGrado("G004")));
 		}
 
 		@Test
@@ -192,8 +192,8 @@ public class GradoModelRevisionTest {
 
 			assertAll(
 					() -> assertEquals(List.of("2026-2027 FAVORABLE 2026-08-25"), dictamenes("G001")),
-					() -> assertEquals("VIGENTE", estadoGrado("G001")),
-					() -> assertEquals("2026-09-08", vigenciaGrado("G001")));
+					() -> assertEquals("PENDIENTE_RENOVACION", estadoGrado("G001")),
+					() -> assertEquals("2022-09-08", vigenciaGrado("G001")));
 		}
 	}
 
@@ -277,7 +277,7 @@ public class GradoModelRevisionTest {
 		}
 
 		@Test
-		@DisplayName("TR-13 admiteDictamen: pendientes, en extinción y renovados en esta ventana, solo dentro de ella")
+		@DisplayName("TR-13 admiteDictamen: pendientes (con o sin favorable) y en extinción, solo dentro de la ventana")
 		public void testAdmiteDictamen() {
 			assertAll("Antes de decidir nada",
 					() -> assertTrue(gradoModel.admiteDictamen("G001", EN_VENTANA)),
@@ -292,7 +292,7 @@ public class GradoModelRevisionTest {
 
 			gradoModel.emitirDictamen("G001", "FAVORABLE", EN_VENTANA);
 
-			assertTrue(gradoModel.admiteDictamen("G001", "2026-08-20"), "Un renovado en esta ventana puede cambiar");
+			assertTrue(gradoModel.admiteDictamen("G001", "2026-08-20"), "Un pendiente con favorable puede cambiar");
 		}
 	}
 
@@ -318,12 +318,12 @@ public class GradoModelRevisionTest {
 		}
 
 		@Test
-		@DisplayName("TR-16 Renovado en esta ventana: su dictamen y su fecha")
+		@DisplayName("TR-16 Pendiente con favorable en esta ventana: su dictamen y su fecha")
 		public void testRenovado() {
 			gradoModel.emitirDictamen("G001", "FAVORABLE", EN_VENTANA);
 
-			assertCabecera(gradoModel.getGradoRevision("G001"),
-					"G001", "Biologia", "Facultad de Ciencias", "Ciencias", "VIGENTE", "FAVORABLE", "2026-08-15");
+			assertCabecera(gradoModel.getGradoRevision("G001"), "G001", "Biologia", "Facultad de Ciencias", "Ciencias",
+					"PENDIENTE_RENOVACION", "FAVORABLE", "2026-08-15");
 		}
 	}
 
@@ -365,7 +365,7 @@ public class GradoModelRevisionTest {
 		}
 
 		@Test
-		@DisplayName("TX-03 Flujo completo: el favorable con matrícula pagada sigue VIGENTE; el desfavorable se extingue")
+		@DisplayName("TX-03 Flujo completo: el favorable con matrícula pagada pasa a VIGENTE desde el inicio; el desfavorable se extingue")
 		public void testFlujoCompleto() {
 			gradoModel.emitirDictamen("G001", "FAVORABLE", EN_VENTANA);
 			gradoModel.emitirDictamen("G002", "DESFAVORABLE", EN_VENTANA);
@@ -374,6 +374,7 @@ public class GradoModelRevisionTest {
 
 			assertAll(
 					() -> assertEquals("VIGENTE", estadoGrado("G001")),
+					() -> assertEquals("2026-09-08", vigenciaGrado("G001")),
 					() -> assertEquals("EXTINTO", estadoGrado("G002")),
 					() -> assertEquals(List.of("SOLICITADA null null"), matricula("M6")));
 		}
@@ -387,7 +388,26 @@ public class GradoModelRevisionTest {
 
 			gradoModel.extinguirGradosAlIniciarAnio(INICIO_ANIO);
 
-			assertEquals("VIGENTE", estadoGrado("G001"));
+			assertAll(
+					() -> assertEquals("VIGENTE", estadoGrado("G001")),
+					() -> assertEquals("2026-09-08", vigenciaGrado("G001")));
+		}
+
+		@Test
+		@DisplayName("TX-11 Un favorable sigue PENDIENTE_RENOVACION hasta el inicio y ese día pasa a VIGENTE con la nueva vigencia")
+		public void testFavorableEsperaAlInicio() {
+			gradoModel.emitirDictamen("G001", "FAVORABLE", EN_VENTANA);
+
+			assertEquals(0, gradoModel.extinguirGradosAlIniciarAnio("2026-09-07"));
+			assertAll("Antes del inicio",
+					() -> assertEquals("PENDIENTE_RENOVACION", estadoGrado("G001")),
+					() -> assertEquals("2022-09-08", vigenciaGrado("G001")));
+
+			gradoModel.extinguirGradosAlIniciarAnio(INICIO_ANIO);
+			assertAll("El día de inicio",
+					() -> assertEquals("VIGENTE", estadoGrado("G001")),
+					() -> assertEquals("2026-09-08", vigenciaGrado("G001")),
+					() -> assertEquals(List.of("2026-2027 FAVORABLE 2026-08-15"), dictamenes("G001")));
 		}
 
 		@Test

@@ -156,7 +156,7 @@ public class GradoModel {
 
 	/**
 	 * Indica si hoy se puede emitir o cambiar el dictamen del grado: dentro de la ventana entre el fin del año anterior
-	 * y el inicio del año actual, y con el grado PENDIENTE_RENOVACION, EN_EXTINCION o VIGENTE renovado en esta ventana.
+	 * y el inicio del año actual, y con el grado PENDIENTE_RENOVACION (con o sin dictamen favorable) o EN_EXTINCION.
 	 * No modifica nada.
 	 *
 	 * @param fechaHoy Fecha de referencia en formato ISO (AAAA-MM-DD)
@@ -165,14 +165,14 @@ public class GradoModel {
 		return db.enTransaccion(conn -> {
 			String estado = gradoRepository.findEstado(conn, gradoId);
 			String anioNuevo = anioEnVentana(conn, fechaHoy);
-			return estado != null && anioNuevo != null && estadoAdmiteDictamen(conn, gradoId, estado, anioNuevo);
+			return estado != null && anioNuevo != null && estadoAdmiteDictamen(estado);
 		});
 	}
 
 	/**
 	 * Emite el dictamen del revisor externo para el año que va a empezar, o lo sobrescribe si ya lo había emitido en
-	 * esta ventana. FAVORABLE: el grado pasa a VIGENTE con la vigencia desde el inicio de ese año. DESFAVORABLE: pasa
-	 * a EN_EXTINCION (se extingue al empezar el año).
+	 * esta ventana. FAVORABLE: el grado queda PENDIENTE_RENOVACION hasta que empiece el año, y entonces pasa a VIGENTE
+	 * (extinguirGradosAlIniciarAnio). DESFAVORABLE: pasa a EN_EXTINCION (se extingue al empezar el año).
 	 *
 	 * @param fechaHoy Fecha de referencia en formato ISO (AAAA-MM-DD); es la fecha que se registra
 	 * @throws ValidationException Si el resultado no es válido, se está fuera de la ventana o el estado no lo admite
@@ -193,9 +193,8 @@ public class GradoModel {
 				throw new ValidationException(
 						"El dictamen solo se puede emitir entre el fin de un año académico y el inicio del siguiente");
 			}
-			if (!estadoAdmiteDictamen(conn, gradoId, estado, anioNuevo)) {
-				throw new ValidationException("El grado " + gradoId
-						+ " no está pendiente de renovación ni tiene un dictamen de este periodo que se pueda cambiar");
+			if (!estadoAdmiteDictamen(estado)) {
+				throw new ValidationException("El grado " + gradoId + " no está pendiente de renovación ni en extinción");
 			}
 
 			if (gradoRepository.findResultadoRevision(conn, gradoId, anioNuevo) == null) {
@@ -203,21 +202,19 @@ public class GradoModel {
 			} else {
 				gradoRepository.actualizarRevision(conn, gradoId, anioNuevo, dictamen.name(), fechaHoy.trim());
 			}
-			if (dictamen == ResultadoRevision.FAVORABLE) {
-				gradoRepository.actualizarEstadoYVigencia(conn, gradoId, EstadoGrado.VIGENTE.name(),
-						gradoRepository.findFechaInicioAnio(conn, anioNuevo));
-			} else {
-				gradoRepository.actualizarEstado(conn, gradoId, EstadoGrado.EN_EXTINCION.name());
-			}
+			gradoRepository.actualizarEstado(conn, gradoId, dictamen == ResultadoRevision.FAVORABLE
+					? EstadoGrado.PENDIENTE_RENOVACION.name() : EstadoGrado.EN_EXTINCION.name());
 			return null;
 		});
 	}
 
 	/**
-	 * Al iniciar el año académico actual (hoy igual o posterior a su fecha de inicio) pasan a EXTINTO, con sus cursos
-	 * a INACTIVO:
-	 * - los grados EN_EXTINCION (dictamen desfavorable) y PENDIENTE_RENOVACION (sin dictamen)
-	 * - los grados VIGENTES que empezaron el año sin ninguna matrícula con alguna asignatura pagada
+	 * Al iniciar el año académico actual (hoy igual o posterior a su fecha de inicio), primero los grados
+	 * PENDIENTE_RENOVACION con dictamen FAVORABLE para ese año pasan a VIGENTE, con la vigencia desde su inicio. Después
+	 * pasan a EXTINTO, con sus cursos a INACTIVO:
+	 * - los grados EN_EXTINCION (dictamen desfavorable) y PENDIENTE_RENOVACION (sin dictamen favorable)
+	 * - los grados VIGENTES (también los recién renovados) que empezaron el año sin ninguna matrícula con alguna
+	 *   asignatura pagada
 	 * Las matrículas abiertas de ese año de los grados extinguidos se cancelan, con todas sus asignaturas abiertas,
 	 * con motivo EXTINCION_GRADO y fecha de inicio del año. Se ejecuta en cada arranque: una segunda ejecución no
 	 * encuentra nada que extinguir.
@@ -236,6 +233,8 @@ public class GradoModel {
 			if (fechaHoy.trim().compareTo(inicio) < 0) {
 				return 0;
 			}
+			gradoRepository.renovarPendientesConDictamen(conn, anio, ResultadoRevision.FAVORABLE.name(),
+					EstadoGrado.PENDIENTE_RENOVACION.name(), EstadoGrado.VIGENTE.name(), inicio);
 			List<String> grados = new ArrayList<>(gradoRepository.findIdsPorEstados(conn,
 					Arrays.asList(EstadoGrado.EN_EXTINCION.name(), EstadoGrado.PENDIENTE_RENOVACION.name())));
 			grados.addAll(gradoRepository.findIdsVigentesSinMatriculaPagada(conn, anio, inicio));
@@ -268,15 +267,10 @@ public class GradoModel {
 		return enVentana ? anioNuevo : null;
 	}
 
-	/** PENDIENTE_RENOVACION y EN_EXTINCION admiten dictamen; un VIGENTE, solo si ya tiene dictamen del año nuevo */
-	private boolean estadoAdmiteDictamen(Connection conn, String gradoId, String estado, String anioNuevo)
-			throws SQLException {
+	/** Solo PENDIENTE_RENOVACION (con o sin dictamen favorable) y EN_EXTINCION (desfavorable) admiten dictamen */
+	private boolean estadoAdmiteDictamen(String estado) {
 		EstadoGrado estadoGrado = EstadoGrado.fromString(estado);
-		if (estadoGrado == EstadoGrado.PENDIENTE_RENOVACION || estadoGrado == EstadoGrado.EN_EXTINCION) {
-			return true;
-		}
-		return estadoGrado == EstadoGrado.VIGENTE
-				&& gradoRepository.findResultadoRevision(conn, gradoId, anioNuevo) != null;
+		return estadoGrado == EstadoGrado.PENDIENTE_RENOVACION || estadoGrado == EstadoGrado.EN_EXTINCION;
 	}
 
 	private ResultadoRevision parsearResultado(String resultado) {

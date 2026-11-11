@@ -108,11 +108,15 @@ public class GradoRepository {
 		update(conn, "UPDATE Grado SET estado = ? WHERE gradoId = ?", estado, gradoId);
 	}
 
-	/** Cambia el estado del grado y el inicio de su vigencia */
-	public void actualizarEstadoYVigencia(Connection conn, String gradoId, String estado, String fechaInicioVigencia)
-			throws SQLException {
-		update(conn, "UPDATE Grado SET estado = ?, fechaInicioVigencia = ? WHERE gradoId = ?", estado,
-				fechaInicioVigencia, gradoId);
+	/**
+	 * Los grados en estadoOrigen con dictamen del resultado indicado para el año académico pasan a estadoDestino, con
+	 * la vigencia desde fechaInicioVigencia
+	 */
+	public void renovarPendientesConDictamen(Connection conn, String anioAcademicoId, String resultado,
+			String estadoOrigen, String estadoDestino, String fechaInicioVigencia) throws SQLException {
+		update(conn, "UPDATE Grado SET estado = ?, fechaInicioVigencia = ? WHERE estado = ? AND EXISTS ("
+				+ "SELECT 1 FROM RevisionGrado r WHERE r.gradoId = Grado.gradoId AND r.anioAcademicoId = ? "
+				+ "AND r.resultado = ?)", estadoDestino, fechaInicioVigencia, estadoOrigen, anioAcademicoId, resultado);
 	}
 
 	/**
