@@ -349,8 +349,8 @@ Una fila por propuesta. Las propuestas y las microcredenciales aceptadas están 
 | fechaResolucion | DATE | sí | Cuándo la aceptó o rechazó el secretario. Nula si y solo si está PROPUESTA. No se guarda qué secretario fue. |
 | motivoRechazo | VARCHAR(500) | sí | Obligatorio si y solo si está RECHAZADA. |
 | fechaCancelacion | DATE | sí | Obligatoria si y solo si está CANCELADA_BAJA_DEMANDA. Es el día antes de la impartición. |
-| fechaCierreActa | DATE | sí | El acta está abierta mientras sea nula. Obligatoria si y solo si está FINALIZADA. |
-| cierreAutomatico | INT | no | 0 si la cerró el profesor (o sigue abierta), 1 si la cerró el sistema por pasar el plazo. |
+| fechaCierreActa | DATE | sí | El acta está abierta mientras sea nula. Obligatoria si y solo si está FINALIZADA. Entre `finImparticion` y `finImparticion` + 15 días (`ck_microcredencial_cierreActa`): el PO confirma que no se cierra antes del fin. |
+| cierreAutomatico | INT | no | 0 si la cerró el profesor (o sigue abierta), 1 si la cerró el sistema por pasar el plazo; en ese caso `fechaCierreActa` = `finImparticion` + 15 días. |
 
 #### MatriculaMicrocredencial (Matricula ↔ Microcredencial)
 
@@ -519,9 +519,9 @@ stateDiagram-v2
 
 - Solo el profesor de la microcredencial ve su acta, pone notas y la cierra. En el acta salen solo las inscripciones con el pago validado (INSCRITA o FINALIZADA); las abandonadas y canceladas no aparecen.
 - Puede poner y cambiar notas desde que empieza la impartición hasta que cierra el acta. Una inscripción sin nota al cerrar queda como no presentado.
-- **Cierre manual:** con confirmación. Las inscripciones INSCRITAS pasan a FINALIZADA, la microcredencial a FINALIZADA y se guarda la fecha (`cierreAutomatico = 0`).
-- **Cierre automático:** si el profesor no la cierra en los 15 días siguientes al fin de la impartición, la cierra el sistema con las notas que haya, con fecha de fin de impartición + 15 días (`cierreAutomatico = 1`).
-- **Una única convocatoria:** no hay extraordinaria. *(Supuesto, pendiente de confirmar con el PO, igual que los 15 días.)*
+- **Cierre manual:** con confirmación, desde el día de fin de la impartición (nunca antes, confirmado por el PO) hasta 15 días después. Las inscripciones INSCRITAS pasan a FINALIZADA, la microcredencial a FINALIZADA y se guarda la fecha (`cierreAutomatico = 0`).
+- **Cierre automático:** si el profesor no la cierra en los 15 días siguientes al fin de la impartición (plazo aprobado por el cliente), la cierra el sistema con las notas que haya, con fecha de fin de impartición + 15 días (`cierreAutomatico = 1`).
+- **Una única convocatoria:** no hay extraordinaria. *(Supuesto, pendiente de confirmar con el PO.)*
 - El alumno solo ve su nota en "Mis matriculaciones" cuando el acta está cerrada.
 
 ---
@@ -1291,6 +1291,6 @@ PRAGMA foreign_keys = ON;
 | **Precio por año** | Constante en el código. | Añadir `precioCredito` en AnioAcademico. |
 | **Al corriente de pago** | Interpretación propia (ver 6.4). | Confirmar con el PO. |
 | **Máximo de créditos de una microcredencial** | 15, provisional. | Cambiar la constante cuando el PO dé el valor. |
-| **Acta de microcredenciales** | Plazo de 15 días y una única convocatoria: supuestos pendientes de confirmar. | Una convocatoria extraordinaria necesitaría una segunda nota y un segundo plazo en las inscripciones. |
+| **Acta de microcredenciales** | Una única convocatoria: supuesto pendiente de confirmar (el plazo de 15 días ya está aprobado y el cierre nunca es antes del fin). | Una convocatoria extraordinaria necesitaría una segunda nota y un segundo plazo en las inscripciones. |
 | **Quién pone un grado en PENDIENTE_RENOVACION** | El sistema, al acabar su 4.º año de vigencia (supuesto). | Confirmar con el PO. |
 | **Probar la HU 36455 con `DemoDB.db`** | Fuera de la ventana entre años no hay ningún grado que valorar. | Usar las pruebas automáticas con su propio año académico, o cargar un año 2027-2028 y simular la fecha. |
