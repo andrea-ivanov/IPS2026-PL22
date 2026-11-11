@@ -1,10 +1,8 @@
 package view.estudiante;
 
 import model.matriculacion.OfertaCursoDTO;
-import model.matriculacion.OfertaGradoDTO;
-import model.matriculacion.OfertaMicrocredencialDTO;
+import model.grado.GradoDisplayDTO;
 import model.matriculacion.ResumenSolicitudDTO;
-import model.matriculacion.ResumenSolicitudMicrocredencialDTO;
 import view.comun.Estilo;
 
 import javax.swing.*;
@@ -19,69 +17,51 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Vista unificada de Solicitud de Matrícula (HU 35235 y HU 35987).
- * Integra tanto la matrícula en Grados Oficiales como en Microcredenciales Universitarias
- * en una interfaz coherente de 3 pasos (Asistente de Matrícula):
- * - Paso 1: Selector de tipo de matrícula (Grado / Microcredenciales) y tabla de oferta con checkboxes y cálculo en vivo.
+ * Vista de Solicitud de Matrícula (HU 35235 / Fase 3).
+ * Interfaz por pasos (Asistente de Matrícula):
+ * - Paso 1: Selección de Grado ofertado y tabla de asignaturas con checkboxes y
+ * cálculo en vivo.
  * - Paso 2: Resumen previo consolidado antes de confirmar.
- * - Paso 3: Selección de modalidad de pago (Tarjeta, Transferencia, Carta de pago) y confirmación ("Sí" / "No").
+ * - Paso 3: Selección del método de pago (Tarjeta, Transferencia, Carta de
+ * pago) y confirmación.
  */
 public class SolicitudMatriculaView {
     public static final String PASO_SELECCION = "PASO_SELECCION";
     public static final String PASO_RESUMEN = "PASO_RESUMEN";
     public static final String PASO_PAGO = "PASO_PAGO";
 
-    public static final String MODO_GRADO = "MODO_GRADO";
-    public static final String MODO_MICROCREDENCIAL = "MODO_MICROCREDENCIAL";
-
     private JFrame frame;
     private JPanel panelPrincipal;
     private CardLayout cardLayoutPasos;
     private JPanel panelPasos;
 
-    // Indicador de pasos superior
+    // Indicador de pasos
     private JLabel lblPaso1;
     private JLabel lblPaso2;
     private JLabel lblPaso3;
 
-    // --- Componentes Paso 1: Selector de Modo ---
-    private JRadioButton rbModoGrado;
-    private JRadioButton rbModoMicrocredencial;
-    private ButtonGroup grupoModoMatricula;
-    private CardLayout cardLayoutModos;
-    private JPanel panelContenidoModos;
-
-    // --- Componentes Paso 1: Modo Grado ---
-    private JComboBox<OfertaGradoDTO> cbGrados;
+    // --- Componentes Paso 1: Selección ---
+    private JComboBox<GradoDisplayDTO> cbGrados;
     private JTable tableCursos;
     private DefaultTableModel modelCursos;
-    private JLabel lblInfoEstudiante;
-
-    // --- Componentes Paso 1: Modo Microcredenciales ---
-    private JLabel lblRamasHabilitadas;
-    private JComboBox<String> cbFiltroRama;
-    private JTable tableMicrocredenciales;
-    private DefaultTableModel modelMicrocredenciales;
-
-    // --- Componentes Paso 1: Totales y Navegación Común ---
     private JLabel lblTotalCreditos;
     private JLabel lblTotalImporte;
-    private JLabel lblAvisoTarifa;
+    private JLabel lblInfoEstudiante;
     private JButton btnContinuarPaso2;
     private JButton btnVolverMenuDesdePaso1;
 
-    // --- Componentes Paso 2: Resumen Previo Consolidado ---
+    // --- Componentes Paso 2: Resumen ---
     private JLabel lblResumenEstudiante;
-    private JLabel lblResumenGradoOTipo;
-    private JLabel lblResumenAnioOFecha;
-    private JTable tableResumen;
-    private DefaultTableModel modelResumen;
+    private JLabel lblResumenGrado;
+    private JLabel lblResumenAnio;
+    private JTable tableResumenAsignaturas;
+    private DefaultTableModel modelResumenAsignaturas;
     private JLabel lblResumenCreditosTotales;
     private JLabel lblResumenImporteTotal;
-    private JButton btnModificarSeleccion;
+    private JButton btnModificarAsignaturas;
     private JButton btnContinuarPaso3;
 
-    // --- Componentes Paso 3: Modalidad de Pago y Confirmación ---
+    // --- Componentes Paso 3: Método de Pago y Confirmación ---
     private JRadioButton rbTarjeta;
     private JRadioButton rbTransferencia;
     private JRadioButton rbCartaPago;
@@ -96,9 +76,9 @@ public class SolicitudMatriculaView {
     }
 
     private void initialize() {
-        frame = new JFrame("Solicitud de Matrícula Universitaria");
+        frame = new JFrame("Solicitud de Nueva Matrícula");
         Estilo.aplicarIconoVentana(frame);
-        frame.setBounds(120, 80, 960, 680);
+        frame.setBounds(120, 80, 940, 680);
         frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.getContentPane().setLayout(new BorderLayout());
@@ -121,6 +101,7 @@ public class SolicitudMatriculaView {
         panelPasos.add(crearPaso3Pago(), PASO_PAGO);
 
         panelPrincipal.add(panelPasos, BorderLayout.CENTER);
+
         frame.getContentPane().add(panelPrincipal, BorderLayout.CENTER);
     }
 
@@ -128,7 +109,7 @@ public class SolicitudMatriculaView {
         JPanel header = new JPanel(new BorderLayout(5, 8));
         header.setOpaque(false);
 
-        JLabel lblTitulo = new JLabel("Asistente de Matrícula Universitaria", SwingConstants.CENTER);
+        JLabel lblTitulo = new JLabel("Solicitud de Matrícula", SwingConstants.CENTER);
         lblTitulo.setFont(new Font("Tahoma", Font.BOLD, 18));
         lblTitulo.setForeground(new Color(33, 37, 41));
         header.add(lblTitulo, BorderLayout.NORTH);
@@ -138,8 +119,8 @@ public class SolicitudMatriculaView {
         barraPasos.setOpaque(false);
         barraPasos.setBorder(new EmptyBorder(5, 20, 10, 20));
 
-        lblPaso1 = crearEtiquetaPaso("1. Oferta y Selección", true);
-        lblPaso2 = crearEtiquetaPaso("2. Resumen Previo Consolidado", false);
+        lblPaso1 = crearEtiquetaPaso("1. Selección de Asignaturas", true);
+        lblPaso2 = crearEtiquetaPaso("2. Resumen Previo", false);
         lblPaso3 = crearEtiquetaPaso("3. Modalidad de Pago y Confirmación", false);
 
         barraPasos.add(lblPaso1);
@@ -154,7 +135,19 @@ public class SolicitudMatriculaView {
         JLabel lbl = new JLabel(texto, SwingConstants.CENTER);
         lbl.setFont(new Font("Tahoma", Font.BOLD, 12));
         lbl.setOpaque(true);
-        configurarEstiloPaso(lbl, activo);
+        if (activo) {
+            lbl.setBackground(new Color(13, 110, 253));
+            lbl.setForeground(Color.WHITE);
+            lbl.setBorder(BorderFactory.createCompoundBorder(
+                    new LineBorder(new Color(10, 88, 202), 1, true),
+                    new EmptyBorder(6, 10, 6, 10)));
+        } else {
+            lbl.setBackground(new Color(233, 236, 239));
+            lbl.setForeground(new Color(108, 117, 125));
+            lbl.setBorder(BorderFactory.createCompoundBorder(
+                    new LineBorder(new Color(222, 226, 230), 1, true),
+                    new EmptyBorder(6, 10, 6, 10)));
+        }
         return lbl;
     }
 
@@ -181,113 +174,18 @@ public class SolicitudMatriculaView {
     }
 
     // =========================================================================
-    // PASO 1: SELECCIÓN UNIFICADA (GRADO O MICROCREDENCIALES)
+    // PASO 1: SELECCIÓN DE GRADO Y ASIGNATURAS
     // =========================================================================
     private JPanel crearPaso1Seleccion() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setOpaque(false);
 
-        // Subpanel norte: Selector de modalidad de matrícula (HU 35987)
-        JPanel panelSelectorTipo = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 6));
-        panelSelectorTipo.setBackground(Color.WHITE);
-        panelSelectorTipo.setBorder(new CompoundBorder(
-                new LineBorder(new Color(222, 226, 230), 1, true),
-                new EmptyBorder(6, 12, 6, 12)));
-
-        JLabel lblTipo = new JLabel("Tipo de Matrícula:");
-        lblTipo.setFont(new Font("Tahoma", Font.BOLD, 13));
-        panelSelectorTipo.add(lblTipo);
-
-        rbModoGrado = new JRadioButton("Asignaturas de Grado Oficial");
-        rbModoGrado.setFont(new Font("Tahoma", Font.BOLD, 13));
-        rbModoGrado.setSelected(true);
-        rbModoGrado.setOpaque(false);
-
-        rbModoMicrocredencial = new JRadioButton("Microcredenciales de Especialización");
-        rbModoMicrocredencial.setFont(new Font("Tahoma", Font.BOLD, 13));
-        rbModoMicrocredencial.setOpaque(false);
-
-        grupoModoMatricula = new ButtonGroup();
-        grupoModoMatricula.add(rbModoGrado);
-        grupoModoMatricula.add(rbModoMicrocredencial);
-
-        panelSelectorTipo.add(rbModoGrado);
-        panelSelectorTipo.add(rbModoMicrocredencial);
-        panel.add(panelSelectorTipo, BorderLayout.NORTH);
-
-        // Centro: CardLayout para conmutar entre vista de Grado y vista de Microcredenciales
-        cardLayoutModos = new CardLayout();
-        panelContenidoModos = new JPanel(cardLayoutModos);
-        panelContenidoModos.setOpaque(false);
-
-        panelContenidoModos.add(crearPanelModoGrado(), MODO_GRADO);
-        panelContenidoModos.add(crearPanelModoMicrocredencial(), MODO_MICROCREDENCIAL);
-
-        panel.add(panelContenidoModos, BorderLayout.CENTER);
-
-        // Subpanel sur: Totales en vivo y botones de navegación
-        JPanel panelSur = new JPanel(new BorderLayout(5, 5));
-        panelSur.setOpaque(false);
-
-        JPanel panelIndicadores = new JPanel(new BorderLayout(10, 5));
-        panelIndicadores.setBackground(Color.WHITE);
-        panelIndicadores.setBorder(new CompoundBorder(
-                new LineBorder(new Color(222, 226, 230), 1, true),
-                new EmptyBorder(8, 12, 8, 12)));
-
-        JPanel panelTotales = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
-        panelTotales.setOpaque(false);
-
-        lblTotalCreditos = new JLabel("Total créditos: 0 ECTS");
-        lblTotalCreditos.setFont(new Font("Tahoma", Font.BOLD, 13));
-        lblTotalCreditos.setForeground(new Color(13, 110, 253));
-
-        lblTotalImporte = new JLabel("Coste estimado: 0.00 €");
-        lblTotalImporte.setFont(new Font("Tahoma", Font.BOLD, 13));
-        lblTotalImporte.setForeground(new Color(25, 135, 84));
-
-        panelTotales.add(lblTotalCreditos);
-        panelTotales.add(lblTotalImporte);
-        panelIndicadores.add(panelTotales, BorderLayout.WEST);
-
-        lblAvisoTarifa = new JLabel("(Tarifa fija oficial: 20,00 € por crédito ECTS)");
-        lblAvisoTarifa.setFont(new Font("Tahoma", Font.ITALIC, 11));
-        lblAvisoTarifa.setForeground(new Color(108, 117, 125));
-        panelIndicadores.add(lblAvisoTarifa, BorderLayout.EAST);
-
-        panelSur.add(panelIndicadores, BorderLayout.NORTH);
-
-        JPanel panelBotones = new JPanel(new BorderLayout());
-        panelBotones.setOpaque(false);
-        panelBotones.setBorder(new EmptyBorder(6, 0, 0, 0));
-
-        btnVolverMenuDesdePaso1 = Estilo.estilizarSecundario(new JButton("Volver al Menú"));
-        btnVolverMenuDesdePaso1.setFont(new Font("Tahoma", Font.BOLD, 12));
-        btnVolverMenuDesdePaso1.setPreferredSize(new Dimension(150, 34));
-
-        btnContinuarPaso2 = Estilo.estilizarPrimario(new JButton("Continuar al Resumen  >"));
-        btnContinuarPaso2.setFont(new Font("Tahoma", Font.BOLD, 13));
-        btnContinuarPaso2.setPreferredSize(new Dimension(220, 36));
-
-        panelBotones.add(btnVolverMenuDesdePaso1, BorderLayout.WEST);
-        panelBotones.add(btnContinuarPaso2, BorderLayout.EAST);
-
-        panelSur.add(panelBotones, BorderLayout.SOUTH);
-        panel.add(panelSur, BorderLayout.SOUTH);
-
-        return panel;
-    }
-
-    private JPanel crearPanelModoGrado() {
-        JPanel panel = new JPanel(new BorderLayout(8, 8));
-        panel.setOpaque(false);
-
-        // Filtro Grado
+        // Subpanel norte: Selector de Grado ofertado e Info
         JPanel panelFiltro = new JPanel(new BorderLayout(5, 5));
         panelFiltro.setBackground(Color.WHITE);
         panelFiltro.setBorder(new CompoundBorder(
                 new LineBorder(new Color(222, 226, 230), 1, true),
-                new EmptyBorder(10, 14, 10, 14)));
+                new EmptyBorder(12, 16, 12, 16)));
 
         JPanel panelCombo = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         panelCombo.setOpaque(false);
@@ -303,9 +201,9 @@ public class SolicitudMatriculaView {
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
                     boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof OfertaGradoDTO) {
-                    OfertaGradoDTO g = (OfertaGradoDTO) value;
-                    setText(g.getGradoId() + " - " + g.getNombre() + " (" + g.getEstado() + ")");
+                if (value instanceof GradoDisplayDTO) {
+                    GradoDisplayDTO g = (GradoDisplayDTO) value;
+                    setText(g.getId() + " - " + g.getNombre() + " (" + g.getEstado() + ")");
                 }
                 return this;
             }
@@ -316,18 +214,20 @@ public class SolicitudMatriculaView {
         lblInfoEstudiante = new JLabel("Seleccione un grado para consultar las asignaturas disponibles.");
         lblInfoEstudiante.setFont(new Font("Tahoma", Font.PLAIN, 12));
         lblInfoEstudiante.setForeground(new Color(108, 117, 125));
-        lblInfoEstudiante.setBorder(new EmptyBorder(4, 5, 0, 0));
+        lblInfoEstudiante.setBorder(new EmptyBorder(6, 5, 0, 0));
         panelFiltro.add(lblInfoEstudiante, BorderLayout.SOUTH);
+
         panel.add(panelFiltro, BorderLayout.NORTH);
 
-        // Tabla de asignaturas
+        // Subpanel centro: Tabla de asignaturas con checkboxes
         JPanel panelTabla = new JPanel(new BorderLayout(5, 5));
         panelTabla.setBackground(Color.WHITE);
         panelTabla.setBorder(new CompoundBorder(
                 new LineBorder(new Color(222, 226, 230), 1, true),
-                new EmptyBorder(8, 8, 8, 8)));
+                new EmptyBorder(10, 10, 10, 10)));
 
-        String[] columnas = { "Seleccionar", "Código", "Asignatura", "Curso", "Itinerario", "Créditos", "Convocatorias", "Precio (€)" };
+        String[] columnas = { "Seleccionar", "Código", "Asignatura", "Curso", "Itinerario", "Créditos", "Convocatorias",
+                "Precio (€)" };
         modelCursos = new DefaultTableModel(columnas, 0) {
             @Override
             public Class<?> getColumnClass(int col) {
@@ -347,16 +247,17 @@ public class SolicitudMatriculaView {
 
             @Override
             public boolean isCellEditable(int row, int col) {
-                return col == 0;
+                return col == 0; // Solo la casilla de selección es editable
             }
         };
 
         tableCursos = new JTable(modelCursos);
-        tableCursos.setRowHeight(25);
+        tableCursos.setRowHeight(26);
         tableCursos.setFont(new Font("Tahoma", Font.PLAIN, 12));
         tableCursos.getTableHeader().setFont(new Font("Tahoma", Font.BOLD, 12));
         tableCursos.getTableHeader().setReorderingAllowed(false);
 
+        // Anchos de columna preferidos
         tableCursos.getColumnModel().getColumn(0).setPreferredWidth(85);
         tableCursos.getColumnModel().getColumn(1).setPreferredWidth(65);
         tableCursos.getColumnModel().getColumn(2).setPreferredWidth(260);
@@ -366,6 +267,7 @@ public class SolicitudMatriculaView {
         tableCursos.getColumnModel().getColumn(6).setPreferredWidth(100);
         tableCursos.getColumnModel().getColumn(7).setPreferredWidth(85);
 
+        // Alineación centrada para columnas numéricas y de código
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
         tableCursos.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
@@ -377,117 +279,65 @@ public class SolicitudMatriculaView {
         rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
         tableCursos.getColumnModel().getColumn(7).setCellRenderer(rightRenderer);
 
-        panelTabla.add(new JScrollPane(tableCursos), BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(tableCursos);
+        panelTabla.add(scrollPane, BorderLayout.CENTER);
+
+        // Indicadores en vivo en la parte inferior de la tabla
+        JPanel panelIndicadores = new JPanel(new BorderLayout(10, 5));
+        panelIndicadores.setOpaque(false);
+        panelIndicadores.setBorder(new EmptyBorder(8, 5, 2, 5));
+
+        JPanel panelTotales = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
+        panelTotales.setOpaque(false);
+
+        lblTotalCreditos = new JLabel("Total créditos: 0 ECTS");
+        lblTotalCreditos.setFont(new Font("Tahoma", Font.BOLD, 13));
+        lblTotalCreditos.setForeground(new Color(13, 110, 253));
+
+        lblTotalImporte = new JLabel("Coste estimado: 0.00 €");
+        lblTotalImporte.setFont(new Font("Tahoma", Font.BOLD, 13));
+        lblTotalImporte.setForeground(new Color(25, 135, 84));
+
+        panelTotales.add(lblTotalCreditos);
+        panelTotales.add(lblTotalImporte);
+        panelIndicadores.add(panelTotales, BorderLayout.WEST);
+
+        JLabel lblTarifa = new JLabel("(Tarifa fija oficial: 20,00 € por crédito ECTS)");
+        lblTarifa.setFont(new Font("Tahoma", Font.ITALIC, 11));
+        lblTarifa.setForeground(new Color(108, 117, 125));
+        panelIndicadores.add(lblTarifa, BorderLayout.EAST);
+
+        panelTabla.add(panelIndicadores, BorderLayout.SOUTH);
         panel.add(panelTabla, BorderLayout.CENTER);
 
-        return panel;
-    }
+        // Subpanel sur: Botones de navegación
+        JPanel panelSur = new JPanel(new BorderLayout());
+        panelSur.setOpaque(false);
+        panelSur.setBorder(new EmptyBorder(6, 0, 0, 0));
 
-    private JPanel crearPanelModoMicrocredencial() {
-        JPanel panel = new JPanel(new BorderLayout(8, 8));
-        panel.setOpaque(false);
+        btnVolverMenuDesdePaso1 = Estilo.estilizarSecundario(new JButton("Volver al Menú"));
+        btnVolverMenuDesdePaso1.setFont(new Font("Tahoma", Font.BOLD, 12));
+        btnVolverMenuDesdePaso1.setPreferredSize(new Dimension(150, 34));
 
-        // Filtro Microcredenciales
-        JPanel panelFiltro = new JPanel(new BorderLayout(6, 6));
-        panelFiltro.setBackground(Color.WHITE);
-        panelFiltro.setBorder(new CompoundBorder(
-                new LineBorder(new Color(222, 226, 230), 1, true),
-                new EmptyBorder(10, 14, 10, 14)));
+        btnContinuarPaso2 = Estilo.estilizarPrimario(new JButton("Continuar al Resumen"));
+        btnContinuarPaso2.setFont(new Font("Tahoma", Font.BOLD, 13));
+        btnContinuarPaso2.setPreferredSize(new Dimension(220, 36));
 
-        lblRamasHabilitadas = new JLabel("Ramas habilitadas: Consultando...");
-        lblRamasHabilitadas.setFont(new Font("Tahoma", Font.BOLD, 13));
-        lblRamasHabilitadas.setForeground(new Color(33, 37, 41));
-        panelFiltro.add(lblRamasHabilitadas, BorderLayout.NORTH);
+        panelSur.add(btnVolverMenuDesdePaso1, BorderLayout.WEST);
+        panelSur.add(btnContinuarPaso2, BorderLayout.EAST);
 
-        JPanel panelFiltroRama = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        panelFiltroRama.setOpaque(false);
-        JLabel lblFiltro = new JLabel("Filtrar por rama:");
-        lblFiltro.setFont(new Font("Tahoma", Font.PLAIN, 12));
-        panelFiltroRama.add(lblFiltro);
-
-        cbFiltroRama = new JComboBox<>();
-        cbFiltroRama.setPreferredSize(new Dimension(320, 28));
-        cbFiltroRama.setFont(new Font("Tahoma", Font.PLAIN, 12));
-        panelFiltroRama.add(cbFiltroRama);
-
-        JLabel lblAvisoNormativa = new JLabel("(Solo ramas que estés cursando o hayas superado)");
-        lblAvisoNormativa.setFont(new Font("Tahoma", Font.ITALIC, 11));
-        lblAvisoNormativa.setForeground(new Color(108, 117, 125));
-        panelFiltroRama.add(lblAvisoNormativa);
-
-        panelFiltro.add(panelFiltroRama, BorderLayout.SOUTH);
-        panel.add(panelFiltro, BorderLayout.NORTH);
-
-        // Tabla de Microcredenciales
-        JPanel panelTabla = new JPanel(new BorderLayout(5, 5));
-        panelTabla.setBackground(Color.WHITE);
-        panelTabla.setBorder(new CompoundBorder(
-                new LineBorder(new Color(222, 226, 230), 1, true),
-                new EmptyBorder(8, 8, 8, 8)));
-
-        String[] columnas = { "Seleccionar", "Código", "Microcredencial", "Rama de Conocimiento", "Créditos",
-                "Plazas", "Fin Matrícula", "Inicio Curso", "Precio (€)" };
-        modelMicrocredenciales = new DefaultTableModel(columnas, 0) {
-            @Override
-            public Class<?> getColumnClass(int col) {
-                switch (col) {
-                    case 0:
-                        return Boolean.class;
-                    case 4:
-                        return Double.class;
-                    default:
-                        return String.class;
-                }
-            }
-
-            @Override
-            public boolean isCellEditable(int row, int col) {
-                return col == 0;
-            }
-        };
-
-        tableMicrocredenciales = new JTable(modelMicrocredenciales);
-        tableMicrocredenciales.setRowHeight(25);
-        tableMicrocredenciales.setFont(new Font("Tahoma", Font.PLAIN, 12));
-        tableMicrocredenciales.getTableHeader().setFont(new Font("Tahoma", Font.BOLD, 12));
-        tableMicrocredenciales.getTableHeader().setReorderingAllowed(false);
-
-        tableMicrocredenciales.getColumnModel().getColumn(0).setPreferredWidth(85);
-        tableMicrocredenciales.getColumnModel().getColumn(1).setPreferredWidth(65);
-        tableMicrocredenciales.getColumnModel().getColumn(2).setPreferredWidth(260);
-        tableMicrocredenciales.getColumnModel().getColumn(3).setPreferredWidth(160);
-        tableMicrocredenciales.getColumnModel().getColumn(4).setPreferredWidth(65);
-        tableMicrocredenciales.getColumnModel().getColumn(5).setPreferredWidth(80);
-        tableMicrocredenciales.getColumnModel().getColumn(6).setPreferredWidth(95);
-        tableMicrocredenciales.getColumnModel().getColumn(7).setPreferredWidth(95);
-        tableMicrocredenciales.getColumnModel().getColumn(8).setPreferredWidth(85);
-
-        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-        centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
-        tableMicrocredenciales.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
-        tableMicrocredenciales.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
-        tableMicrocredenciales.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
-        tableMicrocredenciales.getColumnModel().getColumn(6).setCellRenderer(centerRenderer);
-        tableMicrocredenciales.getColumnModel().getColumn(7).setCellRenderer(centerRenderer);
-
-        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
-        rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
-        tableMicrocredenciales.getColumnModel().getColumn(8).setCellRenderer(rightRenderer);
-
-        panelTabla.add(new JScrollPane(tableMicrocredenciales), BorderLayout.CENTER);
-        panel.add(panelTabla, BorderLayout.CENTER);
-
+        panel.add(panelSur, BorderLayout.SOUTH);
         return panel;
     }
 
     // =========================================================================
-    // PASO 2: RESUMEN PREVIO CONSOLIDADO (UNIFICADO)
+    // PASO 2: RESUMEN PREVIO CONSOLIDADO
     // =========================================================================
     private JPanel crearPaso2Resumen() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setOpaque(false);
 
-        // Tarjeta informativa con los datos del alumno y grado o modalidad
+        // Subpanel norte: Tarjeta informativa con los datos del alumno y grado
         JPanel cardInfo = new JPanel(new GridLayout(3, 1, 4, 4));
         cardInfo.setBackground(Color.WHITE);
         cardInfo.setBorder(new CompoundBorder(
@@ -497,45 +347,46 @@ public class SolicitudMatriculaView {
         lblResumenEstudiante = new JLabel("Estudiante: ");
         lblResumenEstudiante.setFont(new Font("Tahoma", Font.PLAIN, 13));
 
-        lblResumenGradoOTipo = new JLabel("Titulación / Modalidad: ");
-        lblResumenGradoOTipo.setFont(new Font("Tahoma", Font.PLAIN, 13));
+        lblResumenGrado = new JLabel("Grado solicitado: ");
+        lblResumenGrado.setFont(new Font("Tahoma", Font.PLAIN, 13));
 
-        lblResumenAnioOFecha = new JLabel("Año Académico / Fecha: ");
-        lblResumenAnioOFecha.setFont(new Font("Tahoma", Font.PLAIN, 13));
+        lblResumenAnio = new JLabel("Año Académico: ");
+        lblResumenAnio.setFont(new Font("Tahoma", Font.PLAIN, 13));
 
         cardInfo.add(lblResumenEstudiante);
-        cardInfo.add(lblResumenGradoOTipo);
-        cardInfo.add(lblResumenAnioOFecha);
+        cardInfo.add(lblResumenGrado);
+        cardInfo.add(lblResumenAnio);
+
         panel.add(cardInfo, BorderLayout.NORTH);
 
-        // Tabla de desglose consolidado
+        // Subpanel centro: Desglose de asignaturas seleccionadas
         JPanel panelTablaResumen = new JPanel(new BorderLayout(5, 5));
         panelTablaResumen.setBackground(Color.WHITE);
         panelTablaResumen.setBorder(new CompoundBorder(
                 new LineBorder(new Color(222, 226, 230), 1, true),
                 new EmptyBorder(10, 10, 10, 10)));
 
-        JLabel lblTituloTabla = new JLabel("Desglose de Asignaturas / Microcredenciales Seleccionadas:");
+        JLabel lblTituloTabla = new JLabel("Desglose de Asignaturas Seleccionadas:");
         lblTituloTabla.setFont(new Font("Tahoma", Font.BOLD, 13));
         panelTablaResumen.add(lblTituloTabla, BorderLayout.NORTH);
 
-        String[] colsResumen = { "Código", "Nombre / Denominación", "Curso / Rama", "Créditos ECTS", "Importe (€)" };
-        modelResumen = new DefaultTableModel(colsResumen, 0) {
+        String[] colsResumen = { "Código", "Nombre de Asignatura", "Curso", "Créditos ECTS", "Importe (€)" };
+        modelResumenAsignaturas = new DefaultTableModel(colsResumen, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
             }
         };
 
-        tableResumen = new JTable(modelResumen);
-        tableResumen.setRowHeight(24);
-        tableResumen.setFont(new Font("Tahoma", Font.PLAIN, 12));
-        tableResumen.getTableHeader().setFont(new Font("Tahoma", Font.BOLD, 12));
-        tableResumen.getTableHeader().setReorderingAllowed(false);
+        tableResumenAsignaturas = new JTable(modelResumenAsignaturas);
+        tableResumenAsignaturas.setRowHeight(24);
+        tableResumenAsignaturas.setFont(new Font("Tahoma", Font.PLAIN, 12));
+        tableResumenAsignaturas.getTableHeader().setFont(new Font("Tahoma", Font.BOLD, 12));
+        tableResumenAsignaturas.getTableHeader().setReorderingAllowed(false);
 
-        panelTablaResumen.add(new JScrollPane(tableResumen), BorderLayout.CENTER);
+        panelTablaResumen.add(new JScrollPane(tableResumenAsignaturas), BorderLayout.CENTER);
 
-        // Totales inferiores
+        // Resumen numérico inferior
         JPanel panelTotalesResumen = new JPanel(new FlowLayout(FlowLayout.RIGHT, 25, 6));
         panelTotalesResumen.setOpaque(false);
 
@@ -553,20 +404,20 @@ public class SolicitudMatriculaView {
 
         panel.add(panelTablaResumen, BorderLayout.CENTER);
 
-        // Botones de navegación
+        // Subpanel sur: Botones
         JPanel panelSur = new JPanel(new BorderLayout());
         panelSur.setOpaque(false);
         panelSur.setBorder(new EmptyBorder(6, 0, 0, 0));
 
-        btnModificarSeleccion = Estilo.estilizarSecundario(new JButton("<  Modificar Selección"));
-        btnModificarSeleccion.setFont(new Font("Tahoma", Font.PLAIN, 12));
-        btnModificarSeleccion.setPreferredSize(new Dimension(190, 34));
+        btnModificarAsignaturas = Estilo.estilizarSecundario(new JButton("<  Modificar Asignaturas"));
+        btnModificarAsignaturas.setFont(new Font("Tahoma", Font.PLAIN, 12));
+        btnModificarAsignaturas.setPreferredSize(new Dimension(190, 34));
 
         btnContinuarPaso3 = Estilo.estilizarPrimario(new JButton("Proceder al Pago  >"));
         btnContinuarPaso3.setFont(new Font("Tahoma", Font.BOLD, 13));
         btnContinuarPaso3.setPreferredSize(new Dimension(200, 36));
 
-        panelSur.add(btnModificarSeleccion, BorderLayout.WEST);
+        panelSur.add(btnModificarAsignaturas, BorderLayout.WEST);
         panelSur.add(btnContinuarPaso3, BorderLayout.EAST);
 
         panel.add(panelSur, BorderLayout.SOUTH);
@@ -574,12 +425,13 @@ public class SolicitudMatriculaView {
     }
 
     // =========================================================================
-    // PASO 3: MODALIDAD DE PAGO Y CONFIRMACIÓN (UNIFICADO)
+    // PASO 3: MODALIDAD DE PAGO Y CONFIRMACIÓN
     // =========================================================================
     private JPanel crearPaso3Pago() {
         JPanel panel = new JPanel(new BorderLayout(12, 12));
         panel.setOpaque(false);
 
+        // Subpanel central con opciones de pago y advertencia
         JPanel panelContenido = new JPanel();
         panelContenido.setLayout(new BoxLayout(panelContenido, BoxLayout.Y_AXIS));
         panelContenido.setBackground(Color.WHITE);
@@ -622,16 +474,16 @@ public class SolicitudMatriculaView {
         JPanel panelAviso = new JPanel(new BorderLayout());
         panelAviso.setBorder(BorderFactory.createTitledBorder(
                 new LineBorder(new Color(13, 110, 253), 1, true),
-                "Información y Condiciones Normativas",
+                "Información de Validación Administrativa",
                 TitledBorder.LEFT, TitledBorder.TOP,
                 new Font("Tahoma", Font.BOLD, 12),
                 new Color(13, 110, 253)));
         panelAviso.setBackground(new Color(240, 248, 255));
 
         txtInfoMetodoPago = new JTextArea(
-                "• Pago con Tarjeta: La transacción se valida de forma inmediata. Su matrícula o inscripción queda registrada de inmediato en el sistema.\n\n"
-                        + "• Pago por Transferencia o Carta de Pago: La solicitud queda registrada en estado 'SOLICITADA'. Deberá presentar el justificante de abono en secretaría antes de que comience el curso.\n\n"
-                        + "• Microcredenciales: Conforme a la normativa universitaria, los créditos no computan en permanencia y el abono debe completarse obligatoriamente antes de la fecha de inicio del curso.");
+                "• Pago con Tarjeta: La transacción se valida de forma inmediata. Su matrícula quedará registrada y las asignaturas pasarán directamente al estado 'PAGADA'.\n\n"
+                        +
+                        "• Pago por Transferencia o Carta de Pago: La matrícula quedará registrada en estado 'SOLICITADA' con asignaturas pendientes de pago. Deberá presentar el justificante de abono en secretaría para su validación manual definitiva.");
         txtInfoMetodoPago.setFont(new Font("Tahoma", Font.PLAIN, 12));
         txtInfoMetodoPago.setWrapStyleWord(true);
         txtInfoMetodoPago.setLineWrap(true);
@@ -651,7 +503,7 @@ public class SolicitudMatriculaView {
 
         panel.add(panelContenido, BorderLayout.CENTER);
 
-        // Subpanel sur
+        // Subpanel sur: Botón de confirmación y volver
         JPanel panelSur = new JPanel(new BorderLayout());
         panelSur.setOpaque(false);
         panelSur.setBorder(new EmptyBorder(6, 0, 0, 0));
@@ -660,7 +512,7 @@ public class SolicitudMatriculaView {
         btnVolverPaso2.setFont(new Font("Tahoma", Font.PLAIN, 12));
         btnVolverPaso2.setPreferredSize(new Dimension(170, 34));
 
-        btnConfirmarMatricula = Estilo.estilizarExito(new JButton("Confirmar Solicitud"));
+        btnConfirmarMatricula = Estilo.estilizarExito(new JButton("Confirmar Solicitud de Matrícula"));
         btnConfirmarMatricula.setFont(new Font("Tahoma", Font.BOLD, 14));
         btnConfirmarMatricula.setPreferredSize(new Dimension(280, 40));
 
@@ -672,7 +524,7 @@ public class SolicitudMatriculaView {
     }
 
     // =========================================================================
-    // MÉTODOS DE NAVEGACIÓN Y CONFIGURACIÓN DE MODOS
+    // MÉTODOS DE NAVEGACIÓN ENTRE PASOS
     // =========================================================================
     public void mostrarPaso1() {
         cardLayoutPasos.show(panelPasos, PASO_SELECCION);
@@ -689,22 +541,9 @@ public class SolicitudMatriculaView {
         actualizarBarraPasos(3);
     }
 
-    public void mostrarModoGrado() {
-        rbModoGrado.setSelected(true);
-        cardLayoutModos.show(panelContenidoModos, MODO_GRADO);
-        lblAvisoTarifa.setText("(Tarifa fija oficial: 20,00 € por crédito ECTS)");
-    }
-
-    public void mostrarModoMicrocredencial() {
-        rbModoMicrocredencial.setSelected(true);
-        cardLayoutModos.show(panelContenidoModos, MODO_MICROCREDENCIAL);
-        lblAvisoTarifa.setText("(20,00 €/crédito — Los créditos de microcredencial NO computan para permanencia)");
-    }
-
-    public boolean isModoGrado() {
-        return rbModoGrado.isSelected();
-    }
-
+    // =========================================================================
+    // MÉTODOS DE APOYO PARA LLENAR Y CONSULTAR DATOS DE LA VISTA
+    // =========================================================================
     public String getMetodoPagoSeleccionado() {
         if (rbTarjeta.isSelected()) {
             return "TARJETA";
@@ -716,9 +555,6 @@ public class SolicitudMatriculaView {
         return "TARJETA";
     }
 
-    // =========================================================================
-    // MÉTODOS DE APOYO DE DATOS
-    // =========================================================================
     public List<OfertaCursoDTO> getAsignaturasSeleccionadas() {
         List<OfertaCursoDTO> seleccionadas = new ArrayList<>();
         for (int i = 0; i < modelCursos.getRowCount(); i++) {
@@ -752,59 +588,32 @@ public class SolicitudMatriculaView {
         return seleccionadas;
     }
 
-    public List<OfertaMicrocredencialDTO> getMicrocredencialesSeleccionadas() {
-        List<OfertaMicrocredencialDTO> seleccionadas = new ArrayList<>();
-        for (int i = 0; i < modelMicrocredenciales.getRowCount(); i++) {
-            Boolean checked = (Boolean) modelMicrocredenciales.getValueAt(i, 0);
-            if (Boolean.TRUE.equals(checked)) {
-                String mcId = (String) modelMicrocredenciales.getValueAt(i, 1);
-                String nombre = (String) modelMicrocredenciales.getValueAt(i, 2);
-                String rama = (String) modelMicrocredenciales.getValueAt(i, 3);
-                double creds = (Double) modelMicrocredenciales.getValueAt(i, 4);
-                String finMat = (String) modelMicrocredenciales.getValueAt(i, 6);
-                String iniCur = (String) modelMicrocredenciales.getValueAt(i, 7);
-                String precStr = (String) modelMicrocredenciales.getValueAt(i, 8);
-                double precio = creds * 20.0;
-                try {
-                    precio = Double.parseDouble(precStr.replace(" €", "").replace(",", "."));
-                } catch (Exception ignored) {
-                }
-
-                OfertaMicrocredencialDTO dto = new OfertaMicrocredencialDTO();
-                dto.setMicrocredencialId(mcId);
-                dto.setNombre(nombre);
-                dto.setRamaConocimiento(rama);
-                dto.setCreditos(creds);
-                dto.setFechaFinMatriculacion(finMat);
-                dto.setFechaInicio(iniCur);
-                dto.setPrecio(precio);
-                dto.setSeleccionada(true);
-                seleccionadas.add(dto);
-            }
-        }
-        return seleccionadas;
-    }
-
     public void actualizarTotales(int totalCreditos, double totalImporte) {
         lblTotalCreditos.setText(String.format("Total créditos: %d ECTS", totalCreditos));
         lblTotalImporte.setText(String.format("Coste estimado: %.2f €", totalImporte));
         lblPagoImporteFinal.setText(String.format("Importe definitivo a abonar: %.2f €", totalImporte));
     }
 
-    public void cargarResumenGrado(ResumenSolicitudDTO resumen) {
-        if (resumen == null) return;
-        lblResumenEstudiante.setText("<html><b>Estudiante:</b> " + (resumen.getNombreCompleto() != null ? resumen.getNombreCompleto() : "")
-                + " &nbsp;|&nbsp; <b>DNI:</b> " + (resumen.getDni() != null ? resumen.getDni() : "")
-                + " &nbsp;|&nbsp; <b>Identificador:</b> " + (resumen.getAlumnoId() != null ? resumen.getAlumnoId() : "") + "</html>");
-        lblResumenGradoOTipo.setText("<html><b>Grado solicitado:</b> " + (resumen.getNombreGrado() != null ? resumen.getNombreGrado() : "")
-                + " (" + (resumen.getGradoId() != null ? resumen.getGradoId() : "") + ")</html>");
-        lblResumenAnioOFecha.setText("<html><b>Año Académico:</b> " + (resumen.getAnioAcademicoId() != null ? resumen.getAnioAcademicoId() : "")
-                + " &nbsp;|&nbsp; <b>Fecha de solicitud:</b> " + (resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : "") + "</html>");
+    public void cargarResumen(ResumenSolicitudDTO resumen) {
+        if (resumen == null)
+            return;
+        lblResumenEstudiante.setText(
+                "<html><b>Estudiante:</b> " + (resumen.getNombreCompleto() != null ? resumen.getNombreCompleto() : "") +
+                        " &nbsp;|&nbsp; <b>DNI:</b> " + (resumen.getDni() != null ? resumen.getDni() : "") +
+                        " &nbsp;|&nbsp; <b>Identificador:</b> "
+                        + (resumen.getAlumnoId() != null ? resumen.getAlumnoId() : "") + "</html>");
+        lblResumenGrado.setText(
+                "<html><b>Grado solicitado:</b> " + (resumen.getNombreGrado() != null ? resumen.getNombreGrado() : "") +
+                        " (" + (resumen.getGradoId() != null ? resumen.getGradoId() : "") + ")</html>");
+        lblResumenAnio.setText("<html><b>Año Académico:</b> "
+                + (resumen.getAnioAcademicoId() != null ? resumen.getAnioAcademicoId() : "") +
+                " &nbsp;|&nbsp; <b>Fecha de solicitud:</b> "
+                + (resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : "") + "</html>");
 
-        modelResumen.setRowCount(0);
+        modelResumenAsignaturas.setRowCount(0);
         if (resumen.getAsignaturas() != null) {
             for (OfertaCursoDTO c : resumen.getAsignaturas()) {
-                modelResumen.addRow(new Object[] {
+                modelResumenAsignaturas.addRow(new Object[] {
                         c.getCursoId(),
                         c.getNombre(),
                         c.getAnio() + "º",
@@ -813,64 +622,74 @@ public class SolicitudMatriculaView {
                 });
             }
         }
+
         lblResumenCreditosTotales.setText(String.format("Créditos totales: %d ECTS", resumen.getCreditosTotales()));
         lblResumenImporteTotal.setText(String.format("Importe Total a Pagar: %.2f €", resumen.getImporteTotal()));
         lblPagoImporteFinal.setText(String.format("Importe definitivo a abonar: %.2f €", resumen.getImporteTotal()));
-    }
-
-    public void cargarResumenMicrocredencial(ResumenSolicitudMicrocredencialDTO resumen) {
-        if (resumen == null) return;
-        lblResumenEstudiante.setText("<html><b>Estudiante:</b> " + (resumen.getNombreCompleto() != null ? resumen.getNombreCompleto() : "")
-                + " &nbsp;|&nbsp; <b>DNI:</b> " + (resumen.getDni() != null ? resumen.getDni() : "")
-                + " &nbsp;|&nbsp; <b>Identificador:</b> " + (resumen.getAlumnoId() != null ? resumen.getAlumnoId() : "") + "</html>");
-        lblResumenGradoOTipo.setText("<html><b>Modalidad:</b> Microcredenciales Universitarias de Especialización</html>");
-        lblResumenAnioOFecha.setText("<html><b>Fecha de solicitud:</b> " + (resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : "") + "</html>");
-
-        modelResumen.setRowCount(0);
-        if (resumen.getMicrocredenciales() != null) {
-            for (OfertaMicrocredencialDTO mc : resumen.getMicrocredenciales()) {
-                modelResumen.addRow(new Object[] {
-                        mc.getMicrocredencialId(),
-                        mc.getNombre(),
-                        mc.getRamaConocimiento(),
-                        mc.getCreditos(),
-                        String.format("%.2f €", mc.getPrecio())
-                });
-            }
-        }
-        lblResumenCreditosTotales.setText(String.format("Créditos totales: %d ECTS", resumen.getCreditosTotales()));
-        lblResumenImporteTotal.setText(String.format("Importe Total a Pagar: %.2f €", resumen.getImporteTotal()));
-        lblPagoImporteFinal.setText(String.format("Importe definitivo a abonar: %.2f €", resumen.getImporteTotal()));
-    }
-
-    // Compatibilidad para tests existentes
-    public void cargarResumen(ResumenSolicitudDTO resumen) {
-        cargarResumenGrado(resumen);
     }
 
     // Getters
-    public JFrame getFrame() { return frame; }
-    public JPanel getPanelPrincipal() { return panelPrincipal; }
-    public JRadioButton getRbModoGrado() { return rbModoGrado; }
-    public JRadioButton getRbModoMicrocredencial() { return rbModoMicrocredencial; }
-    public JComboBox<OfertaGradoDTO> getCbGrados() { return cbGrados; }
-    public JTable getTableCursos() { return tableCursos; }
-    public DefaultTableModel getModelCursos() { return modelCursos; }
-    public JLabel getLblInfoEstudiante() { return lblInfoEstudiante; }
-    public JLabel getLblRamasHabilitadas() { return lblRamasHabilitadas; }
-    public JComboBox<String> getCbFiltroRama() { return cbFiltroRama; }
-    public JTable getTableMicrocredenciales() { return tableMicrocredenciales; }
-    public DefaultTableModel getModelMicrocredenciales() { return modelMicrocredenciales; }
-    public JButton getBtnContinuarPaso2() { return btnContinuarPaso2; }
-    public JButton getBtnVolverMenuDesdePaso1() { return btnVolverMenuDesdePaso1; }
-    public JButton getBtnModificarAsignaturas() { return btnModificarSeleccion; }
-    public JButton getBtnModificarSeleccion() { return btnModificarSeleccion; }
-    public JButton getBtnContinuarPaso3() { return btnContinuarPaso3; }
-    public JButton getBtnVolverPaso2() { return btnVolverPaso2; }
-    public JButton getBtnConfirmarMatricula() { return btnConfirmarMatricula; }
-    public JRadioButton getRbTarjeta() { return rbTarjeta; }
-    public JRadioButton getRbTransferencia() { return rbTransferencia; }
-    public JRadioButton getRbCartaPago() { return rbCartaPago; }
-    public JTable getTableResumen() { return tableResumen; }
-    public DefaultTableModel getModelResumen() { return modelResumen; }
+    public JFrame getFrame() {
+        return frame;
+    }
+
+    public JPanel getPanelPrincipal() {
+        return panelPrincipal;
+    }
+
+    public JComboBox<GradoDisplayDTO> getCbGrados() {
+        return cbGrados;
+    }
+
+    public JTable tableCursos() {
+        return tableCursos;
+    }
+
+    public JTable getTableCursos() {
+        return tableCursos;
+    }
+
+    public DefaultTableModel getModelCursos() {
+        return modelCursos;
+    }
+
+    public JLabel getLblInfoEstudiante() {
+        return lblInfoEstudiante;
+    }
+
+    public JButton getBtnContinuarPaso2() {
+        return btnContinuarPaso2;
+    }
+
+    public JButton getBtnVolverMenuDesdePaso1() {
+        return btnVolverMenuDesdePaso1;
+    }
+
+    public JButton getBtnModificarAsignaturas() {
+        return btnModificarAsignaturas;
+    }
+
+    public JButton getBtnContinuarPaso3() {
+        return btnContinuarPaso3;
+    }
+
+    public JButton getBtnVolverPaso2() {
+        return btnVolverPaso2;
+    }
+
+    public JButton getBtnConfirmarMatricula() {
+        return btnConfirmarMatricula;
+    }
+
+    public JRadioButton getRbTarjeta() {
+        return rbTarjeta;
+    }
+
+    public JRadioButton getRbTransferencia() {
+        return rbTransferencia;
+    }
+
+    public JRadioButton getRbCartaPago() {
+        return rbCartaPago;
+    }
 }

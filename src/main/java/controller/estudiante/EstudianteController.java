@@ -1,17 +1,20 @@
 package controller.estudiante;
 
 import model.matriculacion.MatriculacionModel;
+import model.microcredencial.InscripcionMicrocredencialModel;
+import util.Database;
 import util.SwingUtil;
 import view.estudiante.EstudianteView;
 import view.estudiante.MisMatriculasView;
 import view.estudiante.SolicitudMatriculaView;
+import view.estudiante.SolicitudMicrocredencialView;
 
 import java.awt.*;
 
 /**
  * Controlador de la vista principal del estudiante.
  * Gestiona la navegación fluida entre el menú de bienvenida, la consulta de
- * matrículas y la solicitud unificada de matrícula (grados y microcredenciales),
+ * matrículas, la solicitud de matrícula y la matriculación en microcredenciales,
  * todo en una única ventana centrada.
  */
 public class EstudianteController {
@@ -23,28 +26,33 @@ public class EstudianteController {
     private MisMatriculasView misMatriculasView;
     private MisMatriculasController misMatriculasController;
     private MatriculacionModel matriculacionModel;
+    private InscripcionMicrocredencialModel inscripcionMicrocredencialModel;
 
     private SolicitudMatriculaView solicitudMatriculaView;
     private SolicitudMatriculaController solicitudMatriculaController;
 
-    public EstudianteController(EstudianteView view) {
-        this(view, null, null, null);
+    private SolicitudMicrocredencialView solicitudMicrocredencialView;
+    private SolicitudMicrocredencialController solicitudMicrocredencialController;
+
+    public EstudianteController(EstudianteView view, Database db) {
+        this(view, db, null, null, null);
     }
 
-    public EstudianteController(EstudianteView view, String uo) {
-        this(view, uo, null, null);
+    public EstudianteController(EstudianteView view, Database db, String uo) {
+        this(view, db, uo, null, null);
     }
 
-    public EstudianteController(EstudianteView view, String uo, Runnable onVolverLogin) {
-        this(view, uo, null, onVolverLogin);
+    public EstudianteController(EstudianteView view, Database db, String uo, Runnable onVolverLogin) {
+        this(view, db, uo, null, onVolverLogin);
     }
 
-    public EstudianteController(EstudianteView view, String uo, String nombre, Runnable onVolverLogin) {
+    public EstudianteController(EstudianteView view, Database db, String uo, String nombre, Runnable onVolverLogin) {
         this.view = view;
         this.uo = uo;
         this.nombre = nombre;
         this.onVolverLogin = onVolverLogin;
-        this.matriculacionModel = new MatriculacionModel();
+        this.matriculacionModel = new MatriculacionModel(db);
+        this.inscripcionMicrocredencialModel = new InscripcionMicrocredencialModel(db);
         if ((this.nombre == null || this.nombre.trim().isEmpty()) && this.uo != null) {
             this.nombre = this.matriculacionModel.obtenerNombreAlumno(this.uo);
         }
@@ -60,10 +68,10 @@ public class EstudianteController {
         // 2. Opción 1: Consultar Mis Matrículas (se abre dentro de la misma ventana)
         view.getBtnMisMatriculas().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirConsultaMatriculas));
 
-        // 3. Opción 2: Solicitar Nueva Matrícula (Grado Oficial)
+        // 3. Opción 2: Solicitar Nueva Matrícula (se abre dentro de la misma ventana)
         view.getBtnSolicitarMatricula().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMatricula));
 
-        // 4. Opción 3: Solicitar Nueva Microcredencial (Microcredenciales)
+        // 4. Opción 3: Solicitar Nueva Microcredencial (se abre dentro de la misma ventana)
         view.getBtnSolicitarMicrocredencial().addActionListener(e -> SwingUtil.exceptionWrapper(this::abrirSolicitudMicrocredencial));
 
         // Mostrar menú inicial y centrar
@@ -87,7 +95,7 @@ public class EstudianteController {
                     misMatriculasView,
                     matriculacionModel,
                     uo,
-                    () -> view.mostrarMenu()
+                    () -> view.mostrarMenu() // Al pulsar volver en la vista de matrículas, regresa al menú de inicio
             );
             misMatriculasController.initController();
 
@@ -101,7 +109,7 @@ public class EstudianteController {
         view.mostrarConsulta();
     }
 
-    private void asegurarSolicitudMatriculaInicializada() {
+    private void abrirSolicitudMatricula() {
         if (solicitudMatriculaView == null) {
             solicitudMatriculaView = new SolicitudMatriculaView();
             solicitudMatriculaController = new SolicitudMatriculaController(
@@ -109,6 +117,8 @@ public class EstudianteController {
                     matriculacionModel,
                     uo,
                     () -> {
+                        // Al volver al menú principal, refrescamos también la vista de matrículas si ya
+                        // estaba creada
                         if (misMatriculasController != null) {
                             misMatriculasController.refrescarTodo();
                         }
@@ -123,17 +133,32 @@ public class EstudianteController {
         } else {
             solicitudMatriculaController.recargarOferta();
         }
-    }
-
-    private void abrirSolicitudMatricula() {
-        asegurarSolicitudMatriculaInicializada();
-        solicitudMatriculaController.seleccionarModoGrado();
         view.mostrarSolicitud();
     }
 
     private void abrirSolicitudMicrocredencial() {
-        asegurarSolicitudMatriculaInicializada();
-        solicitudMatriculaController.seleccionarModoMicrocredencial();
-        view.mostrarSolicitud();
+        if (solicitudMicrocredencialView == null) {
+            solicitudMicrocredencialView = new SolicitudMicrocredencialView();
+            solicitudMicrocredencialController = new SolicitudMicrocredencialController(
+                    solicitudMicrocredencialView,
+                    matriculacionModel,
+                    inscripcionMicrocredencialModel,
+                    uo,
+                    () -> {
+                        if (misMatriculasController != null) {
+                            misMatriculasController.refrescarTodo();
+                        }
+                        view.mostrarMenu();
+                    });
+            solicitudMicrocredencialController.initController();
+
+            view.getPanelMicrocredencialContainer().removeAll();
+            view.getPanelMicrocredencialContainer().add(solicitudMicrocredencialView.getPanelPrincipal(), BorderLayout.CENTER);
+            view.getPanelMicrocredencialContainer().revalidate();
+            view.getPanelMicrocredencialContainer().repaint();
+        } else {
+            solicitudMicrocredencialController.recargarOferta();
+        }
+        view.mostrarMicrocredencial();
     }
 }

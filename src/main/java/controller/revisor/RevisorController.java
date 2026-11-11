@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import java.time.LocalDate;
+
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
@@ -13,11 +15,11 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 import model.grado.GradoAnioRevisorDisplayDTO;
+import model.grado.GradoModel;
 import model.grado.GradoRevisionDisplayDTO;
+import model.grado.MetricasGradoModel;
 import model.grado.ResultadoRevision;
-import repository.GradoRepository;
-import repository.MatriculacionRepository;
-import repository.MetricasGradoRepository;
+import util.Database;
 import util.SwingUtil;
 import view.revisor.RevisorView;
 
@@ -32,9 +34,8 @@ public class RevisorController {
 	private static final String TITULO_DECISION = "Tomar decisión";
 
 	private RevisorView view;
-	private MetricasGradoRepository metricasGradoRepository;
-	private MatriculacionRepository matriculacionRepository;
-	private GradoRepository gradoRepository;
+	private MetricasGradoModel metricasModel;
+	private GradoModel gradoModel;
 
 	private Runnable onVolverInicio = () -> { };
 
@@ -44,21 +45,10 @@ public class RevisorController {
 	private String gradoActualId;
 	private String gradoActualNombre;
 
-	public RevisorController(RevisorView view) {
-		this(view, new MetricasGradoRepository(), new MatriculacionRepository());
-	}
-
-	public RevisorController(RevisorView view, MetricasGradoRepository metricasGradoRepository,
-			MatriculacionRepository matriculacionRepository) {
-		this(view, metricasGradoRepository, matriculacionRepository, new GradoRepository());
-	}
-
-	public RevisorController(RevisorView view, MetricasGradoRepository metricasGradoRepository,
-			MatriculacionRepository matriculacionRepository, GradoRepository gradoRepository) {
+	public RevisorController(RevisorView view, Database db) {
 		this.view = view;
-		this.metricasGradoRepository = metricasGradoRepository;
-		this.matriculacionRepository = matriculacionRepository;
-		this.gradoRepository = gradoRepository;
+		this.metricasModel = new MetricasGradoModel(db);
+		this.gradoModel = new GradoModel(db);
 	}
 
 	public void setOnVolverInicio(Runnable onVolverInicio) {
@@ -69,7 +59,7 @@ public class RevisorController {
 		view.getBtnVolverInicio().addActionListener(e -> volverInicio());
 
 		cargarAnios();
-		todasLasMetricas = metricasGradoRepository.getMetricasGrados(null, null, null);
+		todasLasMetricas = metricasModel.getMetricasGrados(null, null, null, LocalDate.now().toString());
 
 		view.getCbAnioAcademico().addActionListener(e -> aplicarFiltros());
 		addDocumentListener(view.getTxtFiltroRama(), this::aplicarFiltros);
@@ -104,10 +94,10 @@ public class RevisorController {
 	private void cargarAnios() {
 		DefaultComboBoxModel<String> anios = new DefaultComboBoxModel<>();
 		anios.addElement(TODOS);
-		for (String anio : matriculacionRepository.getAniosAcademicos()) {
+		for (String anio : metricasModel.getAniosAcademicos()) {
 			anios.addElement(anio);
 		}
-		String porDefecto = metricasGradoRepository.getAnioAcademicoPorDefecto();
+		String porDefecto = metricasModel.getAnioAcademicoPorDefecto();
 		anios.setSelectedItem(porDefecto == null ? TODOS : porDefecto);
 		view.getCbAnioAcademico().setModel(anios);
 	}
@@ -128,7 +118,7 @@ public class RevisorController {
 		if (todos) {
 			view.mostrarMetricasTodos(filtradas);
 		} else {
-			view.mostrarMetricasAnio(metricasGradoRepository.metricasDelAnio(filtradas, anio));
+			view.mostrarMetricasAnio(metricasModel.metricasDelAnio(filtradas, anio));
 		}
 	}
 
@@ -137,7 +127,7 @@ public class RevisorController {
 	 * lista ya cargada (sin aplicar el combo ni los filtros). "Tomar decisión" solo se habilita si el grado la admite.
 	 */
 	private void abrirGrado(String idGrado) {
-		GradoRevisionDisplayDTO grado = gradoRepository.getGradoRevision(idGrado);
+		GradoRevisionDisplayDTO grado = gradoModel.getGradoRevision(idGrado);
 		List<GradoAnioRevisorDisplayDTO> metricas = todasLasMetricas.stream()
 				.filter(m -> m.getIdGrado().equals(idGrado) && m.getIdAnioAcademico() != null)
 				.collect(Collectors.toList());
@@ -145,7 +135,7 @@ public class RevisorController {
 		gradoActualNombre = grado.getNombre();
 		actualizarEstadoEnMemoria(idGrado, grado.getEstado());
 		view.mostrarGrado(grado, metricas);
-		view.getBtnTomarDecision().setEnabled(gradoRepository.admiteDictamen(idGrado));
+		view.getBtnTomarDecision().setEnabled(gradoModel.admiteDictamen(idGrado, LocalDate.now().toString()));
 		view.showGradoView();
 	}
 
@@ -166,7 +156,7 @@ public class RevisorController {
 			return;
 		}
 
-		gradoRepository.emitirDictamen(gradoActualId, resultado);
+		gradoModel.emitirDictamen(gradoActualId, resultado, LocalDate.now().toString());
 		JOptionPane.showMessageDialog(view.getFrame(),
 				"Dictamen " + resultado + " registrado para el grado " + gradoActualNombre + ".", TITULO_DECISION,
 				JOptionPane.INFORMATION_MESSAGE);

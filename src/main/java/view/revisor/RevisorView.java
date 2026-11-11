@@ -54,6 +54,11 @@ public class RevisorView {
     private final List<String> idGradoPorFila = new ArrayList<>();
     private final List<String> estadoPorFila = new ArrayList<>();
     private Consumer<String> onVerGrado;
+    // se crean una sola vez: al filtrar no se construye ningún componente Swing
+    private RendererFilaEstado rendererTexto;
+    private RendererFilaEstado rendererCentrado;
+    private RendererVer rendererVer;
+    private EditorVer editorVer;
 
     // -- GRADO --
     private JLabel lblGrado;
@@ -91,6 +96,10 @@ public class RevisorView {
         cardsPanel.add(createMetricasPanel(), CARD_METRICAS);
         cardsPanel.add(createGradoPanel(), CARD_GRADO);
         contenido.add(cardsPanel, BorderLayout.CENTER);
+        rendererTexto = new RendererFilaEstado(false);
+        rendererCentrado = new RendererFilaEstado(true);
+        rendererVer = new RendererVer();
+        editorVer = new EditorVer();
         mostrarMetricasAnio(List.of());
     }
 
@@ -267,14 +276,14 @@ public class RevisorView {
     private void renderizar(int... centradas) {
         int acciones = tabMetricas.getColumnCount() - 1;
         for (int i = 0; i < acciones; i++) {
-            tabMetricas.getColumnModel().getColumn(i).setCellRenderer(new RendererFilaEstado(false));
+            tabMetricas.getColumnModel().getColumn(i).setCellRenderer(rendererTexto);
         }
         for (int columna : centradas) {
-            tabMetricas.getColumnModel().getColumn(columna).setCellRenderer(new RendererFilaEstado(true));
+            tabMetricas.getColumnModel().getColumn(columna).setCellRenderer(rendererCentrado);
         }
         tabMetricas.getColumnModel().getColumn(acciones).setMinWidth(90);
-        tabMetricas.getColumnModel().getColumn(acciones).setCellRenderer(new RendererVer());
-        tabMetricas.getColumnModel().getColumn(acciones).setCellEditor(new EditorVer());
+        tabMetricas.getColumnModel().getColumn(acciones).setCellRenderer(rendererVer);
+        tabMetricas.getColumnModel().getColumn(acciones).setCellEditor(editorVer);
     }
 
     /** Fondo de la fila: el color del estado si se marca; si no, el alterno o el de selección */

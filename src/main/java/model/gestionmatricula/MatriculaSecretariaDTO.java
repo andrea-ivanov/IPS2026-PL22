@@ -1,4 +1,4 @@
-package model.matriculacion;
+package model.gestionmatricula;
 
 /**
  * DTO para la vista de Secretaría (HU 35226 consulta y HU 35229 ciclo de vida).
