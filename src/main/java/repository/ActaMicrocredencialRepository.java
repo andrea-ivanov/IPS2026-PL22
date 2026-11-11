@@ -64,4 +64,22 @@ public class ActaMicrocredencialRepository {
 				+ "WHERE microcredencialId = ? AND matriculaId = ? AND estado = ?",
 				nota, microcredencialId, matriculaId, estadoInscripcion);
 	}
+
+	/** Pasa las inscripciones de la microcredencial de un estado a otro (INSCRITA -> FINALIZADA al cerrar el acta) */
+	public int cambiarEstadoInscripciones(Connection conn, String microcredencialId, String estadoActual,
+			String estadoNuevo) throws SQLException {
+		return update(conn, "UPDATE MatriculaMicrocredencial SET estado = ? WHERE microcredencialId = ? AND estado = ?",
+				estadoNuevo, microcredencialId, estadoActual);
+	}
+
+	/**
+	 * Cierra el acta: la microcredencial pasa de estadoAbierta a estadoCerrada con la fecha de cierre
+	 * @return filas cambiadas: 0 si ya no estaba abierta
+	 */
+	public int cerrarActa(Connection conn, String microcredencialId, String estadoAbierta, String estadoCerrada,
+			String fechaCierre, boolean automatico) throws SQLException {
+		return update(conn, "UPDATE Microcredencial SET estado = ?, fechaCierreActa = ?, cierreAutomatico = ? "
+				+ "WHERE microcredencialId = ? AND estado = ?",
+				estadoCerrada, fechaCierre, automatico ? 1 : 0, microcredencialId, estadoAbierta);
+	}
 }

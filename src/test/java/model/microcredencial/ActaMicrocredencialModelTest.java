@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -278,8 +279,117 @@ public class ActaMicrocredencialModelTest {
 	}
 
 	// =========================================================================
+	// Cierre manual
+	// =========================================================================
+
+	@Test
+	@DisplayName("Al cerrar el acta la microcredencial y sus inscritos pasan a FINALIZADA con la fecha de cierre")
+	public void testCerrarActa() {
+		model.cerrarActa("P001", "MC1", "2026-10-29");
+
+		assertEquals(List.of("FINALIZADA", "2026-10-29", "0"), microcredencial("MC1"));
+		assertEquals("FINALIZADA", estado("M1", "MC1"));
+		assertEquals("FINALIZADA", estado("M2", "MC1"));
+		assertEquals("FINALIZADA", estado("M5", "MC1"));
+		assertEquals(8.5, nota("M1", "MC1"));
+		assertNull(nota("M2", "MC1"));
+		assertEquals("ABANDONADA", estado("M3", "MC1"));
+		assertEquals("CANCELADA", estado("M4", "MC1"));
+		assertEquals("SOLICITADA", estado("M6", "MC1"));
+		assertEquals(List.of("8.5", "NP", "4"), notas(model.getCalificaciones("P001", "MC1")));
+		assertEquals(Arrays.asList("ACEPTADA", null, "0"), microcredencial("MC2"), "Las demás no cambian");
+	}
+
+	@Test
+	@DisplayName("El acta no se puede cerrar antes del fin de la microcredencial")
+	public void testNoSeCierraAntesDelFin() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.cerrarActa("P001", "MC1", "2026-10-22"));
+		assertEquals("No se puede cerrar el acta hasta el fin de la microcredencial (2026-10-23)", e.getMessage());
+		assertEquals(Arrays.asList("ACEPTADA", null, "0"), microcredencial("MC1"));
+		assertEquals("INSCRITA", estado("M1", "MC1"));
+	}
+
+	@Test
+	@DisplayName("Pasado el plazo de 15 días el profesor ya no la cierra: la cierra el sistema")
+	public void testNoSeCierraFueraDePlazo() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.cerrarActa("P001", "MC1", "2026-11-08"));
+		assertEquals("El plazo para cerrar el acta terminó el 2026-11-07: la cerrará el sistema", e.getMessage());
+		assertEquals(Arrays.asList("ACEPTADA", null, "0"), microcredencial("MC1"));
+		model.cerrarActa("P001", "MC1", "2026-11-07");
+		assertEquals(List.of("FINALIZADA", "2026-11-07", "0"), microcredencial("MC1"));
+	}
+
+	@Test
+	@DisplayName("Un acta cerrada no se vuelve a cerrar")
+	public void testNoSeCierraDosVeces() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.cerrarActa("P001", "MC4", "2026-11-01"));
+		assertEquals("El acta está cerrada: las notas ya no se pueden cambiar", e.getMessage());
+		assertEquals(List.of("FINALIZADA", "2026-10-30", "0"), microcredencial("MC4"));
+	}
+
+	@Test
+	@DisplayName("Solo el profesor que imparte la microcredencial cierra su acta")
+	public void testOtroProfesorNoPuedeCerrar() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.cerrarActa("P002", "MC1", "2026-10-29"));
+		assertTrue(e.getMessage().contains(SOLO_SU_PROFESOR), e.getMessage());
+		assertEquals(Arrays.asList("ACEPTADA", null, "0"), microcredencial("MC1"));
+	}
+
+	@Test
+	@DisplayName("Con el acta cerrada las notas ya no cambian")
+	public void testNotasNoCambianTrasCerrar() {
+		model.cerrarActa("P001", "MC1", "2026-10-29");
+		assertThrows(ValidationException.class,
+				() -> model.guardarNotas("P001", "MC1", notas("M1", "3"), "2026-10-30"));
+		assertEquals(8.5, nota("M1", "MC1"));
+	}
+
+	@Test
+	@DisplayName("El alumno solo ve su nota en 'Mis matriculaciones' con el acta cerrada")
+	public void testAlumnoVeNotaSoloConActaCerrada() {
+		InscripcionMicrocredencialModel alumno = new InscripcionMicrocredencialModel(db);
+		assertEquals("Pendiente", notaAlumno(alumno, "AL1", "MC1"));
+		assertEquals("Pendiente", notaAlumno(alumno, "AL2", "MC1"));
+
+		model.cerrarActa("P001", "MC1", "2026-10-29");
+
+		assertEquals("8.5", notaAlumno(alumno, "AL1", "MC1"));
+		assertEquals("NP", notaAlumno(alumno, "AL2", "MC1"));
+		assertEquals("Pendiente", notaAlumno(alumno, "AL1", "MC2"), "Las demás actas siguen abiertas");
+	}
+
+	// =========================================================================
 	// Auxiliares
 	// =========================================================================
+
+	/** estado, fechaCierreActa y cierreAutomatico de la microcredencial */
+	private static List<String> microcredencial(String microcredencialId) {
+		Object[] fila = db.executeQueryArray("SELECT estado, fechaCierreActa, cierreAutomatico FROM Microcredencial "
+				+ "WHERE microcredencialId = ?", microcredencialId).get(0);
+		List<String> valores = new ArrayList<>();
+		for (Object v : fila) {
+			valores.add(v == null ? null : v.toString());
+		}
+		return valores;
+	}
+
+	private static String estado(String matriculaId, String microcredencialId) {
+		return (String) db.executeQueryArray("SELECT estado FROM MatriculaMicrocredencial "
+				+ "WHERE matriculaId = ? AND microcredencialId = ?", matriculaId, microcredencialId).get(0)[0];
+	}
+
+	private static String notaAlumno(InscripcionMicrocredencialModel alumno, String alumnoId, String microcredencialId) {
+		for (MatriculaMicrocredencialDisplayDTO m : alumno.getMatriculasAlumno(alumnoId)) {
+			if (m.getMicrocredencialId().equals(microcredencialId)) {
+				return m.getNotaTexto();
+			}
+		}
+		return null;
+	}
 
 	/** Notas como las envía la tabla: matrícula, texto, matrícula, texto... */
 	private static Map<String, String> notas(String... pares) {

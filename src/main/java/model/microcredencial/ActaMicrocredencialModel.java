@@ -90,6 +90,32 @@ public class ActaMicrocredencialModel {
 	}
 
 	// =========================================================================
+	// Cierre
+	// =========================================================================
+
+	/**
+	 * Cierre manual del acta por el profesor (cierreAutomatico = 0), desde el fin de la impartición hasta 15 días
+	 * después. Las inscripciones INSCRITAS y la microcredencial pasan a FINALIZADA en la misma transacción;
+	 * quien no tiene nota queda como no presentado.
+	 * @throws ValidationException si el profesor no la imparte, el acta ya está cerrada o está fuera de plazo
+	 */
+	public void cerrarActa(String profesorId, String microcredencialId, String fechaHoy) {
+		MicrocredencialDisplayDTO mc = getMicrocredencialDelProfesor(profesorId, microcredencialId);
+		comprobarActaAbierta(mc);
+		if (fechaHoy.compareTo(mc.getFinImparticion()) < 0) {
+			throw new ValidationException("No se puede cerrar el acta hasta el fin de la microcredencial ("
+					+ mc.getFinImparticion() + ")");
+		}
+		if (fechaHoy.compareTo(finPlazoCierre(mc)) > 0) {
+			throw new ValidationException("El plazo para cerrar el acta terminó el " + finPlazoCierre(mc)
+					+ ": la cerrará el sistema");
+		}
+		db.enTransaccion(conn -> repository.cambiarEstadoInscripciones(conn, microcredencialId, INSCRITA, FINALIZADA)
+				+ repository.cerrarActa(conn, microcredencialId, EstadoMicrocredencial.ACEPTADA.name(),
+						EstadoMicrocredencial.FINALIZADA.name(), fechaHoy, false));
+	}
+
+	// =========================================================================
 	// Reglas
 	// =========================================================================
 
