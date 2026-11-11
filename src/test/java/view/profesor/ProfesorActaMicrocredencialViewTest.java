@@ -132,6 +132,25 @@ public class ProfesorActaMicrocredencialViewTest {
 		assertEquals("Acta CERRADA el 2026-10-30: solo lectura", view.getLblEstadoActaMicrocredencial().getText());
 	}
 
+	/** Pasado el plazo de cierre (y antes de que el sistema la cierre al arrancar) el acta es de solo lectura */
+	@Test
+	public void testFueraDePlazoSoloLectura() throws Exception {
+		LocalDate hoy = LocalDate.now();
+		db.executeUpdate("UPDATE Microcredencial SET finImparticion = ? WHERE microcredencialId = 'MC1'",
+				hoy.minusDays(16).toString());
+		SwingUtilities.invokeAndWait(() -> view.getFrame().dispose());
+		SwingUtilities.invokeAndWait(() -> {
+			view = new ProfesorView();
+			new ProfesorController(view, db, new ProfesorDTO("P001", "Ana", "Garcia")).initController();
+		});
+		seleccionar("MC1");
+		assertFalse(view.getTabNotasMicrocredencial().isCellEditable(0, COLUMNA_NOTA));
+		assertFalse(view.getBtnGuardarNotasMicrocredencial().isEnabled());
+		assertFalse(view.getBtnCerrarActaMicrocredencial().isEnabled());
+		assertTrue(view.getLblEstadoActaMicrocredencial().getText().contains("la cerrará el sistema"),
+				view.getLblEstadoActaMicrocredencial().getText());
+	}
+
 	// //////////////////////////////////////////////
 	// Notas y cierre
 	// //////////////////////////////////////////////

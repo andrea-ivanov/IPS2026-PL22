@@ -173,6 +173,7 @@ public class ActaMicrocredencialModelTest {
 		assertFalse(ActaMicrocredencialModel.puedeEditarNotas(mc1, "2026-10-04"));
 		assertTrue(ActaMicrocredencialModel.puedeEditarNotas(mc1, "2026-10-05"));
 		assertTrue(ActaMicrocredencialModel.puedeEditarNotas(mc1, "2026-11-07"));
+		assertFalse(ActaMicrocredencialModel.puedeEditarNotas(mc1, "2026-11-08"), "Pasado el plazo de cierre, no");
 		MicrocredencialDisplayDTO mc4 = model.getMicrocredencialDelProfesor("P001", "MC4");
 		assertFalse(ActaMicrocredencialModel.actaAbierta(mc4));
 		assertFalse(ActaMicrocredencialModel.puedeEditarNotas(mc4, "2026-10-20"));
@@ -246,6 +247,16 @@ public class ActaMicrocredencialModelTest {
 				() -> model.guardarNotas("P001", "MC2", notas("M1", "7"), "2026-11-11"));
 		assertEquals("La microcredencial todavía no ha empezado (inicio: 2026-11-16)", e.getMessage());
 		assertNull(nota("M1", "MC2"));
+	}
+
+	@Test
+	@DisplayName("Pasado el plazo de cierre ya no se cambian notas: el sistema cerrará el acta con fecha fin + 15")
+	public void testNotasFueraDePlazoDeCierre() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.guardarNotas("P001", "MC1", notas("M1", "3"), "2026-11-08"));
+		assertEquals("El plazo para cerrar el acta terminó el 2026-11-07: ya no se pueden cambiar las notas",
+				e.getMessage());
+		assertEquals(8.5, nota("M1", "MC1"));
 	}
 
 	@Test

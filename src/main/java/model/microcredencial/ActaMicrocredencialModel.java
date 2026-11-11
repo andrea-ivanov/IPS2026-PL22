@@ -69,6 +69,10 @@ public class ActaMicrocredencialModel {
 	public void guardarNotas(String profesorId, String microcredencialId, Map<String, String> notas, String fechaHoy) {
 		MicrocredencialDisplayDTO mc = getMicrocredencialDelProfesor(profesorId, microcredencialId);
 		comprobarActaAbierta(mc);
+		if (fechaHoy.compareTo(finPlazoCierre(mc)) > 0) {
+			throw new ValidationException("El plazo para cerrar el acta terminó el " + finPlazoCierre(mc)
+					+ ": ya no se pueden cambiar las notas");
+		}
 		if (!puedeEditarNotas(mc, fechaHoy)) {
 			throw new ValidationException("La microcredencial todavía no ha empezado (inicio: "
 					+ mc.getInicioImparticion() + ")");
@@ -140,9 +144,13 @@ public class ActaMicrocredencialModel {
 		return EstadoMicrocredencial.ACEPTADA.name().equals(mc.getEstado());
 	}
 
-	/** Notas: con el acta abierta y desde el inicio de la impartición */
+	/**
+	 * Notas: con el acta abierta, desde el inicio de la impartición y hasta el último día del plazo de cierre
+	 * (después la cierra el sistema con fecha fin + 15 días, y no puede quedar una nota posterior a esa fecha)
+	 */
 	public static boolean puedeEditarNotas(MicrocredencialDisplayDTO mc, String fechaHoy) {
-		return actaAbierta(mc) && fechaHoy.compareTo(mc.getInicioImparticion()) >= 0;
+		return actaAbierta(mc) && fechaHoy.compareTo(mc.getInicioImparticion()) >= 0
+				&& fechaHoy.compareTo(finPlazoCierre(mc)) <= 0;
 	}
 
 	/** Cierre manual: con el acta abierta, desde el fin de la impartición hasta el último día del plazo */

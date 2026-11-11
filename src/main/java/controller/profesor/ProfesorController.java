@@ -464,15 +464,15 @@ public class ProfesorController {
         if (!ActaMicrocredencialModel.actaAbierta(mc))
             estado = "Acta CERRADA el " + mc.getFechaCierreActa() + ": solo lectura"
                     + (Integer.valueOf(1).equals(mc.getCierreAutomatico()) ? " (cerrada por el sistema)" : "");
+        else if (hoy.compareTo(ActaMicrocredencialModel.finPlazoCierre(mc)) > 0)
+            estado = "Acta ABIERTA: el plazo para cerrarla terminó el "
+                    + ActaMicrocredencialModel.finPlazoCierre(mc) + " y la cerrará el sistema";
         else if (!editable)
             estado = "La microcredencial empieza el " + mc.getInicioImparticion()
                     + ": todavía no se pueden poner notas";
-        else if (hoy.compareTo(mc.getFinImparticion()) < 0)
+        else if (!cerrable)
             estado = "Acta ABIERTA: escribe la nota (0 a 10), NP o déjala vacía · Se podrá cerrar a partir del "
                     + mc.getFinImparticion();
-        else if (!cerrable)
-            estado = "Acta ABIERTA: el plazo para cerrarla terminó el "
-                    + ActaMicrocredencialModel.finPlazoCierre(mc) + " y la cerrará el sistema";
         else
             estado = "Acta ABIERTA: escribe la nota (0 a 10), NP o déjala vacía · Puedes cerrarla hasta el "
                     + ActaMicrocredencialModel.finPlazoCierre(mc);
