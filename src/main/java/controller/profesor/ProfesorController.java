@@ -2,23 +2,28 @@ package controller.profesor;
 
 import model.acta.ActaDisplayDTO;
 import model.acta.ActaModel;
+import model.propuesta.PropuestaModel;
 import model.acta.CalificacionActaDisplayDTO;
 import model.acta.EstadoActa;
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
 import model.grado.GradoDisplayDTO;
+import model.microcredencial.MicrocredencialDisplayDTO;
+import model.microcredencial.MicrocredencialModel;
+import model.anoacademico.AnoAcademicoModel;
 import model.profesor.ProfesorDTO;
+import model.profesor.ProfesorModel;
 import model.propuesta.PropuestaDisplayDTO;
-import repository.ActaRepository;
-import repository.ProfesorRepository;
-import repository.PropuestaRepository;
-import util.ComboBuscable;
+import util.Database;
 import util.SwingUtil;
+import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
+import view.profesor.MicrocredencialFormDialog;
 import view.profesor.ProfesorView;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
-import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import java.awt.event.WindowAdapter;
@@ -35,9 +40,13 @@ public class ProfesorController {
     private static final int COLUMNA_NOTA = 4;
 
     private ProfesorView view;
-    private ProfesorRepository repository;
-    private ActaRepository actaRepository;
-    private PropuestaRepository propuestaRepository;
+    private ProfesorModel profesorModel;
+    private ActaModel actaModel;
+    private PropuestaModel propuestaModel;
+    private MicrocredencialModel microcredencialModel;
+    private AnoAcademicoModel anoAcademicoModel;
+    // profesor que ha entrado desde la pantalla de inicio
+    private ProfesorDTO profesor;
     private String profesorId;
     // asignaciones del profesor seleccionado, sin filtrar: los filtros se aplican sobre esta lista
     private List<AsignacionDocenteDisplayDTO> asignaciones = new ArrayList<>();
@@ -49,11 +58,15 @@ public class ProfesorController {
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
     private Runnable onVolverInicio = () -> { };
 
-    public ProfesorController(ProfesorView view) {
+    public ProfesorController(ProfesorView view, Database db, ProfesorDTO profesor) {
         this.view = view;
-        this.repository = new ProfesorRepository();
-        this.actaRepository = new ActaRepository();
-        this.propuestaRepository = new PropuestaRepository();
+        this.profesor = profesor;
+        this.profesorId = profesor.getProfesorId();
+        this.profesorModel = new ProfesorModel(db);
+        this.actaModel = new ActaModel(db);
+        this.propuestaModel = new PropuestaModel(db);
+        this.microcredencialModel = new MicrocredencialModel(db);
+        this.anoAcademicoModel = new AnoAcademicoModel(db);
         this.initView();
     }
 
@@ -70,10 +83,6 @@ public class ProfesorController {
                 onVolverInicio.run();
             }
         });
-        view.getBtnCargarAsignaciones().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarAsignaciones()));
-        // Enter en el combo de profesores (despues de escribir o elegir) tambien carga sus asignaciones
-        ((JTextField) view.getCbProfesores().getEditor().getEditorComponent())
-                .addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarAsignaciones()));
         view.getCbFiltroGrado().addActionListener(e -> aplicarFiltros());
         view.getCbFiltroCurso().addActionListener(e -> aplicarFiltros());
         view.getCbFiltroTipo().addActionListener(e -> aplicarFiltros());
@@ -86,20 +95,19 @@ public class ProfesorController {
         view.getBtnGuardarNotas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> guardarNotas()));
         view.getBtnCerrarActa().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cerrarActa()));
         view.getBtnEnviarPropuesta().addActionListener(e -> SwingUtil.exceptionWrapper(() -> enviarPropuesta()));
+        view.getBtnProponerMicrocredencial()
+                .addActionListener(e -> SwingUtil.exceptionWrapper(() -> proponerMicrocredencial()));
+        // el profesor ya viene elegido de la pantalla de inicio: se cargan sus pestañas al abrir
+        SwingUtil.exceptionWrapper(() -> cargarAsignaciones());
     }
 
+    /** Carga las tres pestañas (asignaciones, propuestas y microcredenciales) del profesor */
     private void cargarAsignaciones() {
-        // en el combo se puede escribir: solo vale si el texto corresponde a un profesor de la lista
-        ProfesorDTO seleccionado = ComboBuscable.getSeleccion(view.getCbProfesores());
-        if (seleccionado == null)
-            throw new ValidationException("Selecciona un profesor de la lista");
-        view.getCbProfesores().setSelectedItem(seleccionado);
-        profesorId = seleccionado.getProfesorId();
-
-        asignaciones = repository.getAsignacionesDocentes(profesorId);
+        asignaciones = profesorModel.getAsignacionesDocentes(profesorId);
         cargarCombosFiltro();
         aplicarFiltros();
         cargarPropuestas();
+        cargarMicrocredenciales();
     }
 
     /** Rellena los combos de grado y curso solo con los valores de las asignaciones del profesor */
@@ -159,7 +167,7 @@ public class ProfesorController {
             actas = new ArrayList<>();
         } else {
             asignacionSelec = asignacionesFiltradas.get(fila);
-            actas = actaRepository.getActasCurso(asignacionSelec.getCursoId());
+            actas = actaModel.getActasCurso(asignacionSelec.getCursoId());
         }
 
         List<String> opciones = new ArrayList<>();
@@ -184,7 +192,7 @@ public class ProfesorController {
         }
 
         boolean editable = ActaModel.puedeEditarNotas(asignacionSelec.getRolDocente(), acta.getEstadoActa());
-        List<CalificacionActaDisplayDTO> notas = actaRepository.getCalificaciones(acta.getCursoId(),
+        List<CalificacionActaDisplayDTO> notas = actaModel.getCalificaciones(acta.getCursoId(),
                 acta.getAnioAcademicoId(), acta.getTipoConvocatoria());
 
         DefaultTableModel model = new DefaultTableModel(new String[] { "Matrícula", "Cód. Alumno", "Alumno", "DNI", "Nota" }, 0) {
@@ -225,7 +233,7 @@ public class ProfesorController {
             Object nota = model.getValueAt(i, COLUMNA_NOTA);
             notas.put((String) model.getValueAt(i, 0), nota == null ? "" : nota.toString());
         }
-        actaRepository.guardarNotas(profesorId, acta.getCursoId(), acta.getAnioAcademicoId(),
+        actaModel.guardarNotas(profesorId, acta.getCursoId(), acta.getAnioAcademicoId(),
                 acta.getTipoConvocatoria(), notas);
 
         JOptionPane.showMessageDialog(view.getFrame(), "Notas guardadas correctamente.", "Exito",
@@ -245,7 +253,7 @@ public class ProfesorController {
                 "Cerrar Acta", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
-            actaRepository.cerrarActa(profesorId, acta.getCursoId(), acta.getAnioAcademicoId(),
+            actaModel.cerrarActa(profesorId, acta.getCursoId(), acta.getAnioAcademicoId(),
                     acta.getTipoConvocatoria(), LocalDate.now().toString());
 
             JOptionPane.showMessageDialog(view.getFrame(), "Acta cerrada correctamente.", "Éxito",
@@ -262,11 +270,11 @@ public class ProfesorController {
 
     /** Grados en los que imparte el profesor (con su estado) y su listado "Mis propuestas" */
     private void cargarPropuestas() {
-        List<GradoDisplayDTO> grados = propuestaRepository.getGradosProfesor(profesorId);
+        List<GradoDisplayDTO> grados = propuestaModel.getGradosProfesor(profesorId);
         view.getListGradosPropuesta().setListData(grados.toArray(new GradoDisplayDTO[0]));
 
-        List<PropuestaDisplayDTO> propuestas = propuestaRepository.getPropuestas(profesorId);
-        view.getLblProfesorPropuesta().setText("Propuestas de " + view.getCbProfesores().getSelectedItem()
+        List<PropuestaDisplayDTO> propuestas = propuestaModel.getPropuestas(profesorId);
+        view.getLblProfesorPropuesta().setText("Propuestas de " + profesor
                 + (propuestas.isEmpty() ? ": todavía no ha enviado ninguna" : ""));
         TableModel tmodel = SwingUtil.getTableModelFromPojos(propuestas,
                 new String[] { "propuestaId", "grado", "nombre", "anio", "creditos", "fechaPropuesta", "estado" });
@@ -282,8 +290,6 @@ public class ProfesorController {
      * al confirmar se crea una propuesta PENDIENTE por grado elegido (o ninguna si alguna falla)
      */
     private void enviarPropuesta() {
-        if (profesorId == null)
-            throw new ValidationException("Carga primero un profesor");
         List<GradoDisplayDTO> gradosSelec = view.getListGradosPropuesta().getSelectedValuesList();
         List<String> gradoIds = new ArrayList<>();
         for (GradoDisplayDTO g : gradosSelec)
@@ -293,7 +299,7 @@ public class ProfesorController {
         String creditos = view.getTxtCreditosPropuesta().getText();
         String descripcion = view.getTxtDescripcionPropuesta().getText();
 
-        propuestaRepository.validarPropuestas(profesorId, gradoIds, nombre, anio, creditos, descripcion);
+        propuestaModel.validarPropuestas(profesorId, gradoIds, nombre, anio, creditos, descripcion);
 
         StringBuilder grados = new StringBuilder();
         for (GradoDisplayDTO g : gradosSelec)
@@ -305,7 +311,7 @@ public class ProfesorController {
         if (confirm != JOptionPane.YES_OPTION)
             return;
 
-        List<String> creadas = propuestaRepository.crearPropuestas(profesorId, gradoIds, nombre, anio, creditos,
+        List<String> creadas = propuestaModel.crearPropuestas(profesorId, gradoIds, nombre, anio, creditos,
                 descripcion, LocalDate.now().toString());
         JOptionPane.showMessageDialog(view.getFrame(),
                 "Propuesta enviada correctamente: " + String.join(", ", creadas) + " (PENDIENTE).", "Éxito",
@@ -322,6 +328,76 @@ public class ProfesorController {
         view.getListGradosPropuesta().clearSelection();
     }
 
+    // =========================================================================
+    // HU 35988: propuestas de microcredenciales
+    // =========================================================================
+
+    /** Listado "Mis microcredenciales" del profesor cargado, con su estado */
+    private void cargarMicrocredenciales() {
+        List<MicrocredencialDisplayDTO> microcredenciales = microcredencialModel.getMicrocredenciales(profesorId);
+        view.getLblProfesorMicrocredencial().setText("Microcredenciales de " + profesor
+                + (microcredenciales.isEmpty() ? ": todavía no ha propuesto ninguna" : ""));
+        TableModel tmodel = SwingUtil.getTableModelFromPojos(microcredenciales,
+                new String[] { "microcredencialId", "anioAcademicoId", "nombre", "ramaConocimiento", "creditos", "plazas",
+                        "inicioMatriculacion", "finMatriculacion", "inicioImparticion", "finImparticion",
+                        "fechaPropuesta", "estado" });
+        ((DefaultTableModel) tmodel).setColumnIdentifiers(
+                new String[] { "Código", "Año", "Nombre", "Rama", "Créditos", "Plazas", "Inicio matrícula",
+                        "Fin matrícula", "Inicio impartición", "Fin impartición", "Propuesta", "Estado" });
+        view.getTabMicrocredenciales().setModel(tmodel);
+        SwingUtil.autoAdjustColumns(view.getTabMicrocredenciales());
+        view.getBtnProponerMicrocredencial().setEnabled(true);
+    }
+
+    /**
+     * Abre el formulario; al guardar se valida todo y se crea como PROPUESTA en el año académico actual.
+     * Si algo no es válido se muestra el error y el formulario sigue abierto
+     */
+    private void proponerMicrocredencial() {
+        String anioAcademicoId;
+        try {
+            anioAcademicoId = anoAcademicoModel.buscarActual().getAnioAcademicoId();
+        } catch (ResourceNotFoundException e) {
+            throw new ValidationException("No hay ningún año académico configurado");
+        }
+        MicrocredencialFormDialog form = new MicrocredencialFormDialog(view.getFrame());
+        // el fin de la matriculacion se recalcula al escribir el inicio
+        form.getTxtInicioMatriculacion().getDocument().addDocumentListener(new DocumentListener() {
+            private void actualizar() {
+                form.getTxtFinMatriculacion().setText(
+                        MicrocredencialModel.calcularFinMatriculacion(form.getTxtInicioMatriculacion().getText()));
+            }
+
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                actualizar();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                actualizar();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                actualizar();
+            }
+        });
+        form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+            String nombre = form.getTxtNombre().getText();
+            String id = microcredencialModel.crearMicrocredencial(profesorId, anioAcademicoId, nombre,
+                    (String) form.getCbRama().getSelectedItem(), form.getTxtPlazas().getText(),
+                    form.getTxtCreditos().getText(), form.getTxtInicioMatriculacion().getText(),
+                    form.getTxtInicioImparticion().getText(), form.getTxtFinImparticion().getText(),
+                    LocalDate.now().toString());
+            form.cerrar();
+            JOptionPane.showMessageDialog(view.getFrame(), "Microcredencial " + nombre.trim() + " propuesta correctamente ("
+                    + id + ", PROPUESTA).", "Proponer microcredencial", JOptionPane.INFORMATION_MESSAGE);
+            cargarMicrocredenciales();
+        }));
+        form.mostrar();
+    }
+
     private ActaDisplayDTO getActaSeleccionada() {
         int indice = view.getCbActas().getSelectedIndex();
         if (asignacionSelec == null || indice < 0 || indice >= actas.size())
@@ -330,8 +406,8 @@ public class ProfesorController {
     }
 
     private void initView() {
-        view.getCbProfesores().setModel(new DefaultComboBoxModel<>(repository.getProfesores().toArray(new ProfesorDTO[0])));
-        ComboBuscable.hacerBuscable(view.getCbProfesores());
+        view.getLblProfesor().setText(profesor.getNombre() + " " + profesor.getApellidos() + " ("
+                + profesor.getProfesorId() + ")");
         view.getFrame().setVisible(true);
     }
 }
