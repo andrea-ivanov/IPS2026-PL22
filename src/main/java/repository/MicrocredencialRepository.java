@@ -11,6 +11,7 @@ import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.microcredencial.EstadoMicrocredencial;
+import model.microcredencial.MatriculaMicrocredencialDisplayDTO;
 import model.microcredencial.MicrocredencialDisplayDTO;
 import model.microcredencial.OfertaMicrocredencialDTO;
 import util.Database;
@@ -36,7 +37,7 @@ public class MicrocredencialRepository {
 		return db.executeQueryPojo(MicrocredencialDisplayDTO.class,
 				"SELECT microcredencialId, anioAcademicoId, nombre, ramaConocimiento, CAST(creditos AS REAL) AS creditos, "
 						+ "plazas, inicioMatriculacion, finMatriculacion, inicioImparticion, finImparticion, "
-						+ "fechaPropuesta, estado "
+						+ "fechaPropuesta, fechaResolucion, motivoRechazo, fechaCancelacion, estado "
 						+ "FROM Microcredencial "
 						+ "WHERE profesorId = ? "
 						+ "ORDER BY fechaPropuesta DESC, microcredencialId DESC",
@@ -166,5 +167,75 @@ public class MicrocredencialRepository {
 				+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 				matriculaId, anioAcademicoId, microcredencialId, fechaHoy, estado, importe, metodoPago, fechaPago,
 				pagoValidado);
+	}
+
+	/**
+	 * Inscripciones en microcredenciales de un estudiante para la vista "Mis Matrículas"
+	 * (HU 35232, HU 36410 y HU 36459). La nota solo se devuelve cuando el acta está cerrada y el estado es FINALIZADA.
+	 */
+	public List<MatriculaMicrocredencialDisplayDTO> findMatriculasByAlumno(String alumnoId) {
+		return db.executeQueryPojo(MatriculaMicrocredencialDisplayDTO.class,
+				"SELECT mc.microcredencialId, mc.anioAcademicoId, mc.nombre, mc.ramaConocimiento, "
+						+ "CAST(mc.creditos AS REAL) AS creditos, mc.inicioImparticion, mc.finImparticion, "
+						+ "CAST(mm.importe AS REAL) AS importe, mm.estado, mm.motivoCancelacion, mm.fechaBaja, "
+						+ "CASE WHEN mc.fechaCierreActa IS NULL OR mm.estado <> 'FINALIZADA' THEN NULL "
+						+ "     WHEN mm.nota IS NULL THEN 'NP' ELSE CAST(mm.nota AS TEXT) END AS nota "
+						+ "FROM MatriculaMicrocredencial mm "
+						+ "JOIN Matricula m ON m.matriculaId = mm.matriculaId "
+						+ "JOIN Microcredencial mc ON mc.microcredencialId = mm.microcredencialId "
+						+ "WHERE m.alumnoId = ? "
+						+ "ORDER BY mc.inicioImparticion DESC, mc.microcredencialId DESC",
+				alumnoId);
+	}
+
+	// =========================================================================
+	// Lote de cancelación por baja demanda (HU 36410)
+	// =========================================================================
+
+	/**
+	 * Cancela por IMPAGO las inscripciones SOLICITADAS (sin pago validado) de las microcredenciales
+	 * ACEPTADAS cuyo periodo de evaluación previo al cierre de matriculación ya se ha cumplido
+	 * (date(finMatriculacion, '-1 day') <= fechaHoy).
+	 */
+	public void cancelarInscripcionesImpagadas(Connection conn, String fechaHoy) throws SQLException {
+		update(conn, "UPDATE MatriculaMicrocredencial "
+				+ "SET estado = 'CANCELADA', motivoCancelacion = 'IMPAGO', "
+				+ "    fechaBaja = (SELECT date(mc.finMatriculacion, '-1 day') FROM Microcredencial mc "
+				+ "                 WHERE mc.microcredencialId = MatriculaMicrocredencial.microcredencialId) "
+				+ "WHERE estado = 'SOLICITADA' "
+				+ "  AND microcredencialId IN (SELECT microcredencialId FROM Microcredencial "
+				+ "                            WHERE estado = ? AND date(finMatriculacion, '-1 day') <= ?)",
+				EstadoMicrocredencial.ACEPTADA.name(), fechaHoy);
+	}
+
+	/**
+	 * Cambia a CANCELADA_BAJA_DEMANDA las microcredenciales ACEPTADAS en fecha de evaluación
+	 * (date(finMatriculacion, '-1 day') <= fechaHoy) cuyas inscripciones pagadas (pagoValidado = 1)
+	 * no alcancen el porcentaje mínimo de plazas ofertadas (porcentajeMinimo, p. ej. 10%).
+	 */
+	public void cancelarMicrocredencialesBajaDemanda(Connection conn, String fechaHoy, int porcentajeMinimo)
+			throws SQLException {
+		update(conn, "UPDATE Microcredencial "
+				+ "SET estado = ?, fechaCancelacion = date(finMatriculacion, '-1 day') "
+				+ "WHERE estado = ? AND date(finMatriculacion, '-1 day') <= ? "
+				+ "  AND (SELECT COUNT(*) FROM MatriculaMicrocredencial mm "
+				+ "       WHERE mm.microcredencialId = Microcredencial.microcredencialId AND mm.pagoValidado = 1) * 100 < plazas * ?",
+				EstadoMicrocredencial.CANCELADA_BAJA_DEMANDA.name(),
+				EstadoMicrocredencial.ACEPTADA.name(),
+				fechaHoy, porcentajeMinimo);
+	}
+
+	/**
+	 * Cancela con motivo BAJA_DEMANDA todas las inscripciones INSCRITAS de las microcredenciales
+	 * que hayan pasado a CANCELADA_BAJA_DEMANDA.
+	 */
+	public void cancelarInscripcionesPorBajaDemanda(Connection conn) throws SQLException {
+		update(conn, "UPDATE MatriculaMicrocredencial "
+				+ "SET estado = 'CANCELADA', motivoCancelacion = 'BAJA_DEMANDA', "
+				+ "    fechaBaja = (SELECT mc.fechaCancelacion FROM Microcredencial mc "
+				+ "                 WHERE mc.microcredencialId = MatriculaMicrocredencial.microcredencialId) "
+				+ "WHERE estado = 'INSCRITA' "
+				+ "  AND microcredencialId IN (SELECT microcredencialId FROM Microcredencial WHERE estado = ?)",
+				EstadoMicrocredencial.CANCELADA_BAJA_DEMANDA.name());
 	}
 }

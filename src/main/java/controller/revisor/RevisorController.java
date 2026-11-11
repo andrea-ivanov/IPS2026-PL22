@@ -17,7 +17,8 @@ import view.revisor.RevisorView;
 
 /**
  * Controlador de la vista del revisor externo (HU 36411).
- * Las métricas se cargan una sola vez al abrir la vista; el combo del año y los filtros
+ * Las métricas se cargan una sola vez al abrir la vista; el combo del año y los
+ * filtros
  * de rama y grado se aplican sobre esa lista en memoria.
  */
 public class RevisorController {
@@ -26,7 +27,8 @@ public class RevisorController {
 	private RevisorView view;
 	private MetricasGradoModel metricasModel;
 
-	private Runnable onVolverInicio = () -> { };
+	private Runnable onVolverInicio = () -> {
+	};
 
 	private List<GradoAnioRevisorDisplayDTO> todasLasMetricas = new ArrayList<>();
 
@@ -60,7 +62,10 @@ public class RevisorController {
 		onVolverInicio.run();
 	}
 
-	/** "Todos" y después los años de más reciente a más antiguo; seleccionado el actual ("Todos" si no hay años). */
+	/**
+	 * "Todos" y después los años de más reciente a más antiguo; seleccionado el
+	 * actual ("Todos" si no hay años).
+	 */
 	private void cargarAnios() {
 		DefaultComboBoxModel<String> anios = new DefaultComboBoxModel<>();
 		anios.addElement(TODOS);

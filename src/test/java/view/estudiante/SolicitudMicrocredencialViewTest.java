@@ -159,4 +159,3 @@ public class SolicitudMicrocredencialViewTest {
         assertTrue(menuVuelto.get(), "Debe invocarse el callback de regreso al menú");
     }
 }
-

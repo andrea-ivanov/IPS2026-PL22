@@ -22,6 +22,7 @@ import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
 import model.acta.ActaModel;
 import model.gestionmatricula.GestionMatriculaModel;
+import model.microcredencial.MicrocredencialModel;
 import util.ComboBuscable;
 import util.Database;
 import util.SwingUtil;
@@ -70,6 +71,10 @@ public class MainController {
         // sistema
         // (cierreAutomatico = 1); secretaria las consulta como avisos en su vista
         SwingUtil.exceptionWrapper(() -> new ActaModel(db).cerrarActasVencidas(LocalDate.now().toString()));
+        // HU 36410: el sistema cancela automáticamente por baja demanda las microcredenciales
+        // que no alcancen el 10% de plazas pagadas el día antes de cerrar su periodo de matriculación
+        SwingUtil.exceptionWrapper(() -> new MicrocredencialModel(db)
+                .cancelarPorBajaDemanda(LocalDate.now().toString()));
     }
 
     /**
@@ -98,7 +103,8 @@ public class MainController {
         ProfesorModel profesorModel = new ProfesorModel(db);
         view.getCbProfesores().setModel(
                 new DefaultComboBoxModel<>(profesorModel.getProfesores().toArray(new ProfesorDTO[0])));
-        // se puede escribir parte del nombre, apellidos o id para buscar el profesor (como el combo de alumnos)
+        // se puede escribir parte del nombre, apellidos o id para buscar el profesor
+        // (como el combo de alumnos)
         ComboBuscable.hacerBuscable(view.getCbProfesores());
     }
 
@@ -110,7 +116,10 @@ public class MainController {
         ComboBuscable.hacerBuscable(view.getCbAlumnos());
     }
 
-    /** Solo se ve la fila del usuario que corresponde al rol: el profesor o el alumno */
+    /**
+     * Solo se ve la fila del usuario que corresponde al rol: el profesor o el
+     * alumno
+     */
     private void actualizarVisibilidadUsuario() {
         Object rol = view.getCbRoles().getSelectedItem();
         view.getPanelProfesor().setVisible("Profesor".equals(rol));

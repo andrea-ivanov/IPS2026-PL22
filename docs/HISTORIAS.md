@@ -1,7 +1,9 @@
 # Historias de usuario implementadas
 
-Sprint 1. Cada fila dice qué pantalla y qué clases implementan la historia y qué tests la prueban.
+Cada fila dice qué pantalla y qué clases implementan la historia y qué tests la prueban.
 Las consultas SQL de referencia de cada historia están en [DATABASE.md](DATABASE.md#8-consultas-de-referencia-por-historia-de-usuario).
+
+## Sprint 1
 
 | HU | Rol | Historia | Responsable | Controlador → modelo | Tests |
 |---|---|---|---|---|---|
@@ -13,10 +15,27 @@ Las consultas SQL de referencia de cada historia están en [DATABASE.md](DATABAS
 | 35235 | Estudiante | Solicitar mi matriculación en los grados y cursos ofertados por la universidad. | Andrea Ivanov García | `SolicitudMatriculaController` → `MatriculacionModel` | `MatriculacionSolicitudModelTest` (y `SolicitudMatriculaViewTest`, que no se ejecuta en `mvn test`) |
 | 35239 | Profesor | Gestionar los cursos y grupos en los que imparto docencia. | Nicolás Pérez Fernández | `ProfesorController`, `MainController` (cierre automático al arrancar), `SecretarioController` (avisos) → `ActaModel` | `ActaModelTest` |
 | 35243 | Profesor | Proponer nuevas asignaturas para los grados en los que imparto docencia. | Nicolás Pérez Fernández | `ProfesorController` → `PropuestaModel` | `PropuestaModelTest` |
+
+## Sprint 2
+
+| HU | Rol | Historia | Responsable | Controlador → modelo | Tests |
+|---|---|---|---|---|---|
+| 35987 | Estudiante | Matricularme a las microcredenciales para completar mi curriculum de estudiante. | Andrea Ivanov García | `SolicitudMicrocredencialController` → `InscripcionMicrocredencialModel`, `MatriculacionModel` | `InscripcionMicrocredencialModelTest` (y `SolicitudMicrocredencialViewTest`, que no se ejecuta en `mvn test`) |
+| 36410 | Sistema | Cancelar de manera automática las microcredenciales que no alcancen el porcentaje mínimo de plazas cubiertas al concluir su periodo de matriculación para optimizar recursos académicos. | Andrea Ivanov García | `MainController` (al arrancar), `ProfesorController`, `MisMatriculasController` → `MicrocredencialModel`, `InscripcionMicrocredencialModel` | `MicrocredencialBajaDemandaTest` |
 | 35994 | Secretario | Revisar las propuestas de microcredenciales para aprobarlas o rechazarlas. | Alejandro El Harchi Argüelles | `RevisionMicrocredencialController` (pestaña de `SecretarioController`) → `RevisionMicrocredencialModel` → `RevisionMicrocredencialRepository` | `RevisionMicrocredencialModelTest` (y `RevisionMicrocredencialViewTest`, que no se ejecuta en `mvn test`) |
 
 ## Notas
 
 - **35243:** el profesor rellena un formulario con los datos de la propuesta (curso) para los grados en los que imparte docencia. Las propuestas podrán incluirse en cursos posteriores del grado o grados a los que se adscriben; su revisión queda para un sprint futuro.
-- **35994 (sprint 2):** pestaña "Propuestas de Microcredenciales" de Secretaría. Lista las microcredenciales PROPUESTAS (curso, profesor, créditos, periodo de impartición, rama y plazas). Al aceptarla pasa a ACEPTADA y queda en la oferta; al rechazarla se exige el motivo (máximo 500 caracteres), pasa a RECHAZADA con ese motivo y queda invalidada: el profesor tendría que crear otra propuesta. En los dos casos se guarda la fecha de resolución, pero no qué secretario la resolvió. El profesor no ve todavía el motivo del rechazo en su pantalla.
-- **Tests de vista:** los de `src/test/java/view` abren ventanas, así que `pom.xml` no los incluye en `mvn test` ni en el CI. Se ejecutan a mano con `mvn test -Dtest=EstudianteNavegacionTest,SolicitudMatriculaViewTest`.
+- **35987:**
+  - **Asistente por pasos y arquitectura desacoplada:** la matriculación en microcredenciales cuenta con su propia vista y controlador (`SolicitudMicrocredencialView` y `SolicitudMicrocredencialController`) respaldados por `InscripcionMicrocredencialModel` y `MatriculaMicrocredencialRepository`, siguiendo un flujo guiado de selección, resumen consolidado, pasarela de pago telemático y diálogo de confirmación con botones localizados en castellano («Sí» / «No»).
+  - **Acceso por rama de conocimiento:** se valida que el estudiante solo acceda a microcredenciales de la misma rama en la que tiene una matrícula de grado no cancelada en el año académico actual (`getRamasHabilitadas`).
+  - **Exclusión de permanencia y sin tope de créditos:** los créditos de las microcredenciales no computan para los hitos de permanencia anuales ($\ge 12$ ECTS) ni acumulados ($\ge 90$ ECTS), y no existe límite máximo de créditos ECTS totales que el alumno pueda cursar mediante microcredenciales.
+  - **Precios y pasarela de pago:** se calcula a razón de 20,00 € / crédito ECTS (`creditos × PRECIO_CREDITO`). El pago con tarjeta valida la plaza inmediatamente (`INSCRITA`, `pagoValidado = 1`); la transferencia o carta de pago queda en estado `SOLICITADA` (`pagoValidado = 0`) para su posterior cotejo por secretaría.
+  - **Persistencia en base de datos:** inserción transaccional atómica en `MatriculaMicrocredencial` ligada a la matrícula anual del alumno, validando cupo de plazas disponibles (`pagoValidado = 1 < plazas`) y bloqueando solicitudes duplicadas en la misma microcredencial.
+- **36410:**
+  - **Proceso por lotes en arranque:** `MainController.actualizarEstadosPorFecha()` invoca `MicrocredencialModel.cancelarPorBajaDemanda(fechaHoy)` al iniciar la aplicación y al recargar la base de datos.
+  - **Criterio del 10% el día previo al cierre de matriculación:** conforme a la aclaración docente, para toda microcredencial `ACEPTADA` con `date(finMatriculacion, '-1 day') <= fechaHoy`, primero se cancelan por `IMPAGO` las inscripciones en estado `SOLICITADA` (`pagoValidado = 0`) y a continuación se evalúa si las inscripciones con `pagoValidado = 1` alcanzan al menos el 10% de `plazas`. Si no alcanzan el 10%, la microcredencial pasa a `CANCELADA_BAJA_DEMANDA` (registrando `fechaCancelacion`) y sus inscripciones pasan a `CANCELADA` con `motivoCancelacion = 'BAJA_DEMANDA'` y `fechaBaja`.
+  - **Notificación en vistas de Profesor y Estudiante:** el profesor visualiza la microcredencial como «Cancelada por baja demanda» junto a su fecha de cancelación en la pestaña «Microcredenciales» de `ProfesorView`, y el estudiante visualiza sus microcredenciales y el estado «Cancelada por baja demanda» en la pestaña «Microcredenciales» de `MisMatriculasView`.
+- **35994:** pestaña "Propuestas de Microcredenciales" de Secretaría. Lista las microcredenciales PROPUESTAS (curso, profesor, créditos, periodo de impartición, rama y plazas). Al aceptarla pasa a ACEPTADA y queda en la oferta; al rechazarla se exige el motivo (máximo 500 caracteres), pasa a RECHAZADA con ese motivo y queda invalidada: el profesor tendría que crear otra propuesta. En los dos casos se guarda la fecha de resolución, pero no qué secretario la resolvió. El profesor no ve todavía el motivo del rechazo en su pantalla.
+- **Tests de vista:** los de `src/test/java/view` abren ventanas, así que `pom.xml` no los incluye en `mvn test` ni en el CI. Se ejecutan a mano con `mvn test -Dtest=EstudianteNavegacionTest,SolicitudMatriculaViewTest,SolicitudMicrocredencialViewTest,RevisionMicrocredencialViewTest`.
