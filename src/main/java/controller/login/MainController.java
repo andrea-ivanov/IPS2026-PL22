@@ -22,6 +22,7 @@ import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
 import model.acta.ActaModel;
 import model.gestionmatricula.GestionMatriculaModel;
+import model.grado.GradoModel;
 import model.microcredencial.MicrocredencialModel;
 import util.ComboBuscable;
 import util.Database;
@@ -61,6 +62,10 @@ public class MainController {
      * al recargar la BD
      */
     private void actualizarEstadosPorFecha() {
+        // HU 36455: al empezar el año, los grados en extinción, los pendientes de renovación sin dictamen y los
+        // que no tienen matrículas pagadas pasan a EXTINTO y se cancelan sus matrículas del año. Va antes que el
+        // ciclo de vida, para que este no active las matrículas que se cancelan
+        SwingUtil.exceptionWrapper(() -> new GradoModel(db).extinguirGradosAlIniciarAnio(LocalDate.now().toString()));
         // HU 35229: el sistema mantiene al día el estado de las matrículas en cada
         // arranque,
         // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA ->

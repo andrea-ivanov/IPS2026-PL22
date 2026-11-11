@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -73,10 +74,11 @@ public class RevisorVistaTest {
 		TableModel t = view.getTabMetricas().getModel();
 		assertAll(
 				() -> assertEquals(List.of("Nombre Grado", "Rama", "Tasa Éxito", "Tasa abandono", "Aprobados",
-						"Matriculados"), columnas(t)),
+						"Matriculados", "Acciones"), columnas(t)),
 				() -> assertEquals(2, t.getRowCount()),
-				() -> assertEquals(List.of("Biologia", "Ciencias", "100.0%", "42.9%", 1, 3), fila(t, 0)),
-				() -> assertEquals(List.of("Derecho", "Ciencias Sociales y Juridicas", "—", "100.0%", 0, 1), fila(t, 1)));
+				() -> assertEquals(List.of("Biologia", "Ciencias", "100.0%", "42.9%", 1, 3, "Ver"), fila(t, 0)),
+				() -> assertEquals(List.of("Derecho", "Ciencias Sociales y Juridicas", "—", "100.0%", 0, 1, "Ver"),
+						fila(t, 1)));
 	}
 
 	@Test
@@ -88,9 +90,9 @@ public class RevisorVistaTest {
 		TableModel t = view.getTabMetricas().getModel();
 		assertAll(
 				() -> assertEquals(3, t.getRowCount()),
-				() -> assertEquals(List.of("Biologia", "Ciencias", "66.7%", "—", 2, 3), fila(t, 0)),
-				() -> assertEquals(List.of("Biologia", "Ciencias de la Salud", "100.0%", "—", 2, 2), fila(t, 1)),
-				() -> assertEquals(List.of("Derecho", "Ciencias Sociales y Juridicas", "100.0%", "0.0%", 1, 1),
+				() -> assertEquals(List.of("Biologia", "Ciencias", "66.7%", "—", 2, 3, "Ver"), fila(t, 0)),
+				() -> assertEquals(List.of("Biologia", "Ciencias de la Salud", "100.0%", "—", 2, 2, "Ver"), fila(t, 1)),
+				() -> assertEquals(List.of("Derecho", "Ciencias Sociales y Juridicas", "100.0%", "0.0%", 1, 1, "Ver"),
 						fila(t, 2)));
 	}
 
@@ -102,17 +104,18 @@ public class RevisorVistaTest {
 
 		TableModel t = view.getTabMetricas().getModel();
 		assertAll(
-				() -> assertEquals(List.of("Año Académico", "Éxito", "Abandono", "Aprobados", "Matriculados"),
-						columnas(t)),
+				() -> assertEquals(List.of("Año Académico", "Éxito", "Abandono", "Aprobados", "Matriculados",
+						"Acciones"), columnas(t)),
 				// 3 cabeceras (G001, G004, G002) + 8 filas de años
 				() -> assertEquals(11, t.getRowCount()),
 				() -> assertEquals("Biologia - Facultad de Ciencias - Ciencias", t.getValueAt(0, 0)),
 				() -> assertNull(t.getValueAt(0, 1), "La cabecera del bloque solo ocupa la primera columna"),
-				() -> assertEquals(List.of("2026-2027", "100.0%", "42.9%", 1, 3), fila(t, 1)),
-				() -> assertEquals(List.of("2024-2025", "42.9%", "—", 3, 7), fila(t, 3)),
+				() -> assertEquals("Ver", t.getValueAt(0, 5), "El botón Ver solo va en la cabecera del bloque"),
+				() -> assertEquals(Arrays.asList("2026-2027", "100.0%", "42.9%", 1, 3, null), fila(t, 1)),
+				() -> assertEquals(Arrays.asList("2024-2025", "42.9%", "—", 3, 7, null), fila(t, 3)),
 				() -> assertEquals("Biologia - Facultad de Veterinaria - Ciencias de la Salud", t.getValueAt(4, 0)),
 				() -> assertEquals("Derecho - Facultad de Derecho - Ciencias Sociales y Juridicas", t.getValueAt(6, 0)),
-				() -> assertEquals(List.of("2023-2024", "0.0%", "—", 0, 1), fila(t, 10)));
+				() -> assertEquals(Arrays.asList("2023-2024", "0.0%", "—", 0, 1, null), fila(t, 10)));
 	}
 
 	@Test
@@ -126,7 +129,7 @@ public class RevisorVistaTest {
 		assertAll(
 				() -> assertEquals(2, t.getRowCount()),
 				() -> assertEquals("Biologia - Facultad de Veterinaria - Ciencias de la Salud", t.getValueAt(0, 0)),
-				() -> assertEquals(List.of("2025-2026", "100.0%", "—", 2, 2), fila(t, 1)));
+				() -> assertEquals(Arrays.asList("2025-2026", "100.0%", "—", 2, 2, null), fila(t, 1)));
 	}
 
 	@Test
@@ -155,7 +158,7 @@ public class RevisorVistaTest {
 	}
 
 	@Test
-	@DisplayName("TV-08 Sin años académicos el combo solo tiene Todos y la tabla está vacía")
+	@DisplayName("TV-08 Sin años académicos el combo solo tiene Todos y solo sale la cabecera del grado EN_EXTINCION")
 	public void testSinAnios() {
 		db.executeBatch(new String[] {
 				"DELETE FROM Calificacion", "DELETE FROM MatriculaCurso", "DELETE FROM Matricula",
@@ -163,10 +166,13 @@ public class RevisorVistaTest {
 		});
 		abrir();
 
+		// HU 36455: un grado que requiere acción (G002 Derecho, EN_EXTINCION) aparece aunque no tenga métricas
+		TableModel t = view.getTabMetricas().getModel();
 		assertAll(
 				() -> assertEquals(List.of("Todos"), items(view.getCbAnioAcademico())),
 				() -> assertEquals("Todos", view.getCbAnioAcademico().getSelectedItem()),
-				() -> assertEquals(0, view.getTabMetricas().getModel().getRowCount()));
+				() -> assertEquals(1, t.getRowCount()),
+				() -> assertEquals("Derecho - Facultad de Derecho - Ciencias Sociales y Juridicas", t.getValueAt(0, 0)));
 	}
 
 	@Test
