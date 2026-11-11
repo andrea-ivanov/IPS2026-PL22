@@ -47,6 +47,10 @@ public class MatriculacionModel {
 		this.gradoRepository = new GradoRepository(db);
 	}
 
+	public Database getDb() {
+		return db;
+	}
+
 	/**
 	 * Obtiene la lista de matrículas de un estudiante dado su UO o alumnoId.
 	 * Cruza la tabla Matricula con Grado para poblar MatriculacionDisplayDTO.

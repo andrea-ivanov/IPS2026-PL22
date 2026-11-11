@@ -653,19 +653,27 @@ public final class Estilo {
             case "ACTIVO":
             case "VIGENTE":
             case "ABIERTA":
+            case "INSCRITA":
                 return VERDE;
             case "PAGADA":
                 return AZUL;
             case "SOLICITADA":
             case "PENDIENTE_RENOVACION":
             case "PENDIENTE":
+            case "PROPUESTA":
                 return AMBAR;
             case "FINALIZADA":
             case "INACTIVO":
             case "EXTINTO":
             case "CERRADA":
+            case "ABANDONADA":
                 return GRIS;
             case "CANCELADA":
+            case "CANCELADA_BAJA_DEMANDA":
+            case "Cancelada por baja demanda":
+            case "CANCELADA POR BAJA DEMANDA":
+            case "Cancelada por impago":
+            case "CANCELADA POR IMPAGO":
             case "EN_EXTINCION":
             case "RECHAZADA":
                 return ROJO;

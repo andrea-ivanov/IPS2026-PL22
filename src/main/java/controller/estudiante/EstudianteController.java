@@ -94,6 +94,7 @@ public class EstudianteController {
             misMatriculasController = new MisMatriculasController(
                     misMatriculasView,
                     matriculacionModel,
+                    inscripcionMicrocredencialModel,
                     uo,
                     () -> view.mostrarMenu() // Al pulsar volver en la vista de matrículas, regresa al menú de inicio
             );
