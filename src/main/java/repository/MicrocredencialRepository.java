@@ -37,7 +37,7 @@ public class MicrocredencialRepository {
 		return db.executeQueryPojo(MicrocredencialDisplayDTO.class,
 				"SELECT microcredencialId, anioAcademicoId, nombre, ramaConocimiento, CAST(creditos AS REAL) AS creditos, "
 						+ "plazas, inicioMatriculacion, finMatriculacion, inicioImparticion, finImparticion, "
-						+ "fechaPropuesta, fechaResolucion, motivoRechazo, fechaCancelacion, estado "
+						+ "fechaPropuesta, fechaResolucion, motivoRechazo, fechaCancelacion, fechaCierreActa, cierreAutomatico, estado "
 						+ "FROM Microcredencial "
 						+ "WHERE profesorId = ? "
 						+ "ORDER BY fechaPropuesta DESC, microcredencialId DESC",

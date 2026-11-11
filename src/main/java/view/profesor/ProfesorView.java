@@ -43,6 +43,11 @@ public class ProfesorView {
     private JLabel lblProfesorMicrocredencial;
     private JButton btnProponerMicrocredencial;
     private JTable tabMicrocredenciales;
+    // Acta de la microcredencial seleccionada (HU 36459)
+    private JLabel lblEstadoActaMicrocredencial;
+    private JTable tabNotasMicrocredencial;
+    private JButton btnGuardarNotasMicrocredencial;
+    private JButton btnCerrarActaMicrocredencial;
 
     public ProfesorView() {
         initialize();
@@ -231,7 +236,8 @@ public class ProfesorView {
 
     /**
      * Pestaña de la HU 35988: botón para proponer una microcredencial (abre MicrocredencialFormDialog)
-     * y listado "Mis microcredenciales" con su estado
+     * y listado "Mis microcredenciales" con su estado. Debajo, el acta de la microcredencial seleccionada
+     * (HU 36459): sus alumnos, sus notas y los botones para guardarlas y cerrar el acta
      */
     private JPanel createMicrocredencialesPanel() {
         JPanel panel = panelPestana();
@@ -255,8 +261,42 @@ public class ProfesorView {
         tabMicrocredenciales = Estilo.tablaQueLlena();
         Estilo.estilizarTabla(tabMicrocredenciales);
         tabMicrocredenciales.setDefaultEditor(Object.class, null);
+        tabMicrocredenciales.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         panelMisMicrocredenciales.add(Estilo.scrollTabla(tabMicrocredenciales), BorderLayout.CENTER);
-        panel.add(panelMisMicrocredenciales, BorderLayout.CENTER);
+
+        JPanel panelActa = Estilo.tarjeta(new BorderLayout(0, 10));
+        JPanel panelTituloActa = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        panelTituloActa.setOpaque(false);
+        JLabel lblTituloActa = Estilo.tituloTarjeta("Acta de la microcredencial seleccionada");
+        lblTituloActa.setBorder(new EmptyBorder(0, 0, 0, 10));
+        panelTituloActa.add(lblTituloActa);
+        lblEstadoActaMicrocredencial = new JLabel("Selecciona una microcredencial");
+        lblEstadoActaMicrocredencial.setFont(Estilo.ETIQUETA);
+        lblEstadoActaMicrocredencial.setForeground(Estilo.PRIMARIO_OSCURO);
+        lblEstadoActaMicrocredencial.setOpaque(true);
+        lblEstadoActaMicrocredencial.setBackground(Estilo.SELECCION);
+        lblEstadoActaMicrocredencial.setBorder(new EmptyBorder(5, 10, 5, 10));
+        panelTituloActa.add(lblEstadoActaMicrocredencial);
+        panelActa.add(panelTituloActa, BorderLayout.NORTH);
+
+        tabNotasMicrocredencial = Estilo.tablaQueLlena();
+        Estilo.estilizarTabla(tabNotasMicrocredencial);
+        tabNotasMicrocredencial.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        panelActa.add(Estilo.scrollTabla(tabNotasMicrocredencial), BorderLayout.CENTER);
+
+        btnGuardarNotasMicrocredencial = Estilo.botonPrimario("Guardar Notas");
+        btnGuardarNotasMicrocredencial.setEnabled(false);
+        btnCerrarActaMicrocredencial = Estilo.botonPeligro("Cerrar Acta");
+        btnCerrarActaMicrocredencial.setEnabled(false);
+        panelActa.add(Estilo.barraAcciones(btnGuardarNotasMicrocredencial, btnCerrarActaMicrocredencial),
+                BorderLayout.SOUTH);
+
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, panelMisMicrocredenciales, panelActa);
+        splitPane.setResizeWeight(0.5);
+        splitPane.setBorder(null);
+        splitPane.setDividerSize(10);
+        splitPane.setOpaque(false);
+        panel.add(splitPane, BorderLayout.CENTER);
         return panel;
     }
 
@@ -386,5 +426,21 @@ public class ProfesorView {
 
     public JTable getTabMicrocredenciales() {
         return tabMicrocredenciales;
+    }
+
+    public JLabel getLblEstadoActaMicrocredencial() {
+        return lblEstadoActaMicrocredencial;
+    }
+
+    public JTable getTabNotasMicrocredencial() {
+        return tabNotasMicrocredencial;
+    }
+
+    public JButton getBtnGuardarNotasMicrocredencial() {
+        return btnGuardarNotasMicrocredencial;
+    }
+
+    public JButton getBtnCerrarActaMicrocredencial() {
+        return btnCerrarActaMicrocredencial;
     }
 }

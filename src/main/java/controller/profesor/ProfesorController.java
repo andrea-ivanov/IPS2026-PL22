@@ -7,6 +7,8 @@ import model.acta.CalificacionActaDisplayDTO;
 import model.acta.EstadoActa;
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
 import model.grado.GradoDisplayDTO;
+import model.microcredencial.ActaMicrocredencialModel;
+import model.microcredencial.CalificacionMicrocredencialDTO;
 import model.microcredencial.MicrocredencialDisplayDTO;
 import model.microcredencial.MicrocredencialModel;
 import model.anoacademico.AnoAcademicoModel;
@@ -45,6 +47,7 @@ public class ProfesorController {
     private ActaModel actaModel;
     private PropuestaModel propuestaModel;
     private MicrocredencialModel microcredencialModel;
+    private ActaMicrocredencialModel actaMicrocredencialModel;
     private AnoAcademicoModel anoAcademicoModel;
     // profesor que ha entrado desde la pantalla de inicio
     private ProfesorDTO profesor;
@@ -56,6 +59,8 @@ public class ProfesorController {
     // asignacion seleccionada y sus actas, en el mismo orden que el combo
     private AsignacionDocenteDisplayDTO asignacionSelec;
     private List<ActaDisplayDTO> actas = new ArrayList<>();
+    // microcredenciales del profesor, en el mismo orden que las filas de su tabla (HU 36459)
+    private List<MicrocredencialDisplayDTO> microcredenciales = new ArrayList<>();
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
     private Runnable onVolverInicio = () -> { };
 
@@ -67,6 +72,7 @@ public class ProfesorController {
         this.actaModel = new ActaModel(db);
         this.propuestaModel = new PropuestaModel(db);
         this.microcredencialModel = new MicrocredencialModel(db);
+        this.actaMicrocredencialModel = new ActaMicrocredencialModel(db);
         this.anoAcademicoModel = new AnoAcademicoModel(db);
         this.initView();
     }
@@ -98,6 +104,14 @@ public class ProfesorController {
         view.getBtnEnviarPropuesta().addActionListener(e -> SwingUtil.exceptionWrapper(() -> enviarPropuesta()));
         view.getBtnProponerMicrocredencial()
                 .addActionListener(e -> SwingUtil.exceptionWrapper(() -> proponerMicrocredencial()));
+        view.getTabMicrocredenciales().getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting())
+                SwingUtil.exceptionWrapper(() -> cargarActaMicrocredencial());
+        });
+        view.getBtnGuardarNotasMicrocredencial()
+                .addActionListener(e -> SwingUtil.exceptionWrapper(() -> guardarNotasMicrocredencial()));
+        view.getBtnCerrarActaMicrocredencial()
+                .addActionListener(e -> SwingUtil.exceptionWrapper(() -> cerrarActaMicrocredencial()));
         // el profesor ya viene elegido de la pantalla de inicio: se cargan sus pestañas al abrir
         SwingUtil.exceptionWrapper(() -> cargarAsignaciones());
     }
@@ -335,7 +349,7 @@ public class ProfesorController {
 
     /** Listado "Mis microcredenciales" del profesor cargado, con su estado (HU 35988 y HU 36410) */
     private void cargarMicrocredenciales() {
-        List<MicrocredencialDisplayDTO> microcredenciales = microcredencialModel.getMicrocredenciales(profesorId);
+        microcredenciales = microcredencialModel.getMicrocredenciales(profesorId);
         view.getLblProfesorMicrocredencial().setText("Microcredenciales de " + profesor
                 + (microcredenciales.isEmpty() ? ": todavía no ha propuesto ninguna" : ""));
         TableModel tmodel = SwingUtil.getTableModelFromPojos(microcredenciales,
@@ -350,6 +364,7 @@ public class ProfesorController {
         view.getTabMicrocredenciales().getColumnModel().getColumn(11).setCellRenderer(new Estilo.RendererEstado());
         SwingUtil.autoAdjustColumns(view.getTabMicrocredenciales());
         view.getBtnProponerMicrocredencial().setEnabled(true);
+        cargarActaMicrocredencial();
     }
 
     /**
@@ -399,6 +414,137 @@ public class ProfesorController {
             cargarMicrocredenciales();
         }));
         form.mostrar();
+    }
+
+    // =========================================================================
+    // HU 36459: acta de la microcredencial seleccionada
+    // =========================================================================
+
+    /** La microcredencial seleccionada en "Mis microcredenciales", o null */
+    private MicrocredencialDisplayDTO getMicrocredencialSeleccionada() {
+        int fila = view.getTabMicrocredenciales().getSelectedRow();
+        return fila < 0 || fila >= microcredenciales.size() ? null : microcredenciales.get(fila);
+    }
+
+    /**
+     * Carga el acta de la microcredencial seleccionada: solo los alumnos con la inscripción pagada. Las notas se
+     * pueden editar desde el inicio de la impartición hasta cerrar el acta, y el acta se puede cerrar desde el fin
+     */
+    private void cargarActaMicrocredencial() {
+        MicrocredencialDisplayDTO mc = getMicrocredencialSeleccionada();
+        view.getBtnGuardarNotasMicrocredencial().setEnabled(false);
+        view.getBtnCerrarActaMicrocredencial().setEnabled(false);
+        if (mc == null || !tieneActa(mc)) {
+            view.getTabNotasMicrocredencial().setModel(new DefaultTableModel());
+            view.getLblEstadoActaMicrocredencial().setText(mc == null ? "Selecciona una microcredencial"
+                    : "Esta microcredencial no tiene acta (" + mc.getEstadoLegible() + ")");
+            return;
+        }
+
+        String hoy = LocalDate.now().toString();
+        boolean editable = ActaMicrocredencialModel.puedeEditarNotas(mc, hoy);
+        boolean cerrable = ActaMicrocredencialModel.puedeCerrarActa(mc, hoy);
+        List<CalificacionMicrocredencialDTO> notas = actaMicrocredencialModel.getCalificaciones(profesorId,
+                mc.getMicrocredencialId());
+
+        DefaultTableModel model = new DefaultTableModel(
+                new String[] { "Matrícula", "Cód. Alumno", "Alumno", "DNI", "Nota" }, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return editable && column == COLUMNA_NOTA;
+            }
+        };
+        for (CalificacionMicrocredencialDTO c : notas)
+            model.addRow(new Object[] { c.getMatriculaId(), c.getAlumnoId(), c.getAlumno(), c.getDni(),
+                    c.getNotaTexto() });
+        view.getTabNotasMicrocredencial().setModel(model);
+        SwingUtil.autoAdjustColumns(view.getTabNotasMicrocredencial());
+
+        String estado;
+        if (!ActaMicrocredencialModel.actaAbierta(mc))
+            estado = "Acta CERRADA el " + mc.getFechaCierreActa() + ": solo lectura"
+                    + (Integer.valueOf(1).equals(mc.getCierreAutomatico()) ? " (cerrada por el sistema)" : "");
+        else if (hoy.compareTo(ActaMicrocredencialModel.finPlazoCierre(mc)) > 0)
+            estado = "Acta ABIERTA: el plazo para cerrarla terminó el "
+                    + ActaMicrocredencialModel.finPlazoCierre(mc) + " y la cerrará el sistema";
+        else if (!editable)
+            estado = "La microcredencial empieza el " + mc.getInicioImparticion()
+                    + ": todavía no se pueden poner notas";
+        else if (!cerrable)
+            estado = "Acta ABIERTA: escribe la nota (0 a 10), NP o déjala vacía · Se podrá cerrar a partir del "
+                    + mc.getFinImparticion();
+        else
+            estado = "Acta ABIERTA: escribe la nota (0 a 10), NP o déjala vacía · Puedes cerrarla hasta el "
+                    + ActaMicrocredencialModel.finPlazoCierre(mc);
+        if (notas.isEmpty())
+            estado += " · Ningún alumno con la inscripción pagada";
+        view.getLblEstadoActaMicrocredencial().setText(estado);
+        view.getBtnGuardarNotasMicrocredencial().setEnabled(editable);
+        view.getBtnCerrarActaMicrocredencial().setEnabled(cerrable);
+    }
+
+    /** Solo las microcredenciales aceptadas (acta abierta) o finalizadas (acta cerrada) tienen acta */
+    private static boolean tieneActa(MicrocredencialDisplayDTO mc) {
+        return ActaMicrocredencialModel.actaAbierta(mc) || "FINALIZADA".equals(mc.getEstado());
+    }
+
+    /** Notas escritas en la tabla del acta (clave: matrícula); confirma antes la celda que se esté editando */
+    private Map<String, String> getNotasMicrocredencial() {
+        if (view.getTabNotasMicrocredencial().isEditing())
+            view.getTabNotasMicrocredencial().getCellEditor().stopCellEditing();
+        Map<String, String> notas = new LinkedHashMap<>();
+        TableModel model = view.getTabNotasMicrocredencial().getModel();
+        for (int i = 0; i < model.getRowCount(); i++) {
+            Object nota = model.getValueAt(i, COLUMNA_NOTA);
+            notas.put((String) model.getValueAt(i, 0), nota == null ? "" : nota.toString());
+        }
+        return notas;
+    }
+
+    private void guardarNotasMicrocredencial() {
+        MicrocredencialDisplayDTO mc = getMicrocredencialSeleccionada();
+        if (mc == null)
+            return;
+        actaMicrocredencialModel.guardarNotas(profesorId, mc.getMicrocredencialId(), getNotasMicrocredencial(),
+                LocalDate.now().toString());
+        JOptionPane.showMessageDialog(view.getFrame(), "Notas guardadas correctamente.", "Guardar notas",
+                JOptionPane.INFORMATION_MESSAGE);
+        cargarActaMicrocredencial();
+    }
+
+    /**
+     * Pide confirmación y cierra el acta; antes guarda las notas escritas en la tabla para no perderlas.
+     * Después recarga "Mis microcredenciales" (pasa a FINALIZADA) y el acta, que queda de solo lectura
+     */
+    private void cerrarActaMicrocredencial() {
+        MicrocredencialDisplayDTO mc = getMicrocredencialSeleccionada();
+        if (mc == null)
+            return;
+        Map<String, String> notas = getNotasMicrocredencial();
+        int confirm = JOptionPane.showConfirmDialog(view.getFrame(),
+                "¿Seguro que quieres cerrar el acta de " + mc.getNombre() + " (" + mc.getMicrocredencialId() + ")?\n"
+                        + "Los alumnos sin nota quedarán como no presentados (NP).\n"
+                        + "Una vez cerrada, las notas no se podrán modificar.",
+                "Cerrar acta", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION)
+            return;
+
+        String hoy = LocalDate.now().toString();
+        actaMicrocredencialModel.guardarNotas(profesorId, mc.getMicrocredencialId(), notas, hoy);
+        actaMicrocredencialModel.cerrarActa(profesorId, mc.getMicrocredencialId(), hoy);
+        JOptionPane.showMessageDialog(view.getFrame(), "Acta cerrada correctamente.", "Acta cerrada",
+                JOptionPane.INFORMATION_MESSAGE);
+        cargarMicrocredenciales();
+        seleccionarMicrocredencial(mc.getMicrocredencialId());
+    }
+
+    private void seleccionarMicrocredencial(String microcredencialId) {
+        for (int i = 0; i < microcredenciales.size(); i++) {
+            if (microcredenciales.get(i).getMicrocredencialId().equals(microcredencialId)) {
+                view.getTabMicrocredenciales().setRowSelectionInterval(i, i);
+                return;
+            }
+        }
     }
 
     private ActaDisplayDTO getActaSeleccionada() {
