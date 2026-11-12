@@ -1,5 +1,6 @@
 package controller.secretario;
 
+import util.FechaSistema;
 import model.gestionmatricula.FiltroMatriculasSecretaria;
 import model.gestionmatricula.GestionMatriculaModel;
 import model.gestionmatricula.GrupoConsultaDTO;
@@ -15,7 +16,6 @@ import util.SwingUtil;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.GridLayout;
-import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -523,7 +523,7 @@ public class SecretarioController {
     // =========================================================================
 
     private String hoy() {
-        return LocalDate.now().toString();
+        return FechaSistema.hoyStr();
     }
 
     /** Valor seleccionado en un desplegable de filtro, o nulo si es "TODOS" (no filtra). */
