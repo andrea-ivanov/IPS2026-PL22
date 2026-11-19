@@ -15,6 +15,7 @@
 --   DIAS_MATRICULACION_MICROCREDENCIAL = 14 (periodo de matriculacion de 2 semanas)
 --   PORCENTAJE_MINIMO_PLAZAS_MICROCREDENCIAL = 10 (de plazas pagadas, el dia antes de la imparticion)
 --   DIAS_CIERRE_ACTA_MICROCREDENCIAL = 15 (tras el fin de la imparticion; despues la cierra el sistema; aprobado por el cliente)
+--   DIAS_CIERRE_ACTA_FIP = 15 (tras fechaFin; hasta el cierre se permiten modificaciones y despues la cierra el sistema; confirmado por el PO)
 --   ANIOS_VIGENCIA_GRADO = 4 (anios academicos de vigencia de un grado nuevo o renovado)
 --
 -- Reglas que aplica el modelo (no se pueden expresar con CHECK):
@@ -40,6 +41,27 @@
 --     de la imparticion, confirmado por el PO); al cerrarla, la
 --     microcredencial y sus inscripciones INSCRITAS pasan a FINALIZADA. Si no la cierra en 15 dias tras el fin
 --     de la imparticion, la cierra el sistema (cierreAutomatico = 1). El alumno solo ve la nota con el acta cerrada
+--   - FIP: la crea el administrador con fechaInicio >= hoy (fechaCreacion = hoy); la matriculacion esta abierta
+--     desde fechaCreacion hasta fechaInicio y no se cancela por baja demanda. Responsable: un profesor interno
+--     o un formador externo (uno de los dos)
+--   - FormadorExterno: solo nombre, apellidos y email (sin DNI, confirmado por el PO); email con formato valido
+--     y no registrado antes (ni como formador externo, ni como profesor)
+--   - Contratos de alumno: solo se dan de alta y se consultan (no se modifican ni se borran); son temporales
+--     (fechaFin obligatoria >= fechaInicio), pueden solaparse y ser pasados (retroactivos) o futuros. No hace
+--     falta que el alumno tenga matricula en ningun grado
+--   - Un alumno solo se inscribe en una FIP si tiene un contrato vigente en la fecha de inscripcion
+--   - Solo el responsable de la FIP ve y califica a sus asistentes (APTO / NO_APTO, con confirmacion), pudiendo
+--     modificar las calificaciones hasta cerrar el acta (plazo de 15 dias tras fechaFin; pasado ese plazo la
+--     cierra el sistema con cierreAutomatico = 1). Los asistentes (alumnos y profesores) ven PENDIENTE hasta que
+--     se cierra el acta
+
+DROP TABLE IF EXISTS InscripcionFip;
+
+DROP TABLE IF EXISTS Fip;
+
+DROP TABLE IF EXISTS FormadorExterno;
+
+DROP TABLE IF EXISTS ContratoAlumno;
 
 DROP TABLE IF EXISTS RevisionGrado;
 
@@ -474,4 +496,99 @@ CREATE TABLE RevisionGrado (
     CONSTRAINT fk_revisionGrado_grado FOREIGN KEY (gradoId) REFERENCES Grado (gradoId),
     CONSTRAINT fk_revisionGrado_anioAcademico FOREIGN KEY (anioAcademicoId) REFERENCES AnioAcademico (anioAcademicoId),
     CONSTRAINT ck_revisionGrado_resultado CHECK (resultado IN ('FAVORABLE', 'DESFAVORABLE'))
+);
+
+-- =========================
+-- CONTRATO ALUMNO (HU 37045)
+-- Contratos declarados presencialmente ante el secretario. Acreditan el requisito laboral para inscribirse en una FIP
+-- Un alumno puede tener varios, solapados, pasados (retroactivos) o futuros. Solo alta y consulta: nunca se modifican ni se borran
+-- No es obligatorio que el alumno este matriculado en ningun grado
+-- contratoId: CT seguido de un numero (CT0001)
+-- fechaFin: obligatoria (son temporales) y no anterior a fechaInicio
+-- descripcion: p.e. 'soy becario'
+-- =========================
+CREATE TABLE ContratoAlumno (
+    contratoId VARCHAR(10) NOT NULL,
+    alumnoId VARCHAR(10) NOT NULL,
+    fechaInicio DATE NOT NULL,
+    fechaFin DATE NOT NULL,
+    descripcion VARCHAR(500) NOT NULL,
+    CONSTRAINT pk_contratoAlumno PRIMARY KEY (contratoId),
+    CONSTRAINT fk_contratoAlumno_alumno FOREIGN KEY (alumnoId) REFERENCES Alumno (alumnoId),
+    CONSTRAINT ck_contratoAlumno_fechas CHECK (fechaInicio <= fechaFin),
+    CONSTRAINT ck_contratoAlumno_descripcion CHECK (length(trim(descripcion)) > 0)
+);
+
+-- =========================
+-- FORMADOR EXTERNO (HU 37166)
+-- Docente contratado para impartir FIP. Lo crea el administrador al configurar una FIP y queda disponible para otras
+-- Solo nombre, apellidos y email (sin dni, confirmado por el PO). Es un usuario mas de la aplicacion para evaluar sus FIP
+-- formadorExternoId: FE seguido de un numero (FE001)
+-- uq_formadorExterno_email: no repetido entre externos; que no coincida con un Profesor lo comprueba el modelo
+-- =========================
+CREATE TABLE FormadorExterno (
+    formadorExternoId VARCHAR(10) NOT NULL,
+    nombre VARCHAR(50) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    CONSTRAINT pk_formadorExterno PRIMARY KEY (formadorExternoId),
+    CONSTRAINT uq_formadorExterno_email UNIQUE (email),
+    CONSTRAINT ck_formadorExterno_email CHECK (email LIKE '_%@_%._%' AND email NOT LIKE '% %')
+);
+
+-- =========================
+-- FIP: Formacion Interna del Personal (HU 37165 y HU 37150)
+-- La crea el administrador directamente (sin propuesta ni aceptacion, y no se cancela por baja demanda)
+-- Responsable: un profesor interno (profesorId) o un formador externo (formadorExternoId), exactamente uno
+-- fechaCreacion: hoy al crearla; abre la matriculacion, que dura hasta fechaInicio
+-- ck_fip_fechas: fechaInicio no anterior a la creacion (= no anterior a hoy) y fechaFin no anterior a fechaInicio
+-- fechaCierreActa: nula mientras el acta esta abierta (se permiten modificaciones hasta 15 dias tras fechaFin)
+-- cierreAutomatico: 0 = la cerro el responsable (o sigue abierta), 1 = la cerro el sistema en fechaFin + 15 dias
+-- fipId: FIP seguido de un numero (FIP001)
+-- =========================
+CREATE TABLE Fip (
+    fipId VARCHAR(10) NOT NULL,
+    nombre VARCHAR(150) NOT NULL,
+    profesorId VARCHAR(10),
+    formadorExternoId VARCHAR(10),
+    fechaCreacion DATE NOT NULL,
+    fechaInicio DATE NOT NULL,
+    fechaFin DATE NOT NULL,
+    fechaCierreActa DATE,
+    cierreAutomatico INT NOT NULL DEFAULT 0,
+    CONSTRAINT pk_fip PRIMARY KEY (fipId),
+    CONSTRAINT fk_fip_profesor FOREIGN KEY (profesorId) REFERENCES Profesor (profesorId),
+    CONSTRAINT fk_fip_formadorExterno FOREIGN KEY (formadorExternoId) REFERENCES FormadorExterno (formadorExternoId),
+    CONSTRAINT ck_fip_responsable CHECK ((profesorId IS NULL) <> (formadorExternoId IS NULL)),
+    CONSTRAINT ck_fip_fechas CHECK (fechaCreacion <= fechaInicio AND fechaInicio <= fechaFin),
+    CONSTRAINT ck_fip_cierreActa CHECK (fechaCierreActa IS NULL
+        OR fechaCierreActa BETWEEN fechaFin AND date(fechaFin, '+15 days')),
+    CONSTRAINT ck_fip_cierreAutomatico CHECK (cierreAutomatico IN (0, 1)
+        AND (cierreAutomatico = 0 OR fechaCierreActa = date(fechaFin, '+15 days')))
+);
+
+-- =========================
+-- INSCRIPCION FIP (asistentes de una FIP; HU 37150, 37151 y 36967)
+-- El asistente es un alumno (con contrato vigente) o un profesor, exactamente uno
+-- Clave sustituta porque alumnoId y profesorId admiten nulos; los UNIQUE impiden inscribirse dos veces
+-- fechaInscripcion: entre Fip.fechaCreacion y Fip.fechaInicio (se valida en el modelo)
+-- resultado: PENDIENTE hasta que califica el responsable; APTO o NO_APTO (se muestra 'NO APTO'), sin nota numerica
+-- Los asistentes (alumnos y profesores) ven su resultado solo cuando el acta esta cerrada (Fip.fechaCierreActa IS NOT NULL)
+-- inscripcionId: IF seguido de un numero (IF00001)
+-- =========================
+CREATE TABLE InscripcionFip (
+    inscripcionId VARCHAR(10) NOT NULL,
+    fipId VARCHAR(10) NOT NULL,
+    alumnoId VARCHAR(10),
+    profesorId VARCHAR(10),
+    fechaInscripcion DATE NOT NULL,
+    resultado VARCHAR(10) NOT NULL,
+    CONSTRAINT pk_inscripcionFip PRIMARY KEY (inscripcionId),
+    CONSTRAINT uq_inscripcionFip_alumno UNIQUE (fipId, alumnoId),
+    CONSTRAINT uq_inscripcionFip_profesor UNIQUE (fipId, profesorId),
+    CONSTRAINT fk_inscripcionFip_fip FOREIGN KEY (fipId) REFERENCES Fip (fipId),
+    CONSTRAINT fk_inscripcionFip_alumno FOREIGN KEY (alumnoId) REFERENCES Alumno (alumnoId),
+    CONSTRAINT fk_inscripcionFip_profesor FOREIGN KEY (profesorId) REFERENCES Profesor (profesorId),
+    CONSTRAINT ck_inscripcionFip_asistente CHECK ((alumnoId IS NULL) <> (profesorId IS NULL)),
+    CONSTRAINT ck_inscripcionFip_resultado CHECK (resultado IN ('PENDIENTE', 'APTO', 'NO_APTO'))
 );
