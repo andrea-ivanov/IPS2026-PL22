@@ -47,6 +47,10 @@ public class MatriculacionModel {
 		this.gradoRepository = new GradoRepository(db);
 	}
 
+	public Database getDb() {
+		return db;
+	}
+
 	/**
 	 * Obtiene la lista de matrículas de un estudiante dado su UO o alumnoId.
 	 * Cruza la tabla Matricula con Grado para poblar MatriculacionDisplayDTO.
@@ -62,7 +66,8 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Resuelve el identificador oficial de un alumno en la base de datos (p. ej. "AL001")
+	 * Resuelve el identificador oficial de un alumno en la base de datos (p. ej.
+	 * "AL001")
 	 * tanto si se le pasa con prefijo UO ("UO001"), AL ("AL001") o numérico ("1").
 	 * Garantiza el acceso coherente a los datos de la base de datos.
 	 *
@@ -74,7 +79,8 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Obtiene el nombre de pila del alumno a partir de su UO o alumnoId o cadena "UO - Nombre".
+	 * Obtiene el nombre de pila del alumno a partir de su UO o alumnoId o cadena
+	 * "UO - Nombre".
 	 *
 	 * @param uoOrId Código UO, ID del alumno o etiqueta "UOxxxxx - Nombre"
 	 * @return Nombre del estudiante, o cadena vacía si no se encuentra
@@ -114,18 +120,23 @@ public class MatriculacionModel {
 		return matriculaRepository.findCursosMatriculados(resolverAlumnoId(uo), limpiar(gradoId));
 	}
 
-	/** Valor sin espacios alrededor; vacío si es nulo (los filtros vacíos no se aplican) */
+	/**
+	 * Valor sin espacios alrededor; vacío si es nulo (los filtros vacíos no se
+	 * aplican)
+	 */
 	private static String limpiar(String valor) {
 		return valor != null ? valor.trim() : "";
 	}
 
 	/**
-	 * Obtiene el resumen de hitos del régimen de permanencia del estudiante (HU 35232 - Paso 3).
+	 * Obtiene el resumen de hitos del régimen de permanencia del estudiante (HU
+	 * 35232 - Paso 3).
 	 * Compara:
 	 * 1. Créditos superados en el último año evaluado frente a 12 créditos.
-	 * 2. Créditos superados acumulados en el grado frente a 90 créditos (al tercer año).
+	 * 2. Créditos superados acumulados en el grado frente a 90 créditos (al tercer
+	 * año).
 	 *
-	 * @param uo Identificador del alumno (p. ej. "AL001")
+	 * @param uo      Identificador del alumno (p. ej. "AL001")
 	 * @param gradoId Identificador del grado (p. ej. "G001")
 	 * @return Objeto HitosPermanenciaDTO con el cálculo realizado
 	 */
@@ -167,13 +178,15 @@ public class MatriculacionModel {
 			creditosTotales = r[1] != null ? ((Number) r[1]).intValue() : 0;
 		}
 
-		return new HitosPermanenciaDTO(cleanUo, cleanGrado, ultimoAnoEvaluadoId, creditosAnuales, creditosTotales, aniosEnGrado);
+		return new HitosPermanenciaDTO(cleanUo, cleanGrado, ultimoAnoEvaluadoId, creditosAnuales, creditosTotales,
+				aniosEnGrado);
 	}
 
 	/**
-	 * Obtiene el historial de calificaciones obtenidas por un estudiante en las convocatorias presentadas (HU 35232 - Paso 4).
+	 * Obtiene el historial de calificaciones obtenidas por un estudiante en las
+	 * convocatorias presentadas (HU 35232 - Paso 4).
 	 *
-	 * @param uo Identificador del alumno
+	 * @param uo      Identificador del alumno
 	 * @param gradoId Identificador del grado (opcional)
 	 * @return Lista de CalificacionDisplayDTO
 	 */
@@ -185,11 +198,13 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Comprueba si el estudiante ya cuenta con una matrícula registrada (no cancelada)
-	 * para el grado y año académico indicados (impide solicitudes duplicadas - HU 35235).
+	 * Comprueba si el estudiante ya cuenta con una matrícula registrada (no
+	 * cancelada)
+	 * para el grado y año académico indicados (impide solicitudes duplicadas - HU
+	 * 35235).
 	 *
-	 * @param alumnoId Identificador del alumno (p. ej. "AL001")
-	 * @param gradoId Identificador del grado (p. ej. "G001")
+	 * @param alumnoId        Identificador del alumno (p. ej. "AL001")
+	 * @param gradoId         Identificador del grado (p. ej. "G001")
 	 * @param anioAcademicoId Identificador del año académico (p. ej. "2026-2027")
 	 * @return true si ya existe una matrícula previa no cancelada
 	 */
@@ -202,12 +217,14 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Devuelve el número de convocatorias con calificación numérica consumidas por el estudiante
-	 * en una asignatura a lo largo de todos sus años y grados (HU 35235 / Regla 6.3).
+	 * Devuelve el número de convocatorias con calificación numérica consumidas por
+	 * el estudiante
+	 * en una asignatura a lo largo de todos sus años y grados (HU 35235 / Regla
+	 * 6.3).
 	 * Las notas nulas (no presentado) no computan.
 	 *
 	 * @param alumnoId Identificador del alumno
-	 * @param cursoId Identificador de la asignatura (p. ej. "C005")
+	 * @param cursoId  Identificador de la asignatura (p. ej. "C005")
 	 * @return Cantidad de convocatorias consumidas (0 a 6)
 	 */
 	public int getConvocatoriasConsumidas(String alumnoId, String cursoId) {
@@ -218,12 +235,15 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Comprueba si el alumno se encuentra al corriente de pago (HU 35235 / Regla 6.4).
-	 * No debe tener asignaturas SOLICITADAS sin pagar en años académicos ya iniciados,
+	 * Comprueba si el alumno se encuentra al corriente de pago (HU 35235 / Regla
+	 * 6.4).
+	 * No debe tener asignaturas SOLICITADAS sin pagar en años académicos ya
+	 * iniciados,
 	 * ni cancelaciones previas por motivo de IMPAGO.
 	 *
 	 * @param alumnoId Identificador del alumno
-	 * @return true si está al corriente de pago, false si tiene deudas o impagos pendientes
+	 * @return true si está al corriente de pago, false si tiene deudas o impagos
+	 *         pendientes
 	 */
 	public boolean comprobarAlCorrienteDePago(String alumnoId) {
 		if (alumnoId == null || alumnoId.trim().isEmpty()) {
@@ -239,12 +259,15 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Verifica si el estudiante cumple el régimen de permanencia en el grado (HU 35235 / Regla 6.3):
-	 * 1. Mínimo anual: si la matrícula anterior en este grado no fue cancelada, debió superar >= 12 créditos.
-	 * 2. Mínimo al tercer año: si ya acumula >= 3 años en el grado, debe sumar >= 90 créditos totales superados.
+	 * Verifica si el estudiante cumple el régimen de permanencia en el grado (HU
+	 * 35235 / Regla 6.3):
+	 * 1. Mínimo anual: si la matrícula anterior en este grado no fue cancelada,
+	 * debió superar >= 12 créditos.
+	 * 2. Mínimo al tercer año: si ya acumula >= 3 años en el grado, debe sumar >=
+	 * 90 créditos totales superados.
 	 *
 	 * @param alumnoId Identificador del alumno
-	 * @param gradoId Identificador del grado
+	 * @param gradoId  Identificador del grado
 	 * @return true si cumple el régimen de permanencia
 	 */
 	public boolean comprobarCumplimientoPermanencia(String alumnoId, String gradoId) {
@@ -269,16 +292,19 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Valida integralmente una solicitud de matrícula frente a todas las reglas de negocio (HU 35235).
-	 * Lanza ValidationException con un mensaje descriptivo si alguna regla es vulnerada.
+	 * Valida integralmente una solicitud de matrícula frente a todas las reglas de
+	 * negocio (HU 35235).
+	 * Lanza ValidationException con un mensaje descriptivo si alguna regla es
+	 * vulnerada.
 	 *
-	 * @param alumnoId Identificador del alumno
-	 * @param gradoId Identificador del grado solicitado
+	 * @param alumnoId        Identificador del alumno
+	 * @param gradoId         Identificador del grado solicitado
 	 * @param anioAcademicoId Año académico actual
-	 * @param cursoIds Lista de asignaturas seleccionadas
+	 * @param cursoIds        Lista de asignaturas seleccionadas
 	 * @throws ValidationException si alguna regla no se cumple
 	 */
-	public void validarSolicitudMatricula(String alumnoId, String gradoId, String anioAcademicoId, List<String> cursoIds) {
+	public void validarSolicitudMatricula(String alumnoId, String gradoId, String anioAcademicoId,
+			List<String> cursoIds) {
 		if (alumnoId == null || alumnoId.trim().isEmpty()) {
 			throw new ValidationException("Debe especificarse el identificador del alumno.");
 		}
@@ -294,30 +320,36 @@ public class MatriculacionModel {
 
 		// 1. Validar al corriente de pago
 		if (!comprobarAlCorrienteDePago(alumnoId)) {
-			throw new ValidationException("No es posible solicitar la matrícula: el estudiante tiene pagos pendientes o deudas previas.");
+			throw new ValidationException(
+					"No es posible solicitar la matrícula: el estudiante tiene pagos pendientes o deudas previas.");
 		}
 
 		// 2. Validar solicitud duplicada
 		if (comprobarMatriculaExistente(alumnoId, gradoId, anioAcademicoId)) {
-			throw new ValidationException("Ya existe una matrícula activa o en trámite para este grado en el año académico " + anioAcademicoId + ".");
+			throw new ValidationException(
+					"Ya existe una matrícula activa o en trámite para este grado en el año académico " + anioAcademicoId
+							+ ".");
 		}
 
 		// 3. Validar régimen de permanencia
 		if (!comprobarCumplimientoPermanencia(alumnoId, gradoId)) {
-			throw new ValidationException("La matrícula no cumple con los requisitos del régimen de permanencia en este grado.");
+			throw new ValidationException(
+					"La matrícula no cumple con los requisitos del régimen de permanencia en este grado.");
 		}
 
 		// 4. Validar límite de convocatorias por cada asignatura solicitada
 		for (String cId : cursoIds) {
 			int consumidas = getConvocatoriasConsumidas(alumnoId, cId);
 			if (consumidas >= MAX_CONVOCATORIAS) {
-				throw new ValidationException("No es posible matricularse en la asignatura '" + cId + "': se ha alcanzado el límite de " + MAX_CONVOCATORIAS + " convocatorias.");
+				throw new ValidationException("No es posible matricularse en la asignatura '" + cId
+						+ "': se ha alcanzado el límite de " + MAX_CONVOCATORIAS + " convocatorias.");
 			}
 		}
 	}
 
 	/**
-	 * Consulta la oferta de grados disponibles para nueva matrícula (HU 35235 / Fase 2).
+	 * Consulta la oferta de grados disponibles para nueva matrícula (HU 35235 /
+	 * Fase 2).
 	 * Solo incluye grados en estado 'VIGENTE' o 'PENDIENTE_RENOVACION',
 	 * excluyendo los grados 'EN_EXTINCION' y 'EXTINTO'.
 	 *
@@ -328,12 +360,15 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Consulta las asignaturas activas ofertadas para un grado seleccionado (HU 35235 / Fase 2).
-	 * Incluye el cálculo del precio (20.0 €/crédito) y, si se facilita el identificador del alumno,
+	 * Consulta las asignaturas activas ofertadas para un grado seleccionado (HU
+	 * 35235 / Fase 2).
+	 * Incluye el cálculo del precio (20.0 €/crédito) y, si se facilita el
+	 * identificador del alumno,
 	 * el número de convocatorias consumidas con calificación en cada asignatura.
 	 *
-	 * @param gradoId Identificador del grado (p. ej. "G001")
-	 * @param alumnoId Identificador del alumno (p. ej. "AL001", opcional para cálculo de convocatorias)
+	 * @param gradoId  Identificador del grado (p. ej. "G001")
+	 * @param alumnoId Identificador del alumno (p. ej. "AL001", opcional para
+	 *                 cálculo de convocatorias)
 	 * @return Lista de OfertaCursoDTO activos en dicho grado
 	 */
 	public List<OfertaCursoDTO> getOfertaCursosPorGrado(String gradoId, String alumnoId) {
@@ -353,7 +388,8 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Sobrecarga de conveniencia para consultar las asignaturas ofertadas sin contextualizar alumno.
+	 * Sobrecarga de conveniencia para consultar las asignaturas ofertadas sin
+	 * contextualizar alumno.
 	 *
 	 * @param gradoId Identificador del grado
 	 * @return Lista de OfertaCursoDTO activos en dicho grado
@@ -363,8 +399,10 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Obtiene el identificador del año académico en curso o más reciente (HU 35235 / Fase 2).
-	 * Comprueba primero si la fecha actual está dentro del rango oficial (fechaInicio - fechaFin).
+	 * Obtiene el identificador del año académico en curso o más reciente (HU 35235
+	 * / Fase 2).
+	 * Comprueba primero si la fecha actual está dentro del rango oficial
+	 * (fechaInicio - fechaFin).
 	 *
 	 * @return Identificador del año académico (p. ej. "2026-2027")
 	 */
@@ -381,11 +419,12 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Alias explícito para comprobar las convocatorias consumidas con calificación en una asignatura
+	 * Alias explícito para comprobar las convocatorias consumidas con calificación
+	 * en una asignatura
 	 * (solicitado según la nomenclatura de la Fase 2 del plan de trabajo).
 	 *
 	 * @param alumnoId Identificador del alumno
-	 * @param cursoId Identificador de la asignatura
+	 * @param cursoId  Identificador de la asignatura
 	 * @return Número de convocatorias consumidas (con nota != null)
 	 */
 	public int comprobarConvocatorias(String alumnoId, String cursoId) {
@@ -393,11 +432,12 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Alias explícito para comprobar el cumplimiento y los hitos del régimen de permanencia
+	 * Alias explícito para comprobar el cumplimiento y los hitos del régimen de
+	 * permanencia
 	 * (solicitado según la nomenclatura de la Fase 2 del plan de trabajo).
 	 *
 	 * @param alumnoId Identificador del alumno
-	 * @param gradoId Identificador del grado
+	 * @param gradoId  Identificador del grado
 	 * @return Objeto HitosPermanenciaDTO con el desglose de permanencia
 	 */
 	public HitosPermanenciaDTO comprobarPermanencia(String alumnoId, String gradoId) {
@@ -405,7 +445,8 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Genera de forma segura el siguiente identificador correlativo para una matrícula (p. ej. "M02101").
+	 * Genera de forma segura el siguiente identificador correlativo para una
+	 * matrícula (p. ej. "M02101").
 	 * Utiliza la conexión proporcionada para operar dentro de una transacción.
 	 *
 	 * @param conn Conexión JDBC activa
@@ -417,20 +458,27 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Registra de forma transaccional una nueva solicitud de matrícula en la base de datos (HU 35235 / Fase 2).
+	 * Registra de forma transaccional una nueva solicitud de matrícula en la base
+	 * de datos (HU 35235 / Fase 2).
 	 * <p>
 	 * Reglas de persistencia:
-	 * 1. Valida previamente permanencia, convocatorias, al corriente de pago y ausencia de duplicidad.
+	 * 1. Valida previamente permanencia, convocatorias, al corriente de pago y
+	 * ausencia de duplicidad.
 	 * 2. Inserta el registro en {@code Matricula} con estado {@code 'SOLICITADA'}.
 	 * 3. Inserta cada asignatura en {@code MatriculaCurso}:
-	 *    - Si el pago es con {@code TARJETA}: estado {@code 'PAGADA'}, pagoValidado {@code = 1}.
-	 *    - Si es {@code TRANSFERENCIA} o {@code CARTA_PAGO}: estado {@code 'SOLICITADA'}, pagoValidado {@code = 0} (requiere aprobación manual de secretaría).
+	 * - Si el pago es con {@code TARJETA}: estado {@code 'PAGADA'}, pagoValidado
+	 * {@code = 1}.
+	 * - Si es {@code TRANSFERENCIA} o {@code CARTA_PAGO}: estado
+	 * {@code 'SOLICITADA'}, pagoValidado {@code = 0} (requiere aprobación manual de
+	 * secretaría).
 	 * </p>
 	 *
-	 * @param solicitud DTO consolidado con toda la información de la solicitud y método de pago
+	 * @param solicitud DTO consolidado con toda la información de la solicitud y
+	 *                  método de pago
 	 * @return El identificador de la nueva matrícula registrada (p. ej. "M02101")
 	 * @throws ValidationException si alguna validación de negocio falla
-	 * @throws UnexpectedException si ocurre algún fallo transaccional en base de datos
+	 * @throws UnexpectedException si ocurre algún fallo transaccional en base de
+	 *                             datos
 	 */
 	public String registrarSolicitudMatricula(ResumenSolicitudDTO solicitud) {
 		if (solicitud == null) {
@@ -457,7 +505,8 @@ public class MatriculacionModel {
 			}
 		}
 
-		// Validar reglas de negocio completas (permanencia, convocatorias, duplicados, al corriente de pago)
+		// Validar reglas de negocio completas (permanencia, convocatorias, duplicados,
+		// al corriente de pago)
 		validarSolicitudMatricula(alumnoId, gradoId, anioAcademicoId, cursoIds);
 
 		// Validar método de pago admitido
@@ -467,7 +516,8 @@ public class MatriculacionModel {
 		}
 		metodoPago = metodoPago.trim().toUpperCase();
 		if (!"TARJETA".equals(metodoPago) && !"TRANSFERENCIA".equals(metodoPago) && !"CARTA_PAGO".equals(metodoPago)) {
-			throw new ValidationException("Método de pago '" + metodoPago + "' no reconocido. Opciones válidas: TARJETA, TRANSFERENCIA o CARTA_PAGO.");
+			throw new ValidationException("Método de pago '" + metodoPago
+					+ "' no reconocido. Opciones válidas: TARJETA, TRANSFERENCIA o CARTA_PAGO.");
 		}
 
 		// Fecha de la solicitud (formato ISO YYYY-MM-DD)
@@ -487,7 +537,8 @@ public class MatriculacionModel {
 		String fechaSolicitud = fecha;
 		String anio = anioAcademicoId.trim();
 
-		// Matricula y sus MatriculaCurso se insertan en la misma transacción: o todo o nada
+		// Matricula y sus MatriculaCurso se insertan en la misma transacción: o todo o
+		// nada
 		return db.enTransaccion(conn -> {
 			try {
 				// 1. Obtener nuevo ID correlativo de matrícula
@@ -506,7 +557,8 @@ public class MatriculacionModel {
 				return matriculaId;
 			} catch (SQLException ex) {
 				if (ex.getMessage() != null && ex.getMessage().contains("UNIQUE constraint failed")) {
-					throw new ValidationException("Ya existe una matrícula registrada para este estudiante en el grado y año indicados.");
+					throw new ValidationException(
+							"Ya existe una matrícula registrada para este estudiante en el grado y año indicados.");
 				}
 				throw ex; // enTransaccion la convierte en UnexpectedException
 			}
@@ -514,13 +566,15 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Sobrecarga de conveniencia para registrar solicitud a partir de los datos atómicos.
+	 * Sobrecarga de conveniencia para registrar solicitud a partir de los datos
+	 * atómicos.
 	 *
-	 * @param alumnoId Identificador del alumno
-	 * @param gradoId Identificador del grado
+	 * @param alumnoId        Identificador del alumno
+	 * @param gradoId         Identificador del grado
 	 * @param anioAcademicoId Año académico
-	 * @param asignaturas Asignaturas seleccionadas
-	 * @param metodoPago Método de pago ("TARJETA", "TRANSFERENCIA", "CARTA_PAGO")
+	 * @param asignaturas     Asignaturas seleccionadas
+	 * @param metodoPago      Método de pago ("TARJETA", "TRANSFERENCIA",
+	 *                        "CARTA_PAGO")
 	 * @return El ID de la matrícula creada
 	 */
 	public String registrarSolicitudMatricula(String alumnoId, String gradoId, String anioAcademicoId,
@@ -535,11 +589,13 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Carga los datos informativos del alumno y del grado seleccionado para precargar
-	 * el objeto ResumenSolicitudDTO que se presentará en la vista resumen (HU 35235).
+	 * Carga los datos informativos del alumno y del grado seleccionado para
+	 * precargar
+	 * el objeto ResumenSolicitudDTO que se presentará en la vista resumen (HU
+	 * 35235).
 	 *
 	 * @param alumnoId Identificador del alumno
-	 * @param gradoId Identificador del grado (opcional)
+	 * @param gradoId  Identificador del grado (opcional)
 	 * @return DTO resumen precargado con datos del alumno, año académico y grado
 	 */
 	public ResumenSolicitudDTO obtenerDatosEstudianteParaSolicitud(String alumnoId, String gradoId) {
@@ -572,20 +628,21 @@ public class MatriculacionModel {
 	}
 
 	/**
-	 * Obtiene las matrículas (alumnos) asociadas a un curso específico para la tabla de AdminOfertaView.
+	 * Obtiene las matrículas (alumnos) asociadas a un curso específico para la
+	 * tabla de AdminOfertaView.
 	 */
 	public List<MatriculacionDisplayDTO> getMatriculacionesPorCurso(String idCurso) {
 		return getMatriculacionesPorCursoYAnoActual(idCurso, null);
 	}
 
 	/**
-     * Obtiene las matrículas (alumnos) asociadas a un curso específico
-     * filtradas por el año académico indicado.
-     */
-    public List<MatriculacionDisplayDTO> getMatriculacionesPorCursoYAnoActual(String idCurso, String anioAcademicoId) {
-        if (idCurso == null) {
-            return new ArrayList<>();
-        }
-        return matriculaRepository.findAlumnosCurso(idCurso, anioAcademicoId);
-    }
+	 * Obtiene las matrículas (alumnos) asociadas a un curso específico
+	 * filtradas por el año académico indicado.
+	 */
+	public List<MatriculacionDisplayDTO> getMatriculacionesPorCursoYAnoActual(String idCurso, String anioAcademicoId) {
+		if (idCurso == null) {
+			return new ArrayList<>();
+		}
+		return matriculaRepository.findAlumnosCurso(idCurso, anioAcademicoId);
+	}
 }

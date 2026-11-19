@@ -30,6 +30,8 @@ public class DatabaseTest {
 
 		assertTrue(contar(db, "SELECT COUNT(*) FROM Grado") > 0, "Debe cargar los grados de data.sql");
 		assertTrue(contar(db, "SELECT COUNT(*) FROM Alumno") > 0, "Debe cargar los alumnos de data.sql");
+		// si una fila de data.sql incumple un CHECK (p. ej. un acta cerrada antes del fin), no se carga
+		assertEquals(52, contar(db, "SELECT COUNT(*) FROM Microcredencial"), "Debe cargar todas las microcredenciales");
 	}
 
 	@Test

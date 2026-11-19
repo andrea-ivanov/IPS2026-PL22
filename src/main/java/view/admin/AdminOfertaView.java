@@ -133,7 +133,8 @@ public class AdminOfertaView {
         Estilo.addFiltro(filterPanel, "Facultad", txtFiltroFacultadGrado);
         txtFiltroRamaGrado = new JTextField();
         Estilo.addFiltro(filterPanel, "Rama de conocimiento", txtFiltroRamaGrado);
-        cbEstadoGrado = new JComboBox<>(new String[] { "TODOS", "VIGENTE", "PENDIENTE_RENOVACION", "EN_EXTINCION" });
+        cbEstadoGrado = new JComboBox<>(new String[] { "TODOS", "VIGENTE", "PENDIENTE_RENOVACION", "EN_EXTINCION",
+                "EXTINTO" });
         Estilo.addFiltro(filterPanel, "Estado", cbEstadoGrado);
 
         // Table

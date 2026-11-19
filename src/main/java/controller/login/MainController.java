@@ -22,6 +22,9 @@ import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
 import model.acta.ActaModel;
 import model.gestionmatricula.GestionMatriculaModel;
+import model.grado.GradoModel;
+import model.microcredencial.ActaMicrocredencialModel;
+import model.microcredencial.MicrocredencialModel;
 import util.ComboBuscable;
 import util.Database;
 import util.SwingUtil;
@@ -60,6 +63,10 @@ public class MainController {
      * al recargar la BD
      */
     private void actualizarEstadosPorFecha() {
+        // HU 36455: al empezar el año, los grados en extinción, los pendientes de renovación sin dictamen y los
+        // que no tienen matrículas pagadas pasan a EXTINTO y se cancelan sus matrículas del año. Va antes que el
+        // ciclo de vida, para que este no active las matrículas que se cancelan
+        SwingUtil.exceptionWrapper(() -> new GradoModel(db).extinguirGradosAlIniciarAnio(LocalDate.now().toString()));
         // HU 35229: el sistema mantiene al día el estado de las matrículas en cada
         // arranque,
         // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA ->
@@ -70,6 +77,15 @@ public class MainController {
         // sistema
         // (cierreAutomatico = 1); secretaria las consulta como avisos en su vista
         SwingUtil.exceptionWrapper(() -> new ActaModel(db).cerrarActasVencidas(LocalDate.now().toString()));
+        // HU 36410: el sistema cancela automáticamente por baja demanda las microcredenciales
+        // que no alcancen el 10% de plazas pagadas el día antes de cerrar su periodo de matriculación
+        SwingUtil.exceptionWrapper(() -> new MicrocredencialModel(db)
+                .cancelarPorBajaDemanda(LocalDate.now().toString()));
+        // HU 36459: el sistema cierra las actas de microcredenciales que el profesor no cerró en los 15 días
+        // siguientes al fin de la impartición. Va después de la baja demanda, que cancela antes las inscripciones
+        // sin pagar
+        SwingUtil.exceptionWrapper(() -> new ActaMicrocredencialModel(db)
+                .cerrarActasVencidas(LocalDate.now().toString()));
     }
 
     /**
@@ -98,7 +114,8 @@ public class MainController {
         ProfesorModel profesorModel = new ProfesorModel(db);
         view.getCbProfesores().setModel(
                 new DefaultComboBoxModel<>(profesorModel.getProfesores().toArray(new ProfesorDTO[0])));
-        // se puede escribir parte del nombre, apellidos o id para buscar el profesor (como el combo de alumnos)
+        // se puede escribir parte del nombre, apellidos o id para buscar el profesor
+        // (como el combo de alumnos)
         ComboBuscable.hacerBuscable(view.getCbProfesores());
     }
 
@@ -110,7 +127,10 @@ public class MainController {
         ComboBuscable.hacerBuscable(view.getCbAlumnos());
     }
 
-    /** Solo se ve la fila del usuario que corresponde al rol: el profesor o el alumno */
+    /**
+     * Solo se ve la fila del usuario que corresponde al rol: el profesor o el
+     * alumno
+     */
     private void actualizarVisibilidadUsuario() {
         Object rol = view.getCbRoles().getSelectedItem();
         view.getPanelProfesor().setVisible("Profesor".equals(rol));

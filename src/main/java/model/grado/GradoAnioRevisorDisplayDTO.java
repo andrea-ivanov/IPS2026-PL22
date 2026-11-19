@@ -15,7 +15,8 @@ public class GradoAnioRevisorDisplayDTO {
 	private String nombreGrado;
 	private String facultad;
 	private String rama;
-	private String idAnioAcademico;
+	private String estado;       // estado del grado: PENDIENTE_RENOVACION y EN_EXTINCION requieren acción (HU 36455)
+	private String idAnioAcademico; // null en un grado que requiere acción y no tiene ninguna métrica
 	private Double tasaExito;    // null si no hay ningún presentado
 	private Double tasaAbandono; // null si todavía no se puede medir
 	private int aprobados;
@@ -25,13 +26,14 @@ public class GradoAnioRevisorDisplayDTO {
 		super();
 	}
 
-	public GradoAnioRevisorDisplayDTO(String idGrado, String nombreGrado, String facultad, String rama, String idAnioAcademico,
-			Double tasaExito, Double tasaAbandono, int aprobados, int matriculados) {
+	public GradoAnioRevisorDisplayDTO(String idGrado, String nombreGrado, String facultad, String rama, String estado,
+			String idAnioAcademico, Double tasaExito, Double tasaAbandono, int aprobados, int matriculados) {
 		super();
 		this.idGrado = idGrado;
 		this.nombreGrado = nombreGrado;
 		this.facultad = facultad;
 		this.rama = rama;
+		this.estado = estado;
 		this.idAnioAcademico = idAnioAcademico;
 		this.tasaExito = tasaExito;
 		this.tasaAbandono = tasaAbandono;

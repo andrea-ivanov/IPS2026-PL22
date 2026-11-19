@@ -19,9 +19,6 @@ import util.exception.ValidationException;
  * Conecta con la tabla AnioAcademico de la base de datos.
  */
 public class AnoAcademicoModel {
-	/** Estado de grado heredado de la BD, equivalente a EN_EXTINCION (EstadoGrado no lo modela) */
-	private static final String ESTADO_GRADO_EXTINTO = "EXTINTO";
-
 	private Database db;
 	private AnoAcademicoRepository repository;
 
@@ -86,8 +83,8 @@ public class AnoAcademicoModel {
 
 	/**
 	 * Configura un nuevo año académico, que pasa a ser el actual. En la misma transacción:
-	 * los grados VIGENTES con la vigencia de 4 años caducada pasan a PENDIENTE_RENOVACION
-	 * y los cursos de grados en extinción pasan a INACTIVO.
+	 * los grados VIGENTES en los que ya han empezado sus 4 años académicos de vigencia pasan a PENDIENTE_RENOVACION
+	 * (el año nuevo no cuenta: se comprueba antes de crearlo) y los cursos de grados en extinción pasan a INACTIVO.
 	 *
 	 * @param fechaHoy Fecha de referencia en formato ISO (AAAA-MM-DD)
 	 * @return Identificador del año creado (AAAA-AAAA)
@@ -98,13 +95,12 @@ public class AnoAcademicoModel {
 		return db.enTransaccion(conn -> {
 			String anioId = comprobarNuevoAno(conn, fechaHoy, inicioAnio, finAnio, inicioMatriculacion,
 					finMatriculacion);
-			String inicio = Util.dateToIsoString(inicioAnio);
-			repository.insertar(conn, anioId, inicio, Util.dateToIsoString(finAnio),
-					Util.dateToIsoString(inicioMatriculacion), Util.dateToIsoString(finMatriculacion));
-			repository.actualizarGradosVigenciaCaducada(conn, inicio, GradoModel.ANIOS_VIGENCIA,
+			repository.actualizarGradosVigenciaCaducada(conn, GradoModel.ANIOS_VIGENCIA,
 					EstadoGrado.VIGENTE.name(), EstadoGrado.PENDIENTE_RENOVACION.name());
+			repository.insertar(conn, anioId, Util.dateToIsoString(inicioAnio), Util.dateToIsoString(finAnio),
+					Util.dateToIsoString(inicioMatriculacion), Util.dateToIsoString(finMatriculacion));
 			repository.actualizarCursosDeGradosEnEstados(conn,
-					Arrays.asList(EstadoGrado.EN_EXTINCION.name(), ESTADO_GRADO_EXTINTO),
+					Arrays.asList(EstadoGrado.EN_EXTINCION.name(), EstadoGrado.EXTINTO.name()),
 					EstadoCurso.ACTIVO.name(), EstadoCurso.INACTIVO.name());
 			return anioId;
 		});

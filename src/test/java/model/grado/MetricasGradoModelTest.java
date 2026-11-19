@@ -532,6 +532,85 @@ public class MetricasGradoModelTest {
 		}
 	}
 
+	// =========================================================================
+	// 9. GRADOS QUE REQUIEREN ACCIÓN (HU 36455)
+	// =========================================================================
+	@Nested
+	@DisplayName("9. Grados que requieren acción del revisor (HU 36455)")
+	class GradosQueRequierenAccion {
+		/** Grado pendiente de renovación sin ninguna matrícula */
+		private static final String INSERT_PENDIENTE = "INSERT INTO Grado VALUES ('G006','Zoologia','Facultad de Ciencias',"
+				+ "'Ciencias','PENDIENTE_RENOVACION','2022-09-01')";
+
+		@Test
+		@DisplayName("TM-31 Cada fila lleva el estado real del grado")
+		public void testEstadoEnElDto() {
+			List<GradoAnioRevisorDisplayDTO> lista = todos();
+
+			assertAll(
+					() -> assertEquals("VIGENTE", getFila(lista, "G001", "2025-2026").getEstado()),
+					() -> assertEquals("EN_EXTINCION", getFila(lista, "G002", "2025-2026").getEstado()));
+		}
+
+		@Test
+		@DisplayName("TM-32 Un grado pendiente sin métricas aparece una vez en Todos, sin año, sin tasas y con contadores a 0")
+		public void testPendienteSinMetricasEnTodos() {
+			db.executeUpdate(INSERT_PENDIENTE);
+
+			List<GradoAnioRevisorDisplayDTO> lista = todos();
+
+			assertEquals(List.of("G001 2026-2027", "G001 2025-2026", "G001 2024-2025", "G004 2025-2026",
+					"G002 2026-2027", "G002 2025-2026", "G002 2024-2025", "G002 2023-2024", "G006 null"), claves(lista));
+			GradoAnioRevisorDisplayDTO fila = lista.get(8);
+			assertAll(
+					() -> assertFila(fila, "G006", "Zoologia", "Facultad de Ciencias", "Ciencias", null, null, null, 0, 0),
+					() -> assertEquals("PENDIENTE_RENOVACION", fila.getEstado()));
+		}
+
+		@Test
+		@DisplayName("TM-33 metricasDelAnio: las filas del año y una fila vacía del pendiente; un VIGENTE sin métricas no sale")
+		public void testMetricasDelAnioConPendiente() {
+			db.executeUpdate(INSERT_PENDIENTE);
+
+			List<GradoAnioRevisorDisplayDTO> lista = metricasModel.metricasDelAnio(todos(), "2025-2026");
+
+			assertEquals(List.of("G001 2025-2026", "G004 2025-2026", "G002 2025-2026", "G006 2025-2026"), claves(lista));
+			assertAll(
+					() -> assertFila(lista.get(3), "G006", "Zoologia", "Facultad de Ciencias", "Ciencias", "2025-2026",
+							null, null, 0, 0),
+					() -> assertEquals("PENDIENTE_RENOVACION", lista.get(3).getEstado()),
+					() -> assertFila(lista.get(0), "G001", "Biologia", "Facultad de Ciencias", "Ciencias", "2025-2026",
+							66.7, null, 2, 3));
+		}
+
+		@Test
+		@DisplayName("TM-34 metricasDelAnio: un EN_EXTINCION sin fila en ese año también sale vacío")
+		public void testMetricasDelAnioEnExtincion() {
+			List<GradoAnioRevisorDisplayDTO> lista = metricasModel.metricasDelAnio(todos(), "2027-2028");
+
+			assertEquals(List.of("G002 2027-2028"), claves(lista));
+			assertAll(
+					() -> assertFila(lista.get(0), "G002", "Derecho", "Facultad de Derecho", "Ciencias Sociales y Juridicas",
+							"2027-2028", null, null, 0, 0),
+					() -> assertEquals("EN_EXTINCION", lista.get(0).getEstado()));
+		}
+
+		@Test
+		@DisplayName("TM-35 Los filtros de rama y nombre también se aplican a los grados que requieren acción")
+		public void testFiltrosEnPendientes() {
+			db.executeUpdate(INSERT_PENDIENTE);
+
+			assertAll(
+					() -> assertEquals(List.of("G006 null"), claves(metricasModel.getMetricasGrados(null, "zoo", null, HOY))),
+					() -> assertTrue(metricasModel.getMetricasGrados(null, null, null, HOY).stream()
+							.anyMatch(d -> "G006".equals(d.getIdGrado()))),
+					() -> assertTrue(claves(metricasModel.getMetricasGrados(null, "bio", null, HOY)).stream()
+							.noneMatch(c -> c.startsWith("G006"))),
+					() -> assertTrue(claves(metricasModel.getMetricasGrados("salud", null, null, HOY)).stream()
+							.noneMatch(c -> c.startsWith("G006"))));
+		}
+	}
+
 	private List<GradoAnioRevisorDisplayDTO> todos() {
 		return metricasModel.getMetricasGrados(null, null, null, HOY);
 	}

@@ -38,6 +38,17 @@ public class InscripcionMicrocredencialModel {
 		return repository.findOferta(alumnoId, anioActual(), fechaHoy, MatriculacionModel.PRECIO_CREDITO);
 	}
 
+	/**
+	 * Inscripciones en microcredenciales del estudiante para la vista "Mis Matrículas"
+	 * (HU 35232, HU 36410 y HU 36459).
+	 */
+	public List<MatriculaMicrocredencialDisplayDTO> getMatriculasAlumno(String alumnoId) {
+		if (alumnoId == null || alumnoId.trim().isEmpty()) {
+			return new ArrayList<>();
+		}
+		return repository.findMatriculasByAlumno(alumnoId.trim());
+	}
+
 	private String anioActual() {
 		return anoAcademicoModel.buscarActual().getAnioAcademicoId();
 	}

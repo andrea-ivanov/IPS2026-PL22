@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.handlers.ColumnListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.gestionmatricula.FiltroMatriculasSecretaria;
@@ -437,6 +438,15 @@ public class MatriculaRepository {
 			String fechaPago) throws SQLException {
 		update(conn, "UPDATE MatriculaCurso SET metodoPago = COALESCE(?, metodoPago), fechaPago = ? "
 				+ "WHERE matriculaId = ? AND cursoId = ?", metodoPago, fechaPago, matriculaId, cursoId);
+	}
+
+	/** Identificadores de las matrículas del grado en el año académico que no están canceladas ni finalizadas */
+	public List<String> findIdsAbiertasDeGrado(Connection conn, String gradoId, String anioAcademicoId)
+			throws SQLException {
+		return new QueryRunner().query(conn,
+				"SELECT matriculaId FROM Matricula WHERE gradoId = ? AND anioAcademicoId = ? "
+						+ "AND estado NOT IN ('CANCELADA', 'FINALIZADA') ORDER BY matriculaId",
+				new ColumnListHandler<String>(), gradoId, anioAcademicoId);
 	}
 
 	/** Cancela todos los cursos de la matrícula que no estén cancelados ni finalizados */

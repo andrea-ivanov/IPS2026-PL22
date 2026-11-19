@@ -87,6 +87,21 @@ public class AnoAcademicoRepository {
 				mapearFecha(r[3]), mapearFecha(r[4]), true);
 	}
 
+	/** Id del año académico actual (el de mayor fecha de inicio) dentro de una transacción. Nulo si no hay ninguno */
+	public String findActualId(Connection conn) throws SQLException {
+		return new QueryRunner().query(conn,
+				"SELECT anioAcademicoId FROM AnioAcademico ORDER BY fechaInicio DESC LIMIT 1",
+				new ScalarHandler<String>());
+	}
+
+	/** Fecha de fin (ISO) del año académico inmediatamente anterior al que empieza en fechaInicio. Nulo si no hay */
+	public String findFechaFinAnterior(Connection conn, String fechaInicio) throws SQLException {
+		Object fin = new QueryRunner().query(conn,
+				"SELECT fechaFin FROM AnioAcademico WHERE fechaInicio < ? ORDER BY fechaInicio DESC LIMIT 1",
+				new ScalarHandler<Object>(), fechaInicio);
+		return fin == null ? null : fin.toString();
+	}
+
 	/** Fecha de fin (ISO) del último año académico configurado, o nulo si no hay ninguno */
 	public String findUltimaFechaFin(Connection conn) throws SQLException {
 		Object fin = new QueryRunner().query(conn, "SELECT MAX(fechaFin) FROM AnioAcademico",
@@ -108,13 +123,14 @@ public class AnoAcademicoRepository {
 	}
 
 	/**
-	 * Pasa de estado los grados cuya vigencia ha caducado en la fecha de inicio indicada (los que están en
-	 * estadoOrigen y llevan aniosVigencia años o más desde fechaInicioVigencia pasan a estadoDestino)
+	 * Pasa de estado los grados cuya vigencia ha caducado: los que están en estadoOrigen y tienen aniosVigencia o
+	 * más años académicos registrados que empiezan en su fechaInicioVigencia o después pasan a estadoDestino
 	 */
-	public void actualizarGradosVigenciaCaducada(Connection conn, String inicio, int aniosVigencia,
-			String estadoOrigen, String estadoDestino) throws SQLException {
-		update(conn, "UPDATE Grado SET estado = ? WHERE estado = ? AND date(fechaInicioVigencia, ?) <= ?",
-				estadoDestino, estadoOrigen, "+" + aniosVigencia + " years", inicio);
+	public void actualizarGradosVigenciaCaducada(Connection conn, int aniosVigencia, String estadoOrigen,
+			String estadoDestino) throws SQLException {
+		update(conn, "UPDATE Grado SET estado = ? WHERE estado = ? AND (SELECT COUNT(*) FROM AnioAcademico a "
+				+ "WHERE a.fechaInicio >= Grado.fechaInicioVigencia) >= ?",
+				estadoDestino, estadoOrigen, aniosVigencia);
 	}
 
 	/**

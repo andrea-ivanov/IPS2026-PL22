@@ -38,6 +38,7 @@ public class SecretarioController {
     private final Paginacion paginacionGrupos = new Paginacion(FILAS_POR_PAGINA);
     private final GestionMatriculaModel gestionModel;
     private final ActaModel actaModel;
+    private final RevisionMicrocredencialController revisionController;
     // Evita recargar la tabla mientras se rellenan los desplegables de filtros
     private boolean cargandoFiltros = false;
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
@@ -47,6 +48,7 @@ public class SecretarioController {
         this.view = view;
         this.gestionModel = new GestionMatriculaModel(db);
         this.actaModel = new ActaModel(db);
+        this.revisionController = new RevisionMicrocredencialController(view, db);
         this.initView();
     }
 
@@ -87,6 +89,9 @@ public class SecretarioController {
                 SwingUtil.exceptionWrapper(this::cargarAlumnosGrupo);
             }
         });
+
+        // Revisión de microcredenciales propuestas (HU 35994), en su propio controlador
+        revisionController.initController();
 
         // El ciclo de vida (activar/finalizar por fechas) ya se ha actualizado al arrancar la aplicación
         // (MainController), así que abrir la consulta no modifica ningún dato

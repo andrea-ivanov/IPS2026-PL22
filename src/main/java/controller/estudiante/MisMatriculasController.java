@@ -1,16 +1,23 @@
 package controller.estudiante;
 
-import view.estudiante.MisMatriculasView;
-import model.matriculacion.MatriculacionModel;
-import model.matriculacion.MatriculacionDisplayDTO;
-import model.matriculacion.CalificacionDisplayDTO;
-import model.matriculacion.HitosPermanenciaDTO;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
-import java.util.List;
 
+import model.contrato.ContratoAlumnoDTO;
+import model.fip.MatriculaFipDisplayDTO;
+import model.matriculacion.CalificacionDisplayDTO;
+import model.matriculacion.HitosPermanenciaDTO;
+import model.matriculacion.MatriculacionDisplayDTO;
+import model.matriculacion.MatriculacionModel;
+import model.microcredencial.InscripcionMicrocredencialModel;
+import model.microcredencial.MatriculaMicrocredencialDisplayDTO;
+import model.microcredencial.MicrocredencialModel;
+import util.Database;
 import util.SwingUtil;
+import view.estudiante.MisMatriculasView;
 
 /**
  * Controlador de la vista de matrículas del estudiante (HU 35232).
@@ -25,16 +32,25 @@ import util.SwingUtil;
 public class MisMatriculasController {
     private MisMatriculasView view;
     private MatriculacionModel model;
+    private InscripcionMicrocredencialModel microcredencialModel;
     private String uo;
     private Runnable onVolver;
 
     public MisMatriculasController(MisMatriculasView view, MatriculacionModel model, String uo) {
-        this(view, model, uo, null);
+        this(view, model, null, uo, null);
     }
 
     public MisMatriculasController(MisMatriculasView view, MatriculacionModel model, String uo, Runnable onVolver) {
+        this(view, model, null, uo, onVolver);
+    }
+
+    public MisMatriculasController(MisMatriculasView view, MatriculacionModel model,
+            InscripcionMicrocredencialModel microcredencialModel, String uo, Runnable onVolver) {
         this.view = view;
         this.model = model;
+        this.microcredencialModel = microcredencialModel != null
+                ? microcredencialModel
+                : (model != null && model.getDb() != null ? new InscripcionMicrocredencialModel(model.getDb()) : null);
         this.uo = uo;
         this.onVolver = onVolver;
     }
@@ -50,10 +66,12 @@ public class MisMatriculasController {
         });
 
         // Botón para ver notas de la asignatura seleccionada
-        view.getBtnVerNotasSeleccionada().addActionListener(e -> SwingUtil.exceptionWrapper(this::verNotasDeAsignaturaSeleccionada));
+        view.getBtnVerNotasSeleccionada()
+                .addActionListener(e -> SwingUtil.exceptionWrapper(this::verNotasDeAsignaturaSeleccionada));
 
         // Botón para refrescar todas las notas
-        view.getBtnVerTodasNotas().addActionListener(e -> SwingUtil.exceptionWrapper(() -> cargarCalificaciones(getGradoIdSeleccionado())));
+        view.getBtnVerTodasNotas().addActionListener(
+                e -> SwingUtil.exceptionWrapper(() -> cargarCalificaciones(getGradoIdSeleccionado())));
 
         // Cargar los grados del estudiante en el desplegable
         cargarGrados();
@@ -77,6 +95,8 @@ public class MisMatriculasController {
         cargarMatriculas(gradoId);
         cargarHitosPermanencia(gradoId);
         cargarCalificaciones(gradoId);
+        cargarMicrocredenciales();
+        cargarFipYContratos();
     }
 
     private String getGradoIdSeleccionado() {
@@ -118,7 +138,8 @@ public class MisMatriculasController {
     }
 
     private void cargarHitosPermanencia(String gradoId) {
-        // sin grado en el desplegable el alumno no tiene matrículas: no hay permanencia que calcular
+        // sin grado en el desplegable el alumno no tiene matrículas: no hay permanencia
+        // que calcular
         if (gradoId == null) {
             view.getLblHitoAnual().setText("No tienes ninguna matrícula registrada");
             view.getLblHitoTotal().setText("");
@@ -168,6 +189,151 @@ public class MisMatriculasController {
             modelCalificaciones.addRow(row);
         }
         SwingUtil.autoAdjustColumns(view.getTableCalificaciones());
+    }
+
+    private void cargarMicrocredenciales() {
+        if (view.getTableModelMicrocredenciales() == null || microcredencialModel == null) {
+            return;
+        }
+        DefaultTableModel modelMicro = view.getTableModelMicrocredenciales();
+        modelMicro.setRowCount(0);
+
+        String alumnoId = model != null ? model.resolverAlumnoId(uo) : uo;
+        List<MatriculaMicrocredencialDisplayDTO> microcredenciales = microcredencialModel.getMatriculasAlumno(alumnoId);
+
+        for (MatriculaMicrocredencialDisplayDTO mc : microcredenciales) {
+            Object[] row = new Object[] {
+                    mc.getAnioAcademicoId(),
+                    mc.getMicrocredencialId(),
+                    mc.getNombre(),
+                    mc.getRamaConocimiento(),
+                    mc.getCreditos() != null ? MicrocredencialModel.formatearCreditos(mc.getCreditos()) : "-",
+                    mc.getInicioImparticion(),
+                    mc.getFinImparticion(),
+                    mc.getEstadoLegible(),
+                    mc.getDetalleTexto(),
+                    mc.getNotaTexto()
+            };
+            modelMicro.addRow(row);
+        }
+        SwingUtil.autoAdjustColumns(view.getTableMicrocredenciales());
+    }
+
+    /**
+     * Carga los contratos y las Formaciones Internas del Personal (FIP) del
+     * estudiante (HU 36967).
+     * Si el estudiante no tiene ningún contrato registrado con la universidad, la
+     * pestaña "FIP"
+     * permanece oculta en el expediente.
+     * 
+     * TODO: MUESTRA PRUEBA DE ALUMNO CON CONTRATO HASTA QUE SE IMPLEMENTE EL MODELO
+     * DE DATOS
+     */
+    private void cargarFipYContratos() {
+        if (view.getTableModelContratos() == null || view.getTableModelFip() == null) {
+            return;
+        }
+        String alumnoId = model != null ? model.resolverAlumnoId(uo) : uo;
+        if (alumnoId == null || alumnoId.trim().isEmpty() || model == null || model.getDb() == null) {
+            mostrarDatosFip(new ArrayList<>(), new ArrayList<>());
+            return;
+        }
+        Database db = model.getDb();
+        String id = alumnoId.trim();
+        if (!existeTabla(db, "ContratoAlumno")) {
+            // Mientras las tablas de Sprint 3 no estén en schema.sql, mostramos datos de
+            // vista previa para AL0001
+            if ("AL0001".equalsIgnoreCase(id)) {
+                mostrarDatosFip(
+                        List.of(
+                                new ContratoAlumnoDTO("CT0003", "AL0001", "Apoyo a la docencia", "2027-01-15",
+                                        "2027-07-15"),
+                                new ContratoAlumnoDTO("CT0001", "AL0001", "Becaria del departamento", "2026-09-01",
+                                        "2027-06-30"),
+                                new ContratoAlumnoDTO("CT0002", "AL0001", "Colaboracion en biblioteca", "2025-10-01",
+                                        "2026-06-30")),
+                        List.of(
+                                new MatriculaFipDisplayDTO("FIP003", "Prevencion de Riesgos en Laboratorio",
+                                        "2026-12-01", "2026-12-10", "PENDIENTE"),
+                                new MatriculaFipDisplayDTO("FIP002", "Proteccion de Datos y Ciberseguridad",
+                                        "2026-10-05", "2026-10-15", "APTO"),
+                                new MatriculaFipDisplayDTO("FIP001", "Gestion Documental Universitaria", "2026-09-10",
+                                        "2026-09-20", "NO APTO")));
+            } else {
+                mostrarDatosFip(new ArrayList<>(), new ArrayList<>());
+            }
+            return;
+        }
+        List<ContratoAlumnoDTO> contratos = db.executeQueryPojo(ContratoAlumnoDTO.class,
+                "SELECT contratoId, alumnoId, descripcion, fechaInicio, fechaFin FROM ContratoAlumno "
+                        + "WHERE alumnoId = ? ORDER BY fechaInicio DESC, contratoId DESC",
+                id);
+        List<MatriculaFipDisplayDTO> fips = new ArrayList<>();
+        if (!contratos.isEmpty() && existeTabla(db, "FIP") && existeTabla(db, "MatriculaFIP")) {
+            fips = db.executeQueryPojo(MatriculaFipDisplayDTO.class,
+                    "SELECT f.fipId, f.nombre, f.fechaInicio, f.fechaFin, "
+                            + "CASE WHEN f.fechaCierreActa IS NULL THEN 'PENDIENTE' "
+                            + "     ELSE COALESCE(mf.resultado, 'PENDIENTE') END AS resultado "
+                            + "FROM MatriculaFIP mf "
+                            + "JOIN FIP f ON f.fipId = mf.fipId "
+                            + "WHERE mf.alumnoId = ? "
+                            + "ORDER BY f.fechaInicio DESC, f.fipId DESC",
+                    id);
+        }
+        mostrarDatosFip(contratos, fips);
+    }
+
+    /**
+     * Actualiza la pestaña "FIP" de la vista con los contratos y las FIP del
+     * estudiante (HU 36967).
+     * Si la lista de contratos está vacía, oculta la pestaña "FIP" ("En ningún
+     * caso" debe aparecer
+     * para alumnos sin contrato según indicación del PO).
+     */
+    public void mostrarDatosFip(List<ContratoAlumnoDTO> contratos, List<MatriculaFipDisplayDTO> fips) {
+        DefaultTableModel modelContratos = view.getTableModelContratos();
+        DefaultTableModel modelFip = view.getTableModelFip();
+        if (modelContratos == null || modelFip == null) {
+            return;
+        }
+        modelContratos.setRowCount(0);
+        modelFip.setRowCount(0);
+
+        if (contratos == null || contratos.isEmpty()) {
+            view.setMostrarPestanaFip(false);
+            return;
+        }
+
+        view.setMostrarPestanaFip(true);
+
+        for (ContratoAlumnoDTO c : contratos) {
+            modelContratos.addRow(new Object[] {
+                    c.getContratoId(),
+                    c.getDescripcion(),
+                    c.getFechaInicio(),
+                    c.getFechaFin()
+            });
+        }
+        SwingUtil.autoAdjustColumns(view.getTableContratos());
+
+        if (fips != null) {
+            for (MatriculaFipDisplayDTO f : fips) {
+                modelFip.addRow(new Object[] {
+                        f.getFipId(),
+                        f.getNombre(),
+                        f.getFechaInicio(),
+                        f.getFechaFin(),
+                        f.getResultadoTexto()
+                });
+            }
+        }
+        SwingUtil.autoAdjustColumns(view.getTableFip());
+    }
+
+    private boolean existeTabla(Database db, String nombreTabla) {
+        return !db.executeQueryArray(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND LOWER(name) = LOWER(?)",
+                nombreTabla).isEmpty();
     }
 
     private void verNotasDeAsignaturaSeleccionada() {

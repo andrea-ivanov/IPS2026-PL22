@@ -76,6 +76,7 @@ public class SolicitudMicrocredencialView {
 
     private void initialize() {
         frame = new JFrame("Solicitud de Matrícula en Microcredenciales");
+        Estilo.aplicarIconoVentana(frame);
         frame.setBounds(120, 80, 960, 680);
         frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);

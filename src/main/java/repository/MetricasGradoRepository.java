@@ -35,7 +35,7 @@ public class MetricasGradoRepository {
 		params.add(estadoCursoCancelado);
 		params.addAll(estadosMatriculaValida);
 		params.add(estadoGradoExcluido);
-		String sql = "SELECT g.gradoId, g.nombre, g.facultad, g.ramaConocimiento, m.anioAcademicoId, "
+		String sql = "SELECT g.gradoId, g.nombre, g.facultad, g.ramaConocimiento, g.estado, m.anioAcademicoId, "
 				+ "COUNT(DISTINCT m.alumnoId), COALESCE(SUM(a.superada), 0), "
 				+ "COALESCE(SUM(a.presentada * a.creditos), 0), COALESCE(SUM(a.superada * a.creditos), 0) "
 				+ "FROM Matricula m "
@@ -69,10 +69,39 @@ public class MetricasGradoRepository {
 		List<FilaMetricasGrado> filas = new ArrayList<>();
 		for (Object[] r : db.executeQueryArray(sql, params.toArray())) {
 			filas.add(new FilaMetricasGrado((String) r[0], (String) r[1], (String) r[2], (String) r[3], (String) r[4],
-					((Number) r[5]).intValue(), ((Number) r[6]).intValue(), ((Number) r[7]).doubleValue(),
-					((Number) r[8]).doubleValue()));
+					(String) r[5], ((Number) r[6]).intValue(), ((Number) r[7]).intValue(), ((Number) r[8]).doubleValue(),
+					((Number) r[9]).doubleValue()));
 		}
 		return filas;
+	}
+
+	/**
+	 * Grados en alguno de los estados indicados, con los mismos filtros de rama y nombre, ordenados por nombre,
+	 * facultad e id. Se devuelven como filas sin métricas (sin año y con los contadores a 0)
+	 *
+	 * @param rama Parte de la rama en minúsculas (null: todas)
+	 * @param nombreGrado Parte del nombre del grado en minúsculas (null: todos)
+	 */
+	public List<FilaMetricasGrado> findGradosEnEstados(String rama, String nombreGrado, List<String> estados) {
+		List<Object> params = new ArrayList<>(estados);
+		String sql = "SELECT gradoId, nombre, facultad, ramaConocimiento, estado FROM Grado "
+				+ "WHERE estado IN (" + marcas(estados) + ") ";
+		if (rama != null) {
+			sql += "AND LOWER(ramaConocimiento) LIKE ? ";
+			params.add("%" + rama + "%");
+		}
+		if (nombreGrado != null) {
+			sql += "AND LOWER(nombre) LIKE ? ";
+			params.add("%" + nombreGrado + "%");
+		}
+		sql += "ORDER BY nombre, facultad, gradoId";
+
+		List<FilaMetricasGrado> grados = new ArrayList<>();
+		for (Object[] r : db.executeQueryArray(sql, params.toArray())) {
+			grados.add(new FilaMetricasGrado((String) r[0], (String) r[1], (String) r[2], (String) r[3], (String) r[4],
+					null, 0, 0, 0, 0));
+		}
+		return grados;
 	}
 
 	/** Alumnos distintos con matrícula en alguno de los estados indicados en el grado y año */

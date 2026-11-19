@@ -6,9 +6,9 @@ import model.grado.GradoDisplayDTO;
 import model.matriculacion.ResumenSolicitudDTO;
 import util.exception.ValidationException;
 import util.SwingUtil;
+import view.comun.Estilo;
 import view.estudiante.SolicitudMatriculaView;
 
-import javax.swing.*;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
 import java.util.ArrayList;
@@ -148,12 +148,11 @@ public class SolicitudMatriculaController {
                 actualizandoTabla = true;
                 tm.setValueAt(Boolean.FALSE, row, 0);
                 actualizandoTabla = false;
-                JOptionPane.showMessageDialog(view.getFrame(),
+                Estilo.mostrarAviso(view.getFrame(),
                         "No es posible seleccionar la asignatura '" + nombre + "' (" + cursoId + "):\n" +
                                 "Ha consumido el límite máximo reglamentario de " + MatriculacionModel.MAX_CONVOCATORIAS
                                 + " convocatorias evaluadas.",
-                        "Límite de Convocatorias Agotado",
-                        JOptionPane.WARNING_MESSAGE);
+                        "Límite de Convocatorias Agotado");
                 recalcularTotales();
                 return;
             }
@@ -181,17 +180,17 @@ public class SolicitudMatriculaController {
     private void validarYContinuarAlResumen() {
         GradoDisplayDTO grado = (GradoDisplayDTO) view.getCbGrados().getSelectedItem();
         if (grado == null) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarAviso(view.getFrame(),
                     "Debe seleccionar un grado oficial para matricularse.",
-                    "Grado no seleccionado", JOptionPane.WARNING_MESSAGE);
+                    "Grado no seleccionado");
             return;
         }
 
         List<OfertaCursoDTO> asignaturas = view.getAsignaturasSeleccionadas();
         if (asignaturas.isEmpty()) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarAviso(view.getFrame(),
                     "Debe marcar al menos una asignatura para poder continuar con la solicitud.",
-                    "Sin asignaturas seleccionadas", JOptionPane.WARNING_MESSAGE);
+                    "Sin asignaturas seleccionadas");
             return;
         }
 
@@ -206,10 +205,9 @@ public class SolicitudMatriculaController {
         try {
             model.validarSolicitudMatricula(alumnoId, grado.getId(), anioAcademicoId, cursoIds);
         } catch (ValidationException ex) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarError(view.getFrame(),
                     ex.getMessage(),
-                    "Requisitos de Matrícula No Cumplidos",
-                    JOptionPane.ERROR_MESSAGE);
+                    "Requisitos de Matrícula No Cumplidos");
             return;
         }
 
@@ -231,9 +229,9 @@ public class SolicitudMatriculaController {
 
     private void confirmarSolicitudMatricula() {
         if (resumenActual == null) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarError(view.getFrame(),
                     "No se dispone de una solicitud consolidada para confirmar.",
-                    "Error de Solicitud", JOptionPane.ERROR_MESSAGE);
+                    "Error de Solicitud");
             return;
         }
 
@@ -241,16 +239,12 @@ public class SolicitudMatriculaController {
         resumenActual.setMetodoPago(metodoPago);
 
         Object[] opciones = new Object[] { "Sí", "No" };
-        int confirmacion = JOptionPane.showOptionDialog(view.getFrame(),
+        int confirmacion = Estilo.confirmar(view.getFrame(),
                 "¿Está seguro de que desea confirmar la solicitud de matrícula por un importe de " +
                         String.format("%.2f €", resumenActual.getImporteTotal()) +
                         " mediante " + metodoPago + "?",
                 "Confirmar Solicitud de Matrícula",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                opciones,
-                opciones[0]);
+                opciones);
 
         if (confirmacion != 0) {
             return;
@@ -277,10 +271,9 @@ public class SolicitudMatriculaController {
                         "para que sus asignaturas sean validadas definitivamente.";
             }
 
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarMensaje(view.getFrame(),
                     mensajeExito,
-                    "Matrícula Confirmada con Éxito",
-                    JOptionPane.INFORMATION_MESSAGE);
+                    "Matrícula Confirmada con Éxito");
 
             // Regresar al menú principal tras el éxito
             if (onVolverMenu != null) {
@@ -288,15 +281,13 @@ public class SolicitudMatriculaController {
             }
 
         } catch (ValidationException vex) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarError(view.getFrame(),
                     vex.getMessage(),
-                    "Error en la Validación de Matrícula",
-                    JOptionPane.ERROR_MESSAGE);
+                    "Error en la Validación de Matrícula");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(view.getFrame(),
+            Estilo.mostrarError(view.getFrame(),
                     "Ocurrió un error inesperado al registrar la matrícula:\n" + ex.getMessage(),
-                    "Error Transaccional",
-                    JOptionPane.ERROR_MESSAGE);
+                    "Error Transaccional");
         }
     }
 

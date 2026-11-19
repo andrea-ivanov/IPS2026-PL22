@@ -16,10 +16,13 @@ import model.fixtures.BaseModelTest;
 import util.exception.ValidationException;
 
 /**
- * Pruebas unitarias para el alta y la baja de Grados (HU 35223).
- * Año '1': el grado 1 tiene matrículas activas. Año '2': sin matrículas.
+ * Pruebas unitarias para el alta y la baja de Grados (HU 35223, con los cambios de la HU 36455).
+ * Año '1': el grado 1 tiene matrículas activas; su matriculación empieza el 2026-07-01. Año '2': sin matrículas.
  */
 public class GradoModelGestionTest extends BaseModelTest {
+	/** El día antes de que empiece la matriculación del año '1': se pueden crear grados */
+	private static final String ANTES_MATRICULACION = "2026-06-30";
+
 	private GradoModel gradoModel;
 
 	@BeforeEach
@@ -37,7 +40,7 @@ public class GradoModelGestionTest extends BaseModelTest {
 		@Test
 		@DisplayName("TG-01 Happy path: crea el grado VIGENTE con la vigencia del año académico")
 		public void testCrearGrado_HappyPath() {
-			String gradoId = gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1");
+			String gradoId = gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1", ANTES_MATRICULACION);
 
 			assertEquals("G001", gradoId);
 			List<Object[]> rows = db.executeQueryArray(
@@ -59,7 +62,7 @@ public class GradoModelGestionTest extends BaseModelTest {
 		@DisplayName("TG-02 Falta el nombre: lanza ValidationException y no inserta")
 		public void testCrearGrado_SinNombre(String valor) {
 			assertThrows(ValidationException.class,
-					() -> gradoModel.crearGrado(valor, "Facultad X", "Ciencias", "1"));
+					() -> gradoModel.crearGrado(valor, "Facultad X", "Ciencias", "1", ANTES_MATRICULACION));
 			assertEquals(2, contarFilas("Grado"));
 		}
 
@@ -69,7 +72,7 @@ public class GradoModelGestionTest extends BaseModelTest {
 		@DisplayName("TG-02 Falta la facultad: lanza ValidationException y no inserta")
 		public void testCrearGrado_SinFacultad(String valor) {
 			assertThrows(ValidationException.class,
-					() -> gradoModel.crearGrado("Grado Nuevo", valor, "Ciencias", "1"));
+					() -> gradoModel.crearGrado("Grado Nuevo", valor, "Ciencias", "1", ANTES_MATRICULACION));
 			assertEquals(2, contarFilas("Grado"));
 		}
 
@@ -79,7 +82,7 @@ public class GradoModelGestionTest extends BaseModelTest {
 		@DisplayName("TG-02 Falta la rama de conocimiento: lanza ValidationException y no inserta")
 		public void testCrearGrado_SinRama(String valor) {
 			assertThrows(ValidationException.class,
-					() -> gradoModel.crearGrado("Grado Nuevo", "Facultad X", valor, "1"));
+					() -> gradoModel.crearGrado("Grado Nuevo", "Facultad X", valor, "1", ANTES_MATRICULACION));
 			assertEquals(2, contarFilas("Grado"));
 		}
 
@@ -89,7 +92,7 @@ public class GradoModelGestionTest extends BaseModelTest {
 		@DisplayName("TG-03 Año académico nulo o inexistente: lanza ValidationException y no inserta")
 		public void testCrearGrado_SinAnoAcademico(String anio) {
 			assertThrows(ValidationException.class,
-					() -> gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", anio));
+					() -> gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", anio, ANTES_MATRICULACION));
 			assertEquals(2, contarFilas("Grado"));
 		}
 
@@ -99,7 +102,7 @@ public class GradoModelGestionTest extends BaseModelTest {
 			db.executeUpdate("INSERT INTO Grado (gradoId, nombre, facultad, ramaConocimiento, estado, fechaInicioVigencia) "
 					+ "VALUES ('G001', 'Existente', 'Facultad Y', 'Ciencias', 'VIGENTE', '2025-09-01')");
 
-			String gradoId = gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1");
+			String gradoId = gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1", ANTES_MATRICULACION);
 
 			assertEquals("G002", gradoId);
 			assertEquals("Existente", db.executeQueryArray("SELECT nombre FROM Grado WHERE gradoId = 'G001'").get(0)[0]);
@@ -108,11 +111,51 @@ public class GradoModelGestionTest extends BaseModelTest {
 		@Test
 		@DisplayName("TG-05 El nombre no es UNIQUE: dos altas iguales crean dos grados distintos")
 		public void testCrearGrado_MismoNombreDosVeces() {
-			String id1 = gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1");
-			String id2 = gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1");
+			String id1 = gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1", ANTES_MATRICULACION);
+			String id2 = gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1", ANTES_MATRICULACION);
 
 			assertNotEquals(id1, id2);
 			assertEquals(4, contarFilas("Grado"));
+		}
+
+		@Test
+		@DisplayName("TG-06 R-14 límite válido: el día antes de que empiece la matriculación se puede crear")
+		public void testCrearGrado_DiaAntesDeLaMatriculacion() {
+			assertEquals("G001", gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1", "2026-06-30"));
+			assertEquals(3, contarFilas("Grado"));
+		}
+
+		@ParameterizedTest(name = "hoy = {0}")
+		@ValueSource(strings = { "2026-07-01", "2026-08-15", "2026-10-01" })
+		@DisplayName("TG-07/TG-08 R-14: el día en que empieza la matriculación o después no se puede crear")
+		public void testCrearGrado_MatriculacionEmpezada(String hoy) {
+			assertThrows(ValidationException.class,
+					() -> gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1", hoy));
+			assertEquals(2, contarFilas("Grado"));
+		}
+
+		@Test
+		@DisplayName("TG-09 R-14: sin periodo de matriculación configurado no se puede crear")
+		public void testCrearGrado_SinPeriodoMatriculacion() {
+			db.executeUpdate("UPDATE AnioAcademico SET inicioMatriculacion = NULL, finMatriculacion = NULL "
+					+ "WHERE anioAcademicoId = '1'");
+
+			assertThrows(ValidationException.class,
+					() -> gradoModel.crearGrado("Grado Nuevo", "Facultad X", "Ciencias", "1", ANTES_MATRICULACION));
+			assertEquals(2, contarFilas("Grado"));
+		}
+
+		@Test
+		@DisplayName("TG-10 validarCreacionGrado comprueba R-14 sin insertar nada")
+		public void testValidarCreacionGrado() {
+			db.executeUpdate("INSERT INTO AnioAcademico VALUES ('3', '2028-09-01', '2029-06-30', NULL, NULL)");
+
+			assertAll(
+					() -> assertDoesNotThrow(() -> gradoModel.validarCreacionGrado("1", "2026-06-30")),
+					() -> assertThrows(ValidationException.class, () -> gradoModel.validarCreacionGrado("1", "2026-07-01")),
+					() -> assertThrows(ValidationException.class, () -> gradoModel.validarCreacionGrado("1", "2026-10-01")),
+					() -> assertThrows(ValidationException.class, () -> gradoModel.validarCreacionGrado("3", "2026-06-30")),
+					() -> assertEquals(2, contarFilas("Grado")));
 		}
 	}
 
@@ -136,12 +179,12 @@ public class GradoModelGestionTest extends BaseModelTest {
 		}
 
 		@Test
-		@DisplayName("TE-G03 Happy path: el grado pasa a EN_EXTINCION y todos sus cursos a INACTIVO, sin borrar filas")
+		@DisplayName("TE-G03 Happy path: el grado pasa a EXTINTO y todos sus cursos a INACTIVO, sin borrar filas")
 		public void testEliminarGrado_HappyPath() {
 			gradoModel.eliminarGrado("1", "2");
 
 			assertAll("Estados tras eliminar el grado",
-					() -> assertEquals("EN_EXTINCION", estadoGrado("1")),
+					() -> assertEquals("EXTINTO", estadoGrado("1")),
 					() -> assertEquals("INACTIVO", estadoGradoCurso("1", "1")),
 					() -> assertEquals("INACTIVO", estadoGradoCurso("1", "2")),
 					() -> assertEquals(2, contarFilas("Grado")),
@@ -150,11 +193,11 @@ public class GradoModelGestionTest extends BaseModelTest {
 		}
 
 		@Test
-		@DisplayName("TE-G04 Grado sin cursos: pasa a EN_EXTINCION")
+		@DisplayName("TE-G04 Grado sin cursos: pasa a EXTINTO")
 		public void testEliminarGrado_SinCursos() {
 			gradoModel.eliminarGrado("2", "2");
 
-			assertEquals("EN_EXTINCION", estadoGrado("2"));
+			assertEquals("EXTINTO", estadoGrado("2"));
 		}
 
 		@Test
@@ -192,7 +235,7 @@ public class GradoModelGestionTest extends BaseModelTest {
 
 			gradoModel.eliminarGrado("1", "2");
 
-			assertEquals("EN_EXTINCION", estadoGrado("1"));
+			assertEquals("EXTINTO", estadoGrado("1"));
 			assertEquals("INACTIVO", estadoGradoCurso("1", "1"));
 			assertEquals("INACTIVO", estadoGradoCurso("1", "2"));
 		}
@@ -215,7 +258,7 @@ public class GradoModelGestionTest extends BaseModelTest {
 
 			gradoModel.eliminarGrado("1", "2");
 
-			assertEquals("EN_EXTINCION", estadoGrado("1"));
+			assertEquals("EXTINTO", estadoGrado("1"));
 			assertEquals("INACTIVO", estadoGradoCurso("1", "1"));
 			assertEquals("INACTIVO", estadoGradoCurso("1", "2"));
 		}
@@ -252,22 +295,22 @@ public class GradoModelGestionTest extends BaseModelTest {
 	}
 
 	// =========================================================================
-	// 3. ESTADO DEL GRADO EN JAVA (F-3)
+	// 3. ESTADO DEL GRADO EN JAVA (HU 36455: EXTINTO es un estado propio)
 	// =========================================================================
 	@Nested
 	@DisplayName("3. Mapeo del estado del grado")
 	public class MapeoEstado {
 
 		@Test
-		@DisplayName("TF-06 getTodosLosGrados muestra EN_EXTINCION para un grado EXTINTO")
-		public void testGetTodosLosGrados_ExtintoComoEnExtincion() {
+		@DisplayName("TF-06 getTodosLosGrados muestra EXTINTO para un grado EXTINTO")
+		public void testGetTodosLosGrados_Extinto() {
 			db.executeUpdate("UPDATE Grado SET estado = 'EXTINTO' WHERE gradoId = '2'");
 
 			String estado = new GradoModel(db).getTodosLosGrados().stream()
 					.filter(g -> "2".equals(g.getId()))
 					.findFirst().orElseThrow().getEstado();
 
-			assertEquals("EN_EXTINCION", estado);
+			assertEquals("EXTINTO", estado);
 		}
 	}
 

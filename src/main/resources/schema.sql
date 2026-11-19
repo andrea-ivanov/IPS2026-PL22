@@ -14,7 +14,7 @@
 --   MAX_CREDITOS_MICROCREDENCIAL = 15 (provisional, pendiente de que el PO fije el maximo)
 --   DIAS_MATRICULACION_MICROCREDENCIAL = 14 (periodo de matriculacion de 2 semanas)
 --   PORCENTAJE_MINIMO_PLAZAS_MICROCREDENCIAL = 10 (de plazas pagadas, el dia antes de la imparticion)
---   DIAS_CIERRE_ACTA_MICROCREDENCIAL = 15 (tras el fin de la imparticion; despues la cierra el sistema)
+--   DIAS_CIERRE_ACTA_MICROCREDENCIAL = 15 (tras el fin de la imparticion; despues la cierra el sistema; aprobado por el cliente)
 --   ANIOS_VIGENCIA_GRADO = 4 (anios academicos de vigencia de un grado nuevo o renovado)
 --
 -- Reglas que aplica el modelo (no se pueden expresar con CHECK):
@@ -36,7 +36,8 @@
 --     importe = creditos * PRECIO_CREDITO; nunca se devuelve dinero; sus creditos no cuentan para la permanencia
 --   - El dia antes de empezar la imparticion: las inscripciones sin pagar se cancelan por IMPAGO; si las pagadas
 --     no llegan al 10% de las plazas, la microcredencial y sus inscripciones se cancelan por BAJA_DEMANDA
---   - Solo el profesor de la microcredencial califica y cierra su acta (con confirmacion); al cerrarla, la
+--   - Solo el profesor de la microcredencial califica y cierra su acta (con confirmacion y nunca antes del fin
+--     de la imparticion, confirmado por el PO); al cerrarla, la
 --     microcredencial y sus inscripciones INSCRITAS pasan a FINALIZADA. Si no la cierra en 15 dias tras el fin
 --     de la imparticion, la cierra el sistema (cierreAutomatico = 1). El alumno solo ve la nota con el acta cerrada
 
@@ -369,8 +370,8 @@ CREATE TABLE Calificacion (
 -- inicioImparticion: tiempo de ejecucion
 -- fechaResolucion: cuando el secretario la acepta o la rechaza
 -- fechaCancelacion: cancelacion por baja demanda (el dia antes de la imparticion)
--- fechaCierreActa: el acta esta abierta mientras sea nula
--- cierreAutomatico: 0 = la cerro el profesor (o sigue abierta), 1 = la cerro el sistema
+-- fechaCierreActa: el acta esta abierta mientras sea nula; entre el fin de la imparticion y 15 dias despues
+-- cierreAutomatico: 0 = la cerro el profesor (o sigue abierta), 1 = la cerro el sistema (siempre en fin + 15 dias)
 -- uq_microcredencial_anio: destino de la FK de MatriculaMicrocredencial
 -- =========================
 CREATE TABLE Microcredencial (
@@ -407,8 +408,10 @@ CREATE TABLE Microcredencial (
     CONSTRAINT ck_microcredencial_rechazo CHECK ((estado = 'RECHAZADA') = (motivoRechazo IS NOT NULL)),
     CONSTRAINT ck_microcredencial_cancelacion CHECK ((estado = 'CANCELADA_BAJA_DEMANDA') = (fechaCancelacion IS NOT NULL)),
     CONSTRAINT ck_microcredencial_acta CHECK ((estado = 'FINALIZADA') = (fechaCierreActa IS NOT NULL)),
-    CONSTRAINT ck_microcredencial_cierreActa CHECK (fechaCierreActa IS NULL OR fechaCierreActa >= inicioImparticion),
-    CONSTRAINT ck_microcredencial_cierreAutomatico CHECK (cierreAutomatico IN (0, 1) AND (cierreAutomatico = 0 OR fechaCierreActa IS NOT NULL))
+    CONSTRAINT ck_microcredencial_cierreActa CHECK (fechaCierreActa IS NULL
+        OR fechaCierreActa BETWEEN finImparticion AND date(finImparticion, '+15 days')),
+    CONSTRAINT ck_microcredencial_cierreAutomatico CHECK (cierreAutomatico IN (0, 1)
+        AND (cierreAutomatico = 0 OR fechaCierreActa = date(finImparticion, '+15 days')))
 );
 
 -- =========================

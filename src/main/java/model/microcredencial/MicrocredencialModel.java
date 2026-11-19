@@ -21,6 +21,8 @@ public class MicrocredencialModel {
 	/** Provisional: la HU 35988 habla de un "máximo estipulado" sin valor (docs/DATABASE.md, 6) */
 	public static final double MAX_CREDITOS_MICROCREDENCIAL = 15;
 	public static final int DIAS_MATRICULACION_MICROCREDENCIAL = 14;
+	/** Porcentaje mínimo de plazas pagadas exigido para no cancelar por baja demanda (HU 36410) */
+	public static final int PORCENTAJE_MINIMO_PLAZAS_MICROCREDENCIAL = 10;
 	public static final int MAX_NOMBRE = 150;
 	/** Las cinco ramas oficiales de ck_microcredencial_rama, tal y como se guardan (sin tildes) */
 	public static final List<String> RAMAS = List.of("Artes y Humanidades", "Ciencias", "Ciencias de la Salud",
@@ -139,6 +141,30 @@ public class MicrocredencialModel {
 			throw new ValidationException("Ya existe una microcredencial llamada '" + nombreLimpio + "' en el año "
 					+ anioAcademicoId);
 		}
+	}
+
+	// =========================================================================
+	// Lote de cancelación por baja demanda (HU 36410)
+	// =========================================================================
+
+	/**
+	 * Proceso por lotes (HU 36410): el día antes de que cierre el periodo de matriculación
+	 * (date(finMatriculacion, '-1 day') <= fechaHoy), cancela las inscripciones no pagadas por IMPAGO
+	 * y comprueba si las inscripciones pagadas cubren al menos el 10% de las plazas ofertadas.
+	 * Si no alcanzan el 10%, cambia la microcredencial a CANCELADA_BAJA_DEMANDA y cancela sus
+	 * inscripciones con motivo BAJA_DEMANDA.
+	 */
+	public void cancelarPorBajaDemanda(String fechaHoy) {
+		validarObligatorio(fechaHoy, "La fecha actual es obligatoria");
+		parsearFecha(fechaHoy, "evaluación de baja demanda");
+		String fecha = fechaHoy.trim();
+		db.enTransaccion(conn -> {
+			repository.cancelarInscripcionesImpagadas(conn, fecha);
+			repository.cancelarMicrocredencialesBajaDemanda(conn, fecha,
+					PORCENTAJE_MINIMO_PLAZAS_MICROCREDENCIAL);
+			repository.cancelarInscripcionesPorBajaDemanda(conn);
+			return null;
+		});
 	}
 
 	// =========================================================================
