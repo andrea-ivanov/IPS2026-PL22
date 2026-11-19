@@ -2,9 +2,17 @@ package view.estudiante;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.awt.AWTEvent;
+import java.awt.Toolkit;
+import java.awt.event.AWTEventListener;
+import java.awt.event.WindowEvent;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.swing.JDialog;
+import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -136,24 +144,56 @@ public class SolicitudMatriculaViewTest extends BaseModelTest {
     @Test
     @DisplayName("Fase 4: Bloqueo de selección si la asignatura tiene 6 convocatorias consumidas")
     public void testBloqueoConvocatoriasEnTabla() {
-        // Añadir una fila sintética con 6 convocatorias
-        view.getModelCursos().addRow(new Object[] {
-                Boolean.FALSE,
-                "TEST99",
-                "Asignatura Agotada",
-                1,
-                "General",
-                6.0,
-                6, // 6 convocatorias
-                "120.00 €"
-        });
+        // El controlador avisa con un diálogo modal: se cierra en cuanto se abre para que el test no se quede esperando
+        AWTEventListener cerrarDialogos = event -> {
+            if (event.getID() == WindowEvent.WINDOW_OPENED && event.getSource() instanceof JDialog dialogo) {
+                dialogo.dispose();
+            }
+        };
+        Toolkit.getDefaultToolkit().addAWTEventListener(cerrarDialogos, AWTEvent.WINDOW_EVENT_MASK);
+        try {
+            enEdt(() -> {
+                // Añadir una fila sintética con 6 convocatorias
+                view.getModelCursos().addRow(new Object[] {
+                        Boolean.FALSE,
+                        "TEST99",
+                        "Asignatura Agotada",
+                        1,
+                        "General",
+                        6.0,
+                        6, // 6 convocatorias
+                        "120.00 €"
+                });
 
-        int rowIndex = view.getModelCursos().getRowCount() - 1;
-        // Intentar marcarla
-        view.getModelCursos().setValueAt(Boolean.TRUE, rowIndex, 0);
+                int rowIndex = view.getModelCursos().getRowCount() - 1;
+                // Intentar marcarla
+                view.getModelCursos().setValueAt(Boolean.TRUE, rowIndex, 0);
 
-        // El controlador debe desmarcarla inmediatamente
-        Boolean checkFinal = (Boolean) view.getModelCursos().getValueAt(rowIndex, 0);
-        assertFalse(checkFinal, "Una asignatura con 6 convocatorias consumidas no debe poder quedar seleccionada");
+                // El controlador debe desmarcarla inmediatamente
+                Boolean checkFinal = (Boolean) view.getModelCursos().getValueAt(rowIndex, 0);
+                assertFalse(checkFinal,
+                        "Una asignatura con 6 convocatorias consumidas no debe poder quedar seleccionada");
+            });
+        } finally {
+            Toolkit.getDefaultToolkit().removeAWTEventListener(cerrarDialogos);
+        }
+    }
+
+    /** Ejecuta la acción en el hilo de eventos de Swing y espera a que termine; relanza sus fallos de aserción */
+    private static void enEdt(Runnable accion) {
+        try {
+            SwingUtilities.invokeAndWait(accion);
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof Error error) {
+                throw error;
+            }
+            if (e.getCause() instanceof RuntimeException runtime) {
+                throw runtime;
+            }
+            throw new IllegalStateException(e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 }
