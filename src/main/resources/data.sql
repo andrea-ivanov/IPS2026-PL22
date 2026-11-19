@@ -36,6 +36,10 @@
 --
 -- Los INSERT van en lotes de varias filas para que la carga sea rapida.
 
+DELETE FROM InscripcionFip;
+DELETE FROM Fip;
+DELETE FROM FormadorExterno;
+DELETE FROM ContratoAlumno;
 DELETE FROM RevisionGrado;
 DELETE FROM MatriculaMicrocredencial;
 DELETE FROM Microcredencial;
@@ -88590,3 +88594,54 @@ INSERT INTO RevisionGrado VALUES
 ('G006','2024-2025','FAVORABLE','2024-08-07'),
 ('G003','2025-2026','DESFAVORABLE','2025-08-05'),
 ('G004','2026-2027','FAVORABLE','2026-08-04');
+
+-- =========================
+-- CONTRATOALUMNO (7 filas)
+-- =========================
+INSERT INTO ContratoAlumno VALUES
+('CT0001','AL0001','2026-09-01','2027-06-30','Becaria del departamento'),
+('CT0002','AL0001','2025-10-01','2026-06-30','Colaboracion en biblioteca'),
+('CT0003','AL0001','2027-01-15','2027-07-15','Apoyo a la docencia'),
+('CT0004','AL0002','2026-09-15','2027-05-31','Becario de investigacion en laboratorio'),
+('CT0005','AL0003','2026-10-01','2027-03-31','Becario de soporte informatico'),
+('CT0006','AL0047','2026-09-01','2027-06-30','Becaria de comunicacion y protocolo'),
+('CT0007','AL0790','2026-09-01','2027-06-30','Becaria de archivo universitario');
+
+-- =========================
+-- FORMADOREXTERNO (3 filas)
+-- =========================
+INSERT INTO FormadorExterno VALUES
+('FE001','Elena','Vega Morales','elena.vega@formacionexterna.es'),
+('FE002','Marcos','Herrero Blanco','marcos.herrero@ciberseguridad.es'),
+('FE003','Sofia','Navarro Gil','sofia.navarro@innovaciondocente.es');
+
+-- =========================
+-- FIP (5 filas)
+-- =========================
+INSERT INTO Fip VALUES
+('FIP001','Gestion Documental Universitaria','P001',NULL,'2026-09-01','2026-09-10','2026-09-20','2026-09-22',0),
+('FIP002','Proteccion de Datos y Ciberseguridad',NULL,'FE002','2026-09-20','2026-10-05','2026-10-15','2026-10-30',1),
+('FIP003','Prevencion de Riesgos en Laboratorio',NULL,'FE001','2026-10-20','2026-12-01','2026-12-10',NULL,0),
+('FIP004','Metodologias Docentes Activas','P001',NULL,'2026-10-25','2026-11-05','2026-11-15',NULL,0),
+('FIP005','Inteligencia Artificial Aplicada a la Docencia','P086',NULL,'2026-11-01','2026-12-15','2026-12-22',NULL,0);
+
+-- =========================
+-- INSCRIPCIONFIP (16 filas)
+-- =========================
+INSERT INTO InscripcionFip VALUES
+('IF00001','FIP001','AL0001',NULL,'2026-09-05','NO_APTO'),
+('IF00002','FIP001','AL0047',NULL,'2026-09-06','APTO'),
+('IF00003','FIP001',NULL,'P002','2026-09-04','APTO'),
+('IF00004','FIP001',NULL,'P086','2026-09-07','APTO'),
+('IF00005','FIP002','AL0001',NULL,'2026-09-25','APTO'),
+('IF00006','FIP002','AL0002',NULL,'2026-09-28','APTO'),
+('IF00007','FIP002',NULL,'P001','2026-09-22','APTO'),
+('IF00008','FIP002',NULL,'P003','2026-09-30','NO_APTO'),
+('IF00009','FIP003','AL0001',NULL,'2026-10-25','PENDIENTE'),
+('IF00010','FIP003','AL0047',NULL,'2026-10-26','PENDIENTE'),
+('IF00011','FIP003',NULL,'P001','2026-10-24','PENDIENTE'),
+('IF00012','FIP004','AL0002',NULL,'2026-10-28','APTO'),
+('IF00013','FIP004','AL0003',NULL,'2026-10-29','PENDIENTE'),
+('IF00014','FIP004','AL0790',NULL,'2026-10-30','PENDIENTE'),
+('IF00015','FIP004',NULL,'P002','2026-10-27','NO_APTO'),
+('IF00016','FIP004',NULL,'P086','2026-10-28','PENDIENTE');
