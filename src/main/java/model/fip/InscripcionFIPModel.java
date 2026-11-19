@@ -2,6 +2,7 @@ package model.fip;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.Collection;
 
 import model.contrato.ContratoAlumnoModel;
 import util.Database;
@@ -9,17 +10,29 @@ import util.exception.ValidationException;
 
 /**
  * Matrícula presencial de profesores y alumnos en una FIP por el secretario (HU 37046).
- * De momento contiene las reglas que no dependen de la tabla FIP (HU-01 del administrador):
- * - Plazo: solo se matricula hasta el día anterior al inicio de la FIP
- * - Un alumno necesita un contrato vigente en la fecha de inicio de la FIP (contratos de la HU 37045)
- * Pendiente cuando exista la tabla FIP: plazas máximas, no duplicar la matrícula, el responsable y los formadores
- * externos no se matriculan, alta con resultado PENDIENTE y anulación antes del inicio.
+ * Reglas de negocio:
+ * - Los usuarios no se automatriculan: la inscripción la hace solo el secretario buscando al usuario.
+ * - Un profesor de la plantilla puede matricularse directamente.
+ * - Los formadores externos no pueden matricularse: solo imparten FIP.
+ * - El profesor responsable de una FIP no puede matricularse como asistente en ella (no se puede ser docente y alumno en el mismo curso).
+ * - Un alumno solo puede matricularse si tiene un contrato registrado vigente en la fecha de inicio de la FIP.
+ * - Solo se puede matricular hasta el día anterior al inicio de la FIP; desde el día de inicio no se admiten nuevas altas.
+ * - No se puede matricular dos veces al mismo usuario en la misma FIP.
+ * - La matrícula en una FIP es siempre gratuita: no hay pago.
+ * - Al matricular, la inscripción queda con resultado PENDIENTE hasta que la califique el profesor responsable.
+ * - Secretaría puede anular una inscripción antes de que empiece la FIP.
  */
 public class InscripcionFIPModel {
+	public static final double PRECIO_MATRICULA = 0.0;
+
 	private final ContratoAlumnoModel contratoModel;
 
 	public InscripcionFIPModel(Database db) {
 		this.contratoModel = new ContratoAlumnoModel(db);
+	}
+
+	public InscripcionFIPModel(ContratoAlumnoModel contratoModel) {
+		this.contratoModel = contratoModel;
 	}
 
 	/**
@@ -37,10 +50,82 @@ public class InscripcionFIPModel {
 	}
 
 	/**
+	 * Secretaría solo puede anular una inscripción antes de que empiece la FIP (hasta el día anterior).
+	 * @throws ValidationException si la FIP ya ha comenzado o las fechas no son válidas
+	 */
+	public void comprobarPlazoAnulacion(String fechaInicioFip, String fechaHoy) {
+		LocalDate inicio = parsearFecha(fechaInicioFip, "inicio de la FIP");
+		LocalDate hoy = parsearFecha(fechaHoy, "hoy");
+		if (!hoy.isBefore(inicio)) {
+			throw new ValidationException("Solo se puede anular una inscripción antes de que empiece la FIP (hasta el "
+					+ inicio.minusDays(1) + ")");
+		}
+	}
+
+	/**
+	 * Comprueba que el usuario no sea un formador externo (los formadores externos no pueden
+	 * matricularse: solo imparten FIP).
+	 * @throws ValidationException si es formador externo o nulo
+	 */
+	public void comprobarNoEsFormadorExterno(TipoUsuarioFIP tipoUsuario) {
+		if (tipoUsuario == null) {
+			throw new ValidationException("Debe especificarse el tipo de usuario");
+		}
+		if (tipoUsuario == TipoUsuarioFIP.FORMADOR_EXTERNO) {
+			throw new ValidationException("Los formadores externos no pueden matricularse: solo imparten FIP");
+		}
+	}
+
+	/**
+	 * El profesor responsable de una FIP no puede matricularse como asistente en ella
+	 * (no se puede ser docente y alumno en el mismo curso).
+	 * @throws ValidationException si el profesor a matricular es el responsable de la FIP
+	 */
+	public void comprobarProfesorNoEsResponsable(String profesorId, String responsableFipId) {
+		if (profesorId == null || profesorId.trim().isEmpty()) {
+			throw new ValidationException("Debe indicarse el identificador del profesor");
+		}
+		if (responsableFipId != null && profesorId.trim().equalsIgnoreCase(responsableFipId.trim())) {
+			throw new ValidationException(
+					"El profesor responsable de una FIP no puede matricularse como asistente en ella (no se puede ser docente y alumno en el mismo curso)");
+		}
+	}
+
+	/**
+	 * Comprueba que la FIP disponga de plazas libres. Se bloquea la matrícula al llenarse.
+	 * @throws ValidationException si no quedan plazas
+	 */
+	public void comprobarPlazasDisponibles(int plazasOcupadas, int plazasMaximas) {
+		if (plazasMaximas > 0 && plazasOcupadas >= plazasMaximas) {
+			throw new ValidationException("No quedan plazas disponibles en la FIP (máximo " + plazasMaximas + " plazas cubiertas)");
+		}
+	}
+
+	/**
+	 * Comprueba que el usuario no esté matriculado previamente en la misma FIP.
+	 * @throws ValidationException si ya está matriculado
+	 */
+	public void comprobarNoDuplicada(String usuarioId, Collection<String> usuariosYaInscritos) {
+		if (usuarioId == null || usuarioId.trim().isEmpty()) {
+			throw new ValidationException("Debe indicarse el usuario");
+		}
+		if (usuariosYaInscritos != null && usuariosYaInscritos.contains(usuarioId.trim())) {
+			throw new ValidationException("No se puede matricular dos veces al mismo usuario en la misma FIP ("
+					+ usuarioId.trim() + ")");
+		}
+	}
+
+	/**
 	 * Comprueba que el alumno tiene un contrato vigente en la fecha de inicio de la FIP.
 	 * @throws ValidationException si no lo tiene
 	 */
 	public void comprobarContratoAlumno(String alumnoId, String fechaInicioFip) {
+		if (alumnoId == null || alumnoId.trim().isEmpty()) {
+			throw new ValidationException("Debe indicarse el alumno");
+		}
+		if (contratoModel == null) {
+			throw new ValidationException("No se ha configurado el modelo de contratos para comprobar los requisitos del alumno");
+		}
 		String inicio = parsearFecha(fechaInicioFip, "inicio de la FIP").toString();
 		if (!contratoModel.tieneContratoVigente(alumnoId, inicio)) {
 			throw new ValidationException("El alumno " + alumnoId.trim() + " no tiene ningún contrato vigente el "
@@ -48,14 +133,91 @@ public class InscripcionFIPModel {
 		}
 	}
 
-	private LocalDate parsearFecha(String fecha, String cual) {
-		if (fecha == null || fecha.trim().isEmpty()) {
-			throw new ValidationException("Falta la fecha de " + cual);
+	/**
+	 * Valida de forma completa los requisitos para matricular a un usuario en una FIP (HU 37046).
+	 * @param fipId identificador de la FIP
+	 * @param fechaInicioFip fecha de inicio de la FIP (AAAA-MM-DD)
+	 * @param fechaHoy fecha actual de la operación (AAAA-MM-DD)
+	 * @param usuarioId identificador del usuario (alumno o profesor)
+	 * @param tipoUsuario rol del usuario (ALUMNO, PROFESOR o FORMADOR_EXTERNO)
+	 * @param responsableFipId identificador del profesor responsable de la FIP
+	 * @param plazasOcupadas plazas cubiertas actualmente
+	 * @param plazasMaximas plazas máximas autorizadas
+	 * @param yaInscrito si el usuario ya cuenta con inscripción activa en la FIP
+	 * @throws ValidationException si se incumple alguna regla de negocio
+	 */
+	public void validarMatricula(String fipId, String fechaInicioFip, String fechaHoy, String usuarioId,
+			TipoUsuarioFIP tipoUsuario, String responsableFipId, int plazasOcupadas, int plazasMaximas,
+			boolean yaInscrito) {
+		validarObligatorio(fipId, "Debe indicarse la FIP");
+		validarObligatorio(usuarioId, "Debe indicarse el usuario a matricular");
+		comprobarPlazo(fechaInicioFip, fechaHoy);
+		comprobarNoEsFormadorExterno(tipoUsuario);
+
+		if (yaInscrito) {
+			throw new ValidationException("No se puede matricular dos veces al mismo usuario en la misma FIP ("
+					+ usuarioId.trim() + ")");
 		}
+
+		comprobarPlazasDisponibles(plazasOcupadas, plazasMaximas);
+
+		if (tipoUsuario == TipoUsuarioFIP.PROFESOR) {
+			comprobarProfesorNoEsResponsable(usuarioId, responsableFipId);
+		} else if (tipoUsuario == TipoUsuarioFIP.ALUMNO) {
+			comprobarContratoAlumno(usuarioId, fechaInicioFip);
+		}
+	}
+
+	/**
+	 * Crea el DTO de inscripción presencial con resultado PENDIENTE y coste 0.0 (gratuita).
+	 */
+	public InscripcionFIPDTO crearInscripcion(String inscripcionId, String fipId, String usuarioId,
+			TipoUsuarioFIP tipoUsuario, String fechaInscripcion) {
+		validarObligatorio(inscripcionId, "Falta el identificador de inscripción");
+		validarObligatorio(fipId, "Falta el identificador de la FIP");
+		validarObligatorio(usuarioId, "Falta el identificador del usuario");
+		comprobarNoEsFormadorExterno(tipoUsuario);
+		parsearFecha(fechaInscripcion, "inscripción");
+
+		InscripcionFIPDTO dto = new InscripcionFIPDTO();
+		dto.setInscripcionId(inscripcionId.trim());
+		dto.setFipId(fipId.trim());
+		dto.setUsuarioId(usuarioId.trim());
+		dto.setTipoUsuario(tipoUsuario);
+		dto.setFechaInscripcion(fechaInscripcion.trim());
+		dto.setResultado(ResultadoInscripcionFIP.PENDIENTE);
+		dto.setEstado(EstadoInscripcionFIP.ACTIVA);
+		dto.setPrecio(PRECIO_MATRICULA);
+		return dto;
+	}
+
+	/**
+	 * Anula una inscripción antes del inicio de la FIP.
+	 * @throws ValidationException si está fuera de plazo o ya estaba anulada
+	 */
+	public void validarYAnularInscripcion(InscripcionFIPDTO inscripcion, String fechaInicioFip, String fechaHoy) {
+		if (inscripcion == null) {
+			throw new ValidationException("No se ha seleccionado ninguna inscripción para anular");
+		}
+		comprobarPlazoAnulacion(fechaInicioFip, fechaHoy);
+		if (inscripcion.getEstado() == EstadoInscripcionFIP.ANULADA) {
+			throw new ValidationException("La inscripción ya se encuentra anulada");
+		}
+		inscripcion.setEstado(EstadoInscripcionFIP.ANULADA);
+	}
+
+	private LocalDate parsearFecha(String fecha, String cual) {
+		validarObligatorio(fecha, "Falta la fecha de " + cual);
 		try {
 			return LocalDate.parse(fecha.trim());
 		} catch (DateTimeParseException e) {
 			throw new ValidationException("La fecha de " + cual + " no es válida (formato AAAA-MM-DD): '" + fecha.trim() + "'");
+		}
+	}
+
+	private void validarObligatorio(String valor, String mensaje) {
+		if (valor == null || valor.trim().isEmpty()) {
+			throw new ValidationException(mensaje);
 		}
 	}
 }

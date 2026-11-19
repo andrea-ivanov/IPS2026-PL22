@@ -10,7 +10,6 @@ import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.ColumnListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
-import model.curso.EstadoCurso;
 import model.grado.EstadoGrado;
 import model.grado.GradoDisplayDTO;
 import model.grado.GradoRevisionDisplayDTO;
