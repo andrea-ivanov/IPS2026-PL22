@@ -15,14 +15,12 @@ import util.Database;
 import util.exception.ValidationException;
 
 /**
- * Pruebas unitarias de la HU 36410: cancelación automática por baja demanda de microcredenciales
+ * Pruebas unitarias de la HU 36410: cancelación automática por baja demanda de
+ * microcredenciales
  * y consulta en las vistas del profesor y del estudiante.
  */
 public class MicrocredencialBajaDemandaTest {
-	private static final String ANIO = "2026-2027";
 	private static final String PROFESOR = "P001";
-	private static final String RAMA = "Ingenieria y Arquitectura";
-
 	private static Database db = new Database("jdbc:sqlite:TestDB.db?foreign_keys=true");
 	private MicrocredencialModel microModel;
 	private InscripcionMicrocredencialModel inscripcionModel;
@@ -39,12 +37,16 @@ public class MicrocredencialBajaDemandaTest {
 	 * Escenario de datos:
 	 * - Año 2026-2027, Grado G1 (Ingenieria y Arquitectura), Profesor P001
 	 * - 3 alumnos con matrícula ACTIVA en G1 (M1 -> AL1, M2 -> AL2, M3 -> AL3)
-	 * - MC1: 20 plazas, finMatriculacion = '2026-10-15' (evaluación el '2026-10-14').
-	 *        Tiene 1 inscripción INSCRITA (pagada, 5% < 10%) y 1 SOLICITADA (sin pagar).
-	 * - MC2: 20 plazas, finMatriculacion = '2026-10-15' (evaluación el '2026-10-14').
-	 *        Tiene 2 inscripciones INSCRITAS (pagadas, 10% >= 10%) y 1 SOLICITADA (sin pagar).
-	 * - MC3: 20 plazas, finMatriculacion = '2026-10-25' (evaluación el '2026-10-24', aún abierta el '2026-10-14').
-	 *        Tiene 0 inscripciones.
+	 * - MC1: 20 plazas, finMatriculacion = '2026-10-15' (evaluación el
+	 * '2026-10-14').
+	 * Tiene 1 inscripción INSCRITA (pagada, 5% < 10%) y 1 SOLICITADA (sin pagar).
+	 * - MC2: 20 plazas, finMatriculacion = '2026-10-15' (evaluación el
+	 * '2026-10-14').
+	 * Tiene 2 inscripciones INSCRITAS (pagadas, 10% >= 10%) y 1 SOLICITADA (sin
+	 * pagar).
+	 * - MC3: 20 plazas, finMatriculacion = '2026-10-25' (evaluación el
+	 * '2026-10-24', aún abierta el '2026-10-14').
+	 * Tiene 0 inscripciones.
 	 */
 	public static void loadCleanDatabase(Database db) {
 		db.executeBatch(new String[] {
@@ -76,7 +78,8 @@ public class MicrocredencialBajaDemandaTest {
 				// Inscripciones en MC1: AL1 pagada (INSCRITA), AL2 sin pagar (SOLICITADA)
 				"INSERT INTO MatriculaMicrocredencial VALUES ('M1','2026-2027','MC1','2026-10-05','INSCRITA',NULL,NULL,60,'TARJETA','2026-10-05',1,NULL)",
 				"INSERT INTO MatriculaMicrocredencial VALUES ('M2','2026-2027','MC1','2026-10-06','SOLICITADA',NULL,NULL,60,'TRANSFERENCIA','2026-10-06',0,NULL)",
-				// Inscripciones en MC2: AL1 y AL2 pagadas (INSCRITA), AL3 sin pagar (SOLICITADA)
+				// Inscripciones en MC2: AL1 y AL2 pagadas (INSCRITA), AL3 sin pagar
+				// (SOLICITADA)
 				"INSERT INTO MatriculaMicrocredencial VALUES ('M1','2026-2027','MC2','2026-10-05','INSCRITA',NULL,NULL,60,'TARJETA','2026-10-05',1,NULL)",
 				"INSERT INTO MatriculaMicrocredencial VALUES ('M2','2026-2027','MC2','2026-10-06','INSCRITA',NULL,NULL,60,'TARJETA','2026-10-06',1,NULL)",
 				"INSERT INTO MatriculaMicrocredencial VALUES ('M3','2026-2027','MC2','2026-10-07','SOLICITADA',NULL,NULL,60,NULL,NULL,0,NULL)"
@@ -86,15 +89,20 @@ public class MicrocredencialBajaDemandaTest {
 	@Test
 	@DisplayName("HU 36410: El día antes del cierre de matriculación se cancela la que tiene < 10% y se mantiene la que tiene >= 10%")
 	public void testCancelacionPorBajaDemandaEnFechaEvaluacion() {
-		// Evaluación el día antes de que cierre el periodo de matriculación ('2026-10-14' para fin '2026-10-15')
+		// Evaluación el día antes de que cierre el periodo de matriculación
+		// ('2026-10-14' para fin '2026-10-15')
 		microModel.cancelarPorBajaDemanda("2026-10-14");
 
 		List<MicrocredencialDisplayDTO> delProfesor = microModel.getMicrocredenciales(PROFESOR);
-		MicrocredencialDisplayDTO mc1 = delProfesor.stream().filter(m -> "MC1".equals(m.getMicrocredencialId())).findFirst().orElseThrow();
-		MicrocredencialDisplayDTO mc2 = delProfesor.stream().filter(m -> "MC2".equals(m.getMicrocredencialId())).findFirst().orElseThrow();
-		MicrocredencialDisplayDTO mc3 = delProfesor.stream().filter(m -> "MC3".equals(m.getMicrocredencialId())).findFirst().orElseThrow();
+		MicrocredencialDisplayDTO mc1 = delProfesor.stream().filter(m -> "MC1".equals(m.getMicrocredencialId()))
+				.findFirst().orElseThrow();
+		MicrocredencialDisplayDTO mc2 = delProfesor.stream().filter(m -> "MC2".equals(m.getMicrocredencialId()))
+				.findFirst().orElseThrow();
+		MicrocredencialDisplayDTO mc3 = delProfesor.stream().filter(m -> "MC3".equals(m.getMicrocredencialId()))
+				.findFirst().orElseThrow();
 
-		// 1. MC1 (< 10%) pasa a CANCELADA_BAJA_DEMANDA y el profesor la ve como "Cancelada por baja demanda"
+		// 1. MC1 (< 10%) pasa a CANCELADA_BAJA_DEMANDA y el profesor la ve como
+		// "Cancelada por baja demanda"
 		assertAll(
 				() -> assertEquals("CANCELADA_BAJA_DEMANDA", mc1.getEstado()),
 				() -> assertEquals("Cancelada por baja demanda", mc1.getEstadoLegible()),
@@ -116,10 +124,13 @@ public class MicrocredencialBajaDemandaTest {
 	public void testInscripcionesNotificadasAlEstudiante() {
 		microModel.cancelarPorBajaDemanda("2026-10-14");
 
-		// AL1 tenía MC1 pagada (pasa a CANCELADA por BAJA_DEMANDA) y MC2 pagada (sigue INSCRITA)
+		// AL1 tenía MC1 pagada (pasa a CANCELADA por BAJA_DEMANDA) y MC2 pagada (sigue
+		// INSCRITA)
 		List<MatriculaMicrocredencialDisplayDTO> matAl1 = inscripcionModel.getMatriculasAlumno("AL1");
-		MatriculaMicrocredencialDisplayDTO al1Mc1 = matAl1.stream().filter(m -> "MC1".equals(m.getMicrocredencialId())).findFirst().orElseThrow();
-		MatriculaMicrocredencialDisplayDTO al1Mc2 = matAl1.stream().filter(m -> "MC2".equals(m.getMicrocredencialId())).findFirst().orElseThrow();
+		MatriculaMicrocredencialDisplayDTO al1Mc1 = matAl1.stream().filter(m -> "MC1".equals(m.getMicrocredencialId()))
+				.findFirst().orElseThrow();
+		MatriculaMicrocredencialDisplayDTO al1Mc2 = matAl1.stream().filter(m -> "MC2".equals(m.getMicrocredencialId()))
+				.findFirst().orElseThrow();
 
 		assertAll(
 				() -> assertEquals("CANCELADA", al1Mc1.getEstado()),
@@ -131,7 +142,8 @@ public class MicrocredencialBajaDemandaTest {
 
 		// AL2 tenía MC1 en SOLICITADA sin pagar (pasa a CANCELADA por IMPAGO)
 		List<MatriculaMicrocredencialDisplayDTO> matAl2 = inscripcionModel.getMatriculasAlumno("AL2");
-		MatriculaMicrocredencialDisplayDTO al2Mc1 = matAl2.stream().filter(m -> "MC1".equals(m.getMicrocredencialId())).findFirst().orElseThrow();
+		MatriculaMicrocredencialDisplayDTO al2Mc1 = matAl2.stream().filter(m -> "MC1".equals(m.getMicrocredencialId()))
+				.findFirst().orElseThrow();
 
 		assertAll(
 				() -> assertEquals("CANCELADA", al2Mc1.getEstado()),

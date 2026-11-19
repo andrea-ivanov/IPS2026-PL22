@@ -679,8 +679,10 @@ public final class Estilo {
                 return ROJO;
             case "ACEPTADA":
             case "APROBADO":
+            case "APTO":
                 return VERDE;
             case "SUSPENSO":
+            case "NO APTO":
                 return ROJO;
             case "NO PRESENTADO":
                 return GRIS;
