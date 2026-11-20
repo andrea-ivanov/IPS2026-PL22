@@ -157,7 +157,7 @@ public class ContratoAlumnoModelTest {
 		assertTrue(model.getContratos("AL0002").isEmpty());
 	}
 
-	/** La descripción cabe hasta 200 caracteres */
+	/** La descripción cabe hasta 500 caracteres */
 	@Test
 	public void testLimiteDescripcion() {
 		String limite = "x".repeat(ContratoAlumnoModel.MAX_DESCRIPCION);

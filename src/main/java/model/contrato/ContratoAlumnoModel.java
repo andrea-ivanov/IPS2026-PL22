@@ -19,8 +19,8 @@ import util.exception.ValidationException;
  * El SQL está en ContratoAlumnoRepository.
  */
 public class ContratoAlumnoModel {
-	// ContratoAlumno.descripcion es VARCHAR(200)
-	public static final int MAX_DESCRIPCION = 200;
+	// ContratoAlumno.descripcion es VARCHAR(500)
+	public static final int MAX_DESCRIPCION = 500;
 	private static final String PREFIJO_ID = "CT";
 
 	private final Database db;

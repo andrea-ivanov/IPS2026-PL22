@@ -1,7 +1,8 @@
 package model.contrato;
 
 /**
- * Un contrato de un alumno, para el historial que ve el secretario (HU 37045).
+ * Un contrato de un alumno, para el historial que ve el secretario (HU 37045)
+ * y el expediente del estudiante (HU 36967).
  * Los nombres de los atributos coinciden con los alias de la query para que DbUtils los mapee.
  * Sin Lombok a propósito: getters y setters escritos a mano.
  */
@@ -14,6 +15,15 @@ public class ContratoAlumnoDTO {
 
 	public ContratoAlumnoDTO() {
 		super();
+	}
+
+	public ContratoAlumnoDTO(String contratoId, String alumnoId, String descripcion, String fechaInicio,
+			String fechaFin) {
+		this.contratoId = contratoId;
+		this.alumnoId = alumnoId;
+		this.descripcion = descripcion;
+		this.fechaInicio = fechaInicio;
+		this.fechaFin = fechaFin;
 	}
 
 	public String getContratoId() {

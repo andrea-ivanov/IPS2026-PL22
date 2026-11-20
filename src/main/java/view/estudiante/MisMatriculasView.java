@@ -20,6 +20,8 @@ import view.comun.Estilo;
  * presentadas.
  */
 public class MisMatriculasView {
+    public static final String TAB_FIP_TITULO = "  FIP  ";
+
     private JFrame frame;
     private JComboBox<Object> cbGrados;
 
@@ -41,6 +43,13 @@ public class MisMatriculasView {
     // Pestaña de microcredenciales (HU 35987, HU 36410 y HU 36459)
     private JTable tableMicrocredenciales;
     private DefaultTableModel tableModelMicrocredenciales;
+
+    // Pestaña de FIP y contratos (HU 36967 - solo visible si el alumno tiene contrato)
+    private JPanel panelPestanaFip;
+    private JTable tableContratos;
+    private DefaultTableModel tableModelContratos;
+    private JTable tableFip;
+    private DefaultTableModel tableModelFip;
 
     private JButton btnVolver;
     private JPanel panelPrincipal;
@@ -162,9 +171,101 @@ public class MisMatriculasView {
                 "Inscripciones en microcredenciales, su estado (incluyendo cancelaciones por baja demanda) y calificaciones",
                 tableMicrocredenciales, null));
 
+        // --- Pestaña 4: FIP y Contratos (HU 36967 - se añade dinámicamente solo si tiene contrato) ---
+        panelPestanaFip = crearPestanaFip();
+
         panelPrincipal.add(tabbedPane, BorderLayout.CENTER);
 
         frame.getContentPane().add(panelPrincipal, BorderLayout.CENTER);
+    }
+
+    /**
+     * Construye el contenido de la pestaña "FIP" (HU 36967):
+     * - Arriba: tarjeta con el listado de contratos del estudiante con la universidad.
+     * - Abajo: tarjeta con las Formaciones Internas del Personal (FIP), sus fechas y resultados ('PENDIENTE', 'APTO', 'NO APTO').
+     */
+    private JPanel crearPestanaFip() {
+        JPanel pestana = new JPanel(new BorderLayout(0, 12));
+        pestana.setBackground(Estilo.FONDO);
+        pestana.setBorder(new EmptyBorder(12, 2, 2, 2));
+
+        // 1. Tarjeta superior: Mis contratos con la universidad
+        String[] colContratos = { "Código", "Descripción", "Fecha Inicio", "Fecha Fin" };
+        tableModelContratos = new DefaultTableModel(colContratos, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        tableContratos = Estilo.tablaQueLlena(tableModelContratos);
+        Estilo.estilizarTabla(tableContratos);
+        tableContratos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tableContratos.getTableHeader().setReorderingAllowed(false);
+        centrar(tableContratos, 0, 2, 3);
+
+        JPanel tarjetaContratos = Estilo.tarjeta(new BorderLayout(0, 10));
+        JPanel cabeceraContratos = new JPanel(new BorderLayout());
+        cabeceraContratos.setOpaque(false);
+        cabeceraContratos.add(Estilo.tituloTarjeta("Mis contratos con la universidad"), BorderLayout.WEST);
+        cabeceraContratos.add(Estilo.textoSecundario("Historial de contratos registrados en secretaría"),
+                BorderLayout.EAST);
+        tarjetaContratos.add(cabeceraContratos, BorderLayout.NORTH);
+        JScrollPane scrollContratos = Estilo.scrollTabla(tableContratos);
+        scrollContratos.setPreferredSize(new Dimension(0, 130));
+        tarjetaContratos.add(scrollContratos, BorderLayout.CENTER);
+
+        // 2. Tarjeta inferior: Mis formaciones internas (FIP)
+        String[] colFip = { "Código", "Formación (FIP)", "Fecha Inicio", "Fecha Fin", "Resultado" };
+        tableModelFip = new DefaultTableModel(colFip, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        tableFip = Estilo.tablaQueLlena(tableModelFip);
+        Estilo.estilizarTabla(tableFip);
+        tableFip.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tableFip.getTableHeader().setReorderingAllowed(false);
+        centrar(tableFip, 0, 2, 3);
+        tableFip.getColumnModel().getColumn(4).setCellRenderer(new Estilo.RendererEstado());
+
+        JPanel tarjetaFip = Estilo.tarjeta(new BorderLayout(0, 10));
+        JPanel cabeceraFip = new JPanel(new BorderLayout());
+        cabeceraFip.setOpaque(false);
+        cabeceraFip.add(Estilo.tituloTarjeta("Mis formaciones internas (FIP)"), BorderLayout.WEST);
+        cabeceraFip.add(
+                Estilo.textoSecundario("Formaciones Internas del Personal en las que estás inscrito y su resultado"),
+                BorderLayout.EAST);
+        tarjetaFip.add(cabeceraFip, BorderLayout.NORTH);
+        tarjetaFip.add(Estilo.scrollTabla(tableFip), BorderLayout.CENTER);
+
+        pestana.add(tarjetaContratos, BorderLayout.NORTH);
+        pestana.add(tarjetaFip, BorderLayout.CENTER);
+        return pestana;
+    }
+
+    /**
+     * Muestra u oculta la pestaña "FIP" a la derecha de "Microcredenciales" (HU 36967).
+     * Según indicación del PO, si el alumno no tiene ningún contrato con la universidad,
+     * en ningún caso debe aparecer la pestaña de FIP.
+     */
+    public void setMostrarPestanaFip(boolean mostrar) {
+        if (tabbedPane == null || panelPestanaFip == null) {
+            return;
+        }
+        int idx = tabbedPane.indexOfComponent(panelPestanaFip);
+        if (mostrar && idx < 0) {
+            tabbedPane.addTab(TAB_FIP_TITULO, panelPestanaFip);
+        } else if (!mostrar && idx >= 0) {
+            if (tabbedPane.getSelectedIndex() == idx && tabbedPane.getTabCount() > 1) {
+                tabbedPane.setSelectedIndex(0);
+            }
+            tabbedPane.removeTabAt(idx);
+        }
+    }
+
+    public boolean isPestanaFipVisible() {
+        return tabbedPane != null && panelPestanaFip != null && tabbedPane.indexOfComponent(panelPestanaFip) >= 0;
     }
 
     /** Recuadro gris claro con borde para cada hito (el controlador escribe su texto con colores). */
@@ -262,5 +363,25 @@ public class MisMatriculasView {
 
     public DefaultTableModel getTableModelMicrocredenciales() {
         return tableModelMicrocredenciales;
+    }
+
+    public JPanel getPanelPestanaFip() {
+        return panelPestanaFip;
+    }
+
+    public JTable getTableContratos() {
+        return tableContratos;
+    }
+
+    public DefaultTableModel getTableModelContratos() {
+        return tableModelContratos;
+    }
+
+    public JTable getTableFip() {
+        return tableFip;
+    }
+
+    public DefaultTableModel getTableModelFip() {
+        return tableModelFip;
     }
 }

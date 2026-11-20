@@ -74,6 +74,10 @@ public class SecretarioView {
     private JButton btnRecargarPropuestas;
     private JLabel lblResultadosPropuestas;
 
+    // Pestañas de FIP (sprint 3), cada una en su propia clase
+    private final ContratosAlumnoPanel contratosPanel = new ContratosAlumnoPanel();
+    private final MatriculaFipPanel matriculaFipPanel = new MatriculaFipPanel();
+
     private JLabel lblDetalleId, lblDetalleAnio, lblDetalleEstudiante, lblDetalleEmail, lblDetalleGrado,
             lblDetalleCurso,
             lblDetalleGrupos, lblDetalleEstado, lblDetalleEstadoMatricula, lblDetallePago, lblDetalleCancelacion;
@@ -113,6 +117,8 @@ public class SecretarioView {
         tabsListado.addTab("  Matrículas  ", createListadoPanel());
         tabsListado.addTab("  Grupos  ", createGruposPanel());
         tabsListado.addTab("  Propuestas de Microcredenciales  ", createPropuestasPanel());
+        tabsListado.addTab("  Contratos de alumnos  ", contratosPanel.getPanel());
+        tabsListado.addTab("  Matrícula FIP  ", matriculaFipPanel.getPanel());
         cardsPanel.add(tabsListado, "LISTADO");
         cardsPanel.add(createDetallePanel(), "DETALLE");
         contenido.add(cardsPanel, BorderLayout.CENTER);
@@ -854,6 +860,14 @@ public class SecretarioView {
 
     public JButton getBtnRecargarPropuestas() {
         return btnRecargarPropuestas;
+    }
+
+    public ContratosAlumnoPanel getContratosPanel() {
+        return contratosPanel;
+    }
+
+    public MatriculaFipPanel getMatriculaFipPanel() {
+        return matriculaFipPanel;
     }
 
     public JLabel getLblResultadosPropuestas() {
