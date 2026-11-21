@@ -1,5 +1,6 @@
 package repository;
 
+import util.FechaSistema;
 import static util.DbUtil.update;
 
 import java.sql.Connection;
@@ -36,7 +37,7 @@ public class AnoAcademicoRepository {
 	/** Id del año académico cuyo rango de fechas contiene el día de hoy. Nulo si no hay ninguno */
 	public String findVigenteId() {
 		List<Object[]> rows = db.executeQueryArray("SELECT anioAcademicoId FROM AnioAcademico "
-				+ "WHERE date('now') BETWEEN fechaInicio AND fechaFin LIMIT 1");
+				+ "WHERE ? BETWEEN fechaInicio AND fechaFin LIMIT 1", FechaSistema.hoyStr());
 		return rows.isEmpty() || rows.get(0)[0] == null ? null : rows.get(0)[0].toString();
 	}
 

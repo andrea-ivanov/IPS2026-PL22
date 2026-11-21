@@ -1,9 +1,9 @@
 package model.matriculacion;
 
+import util.FechaSistema;
 import model.grado.GradoDisplayDTO;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -523,7 +523,7 @@ public class MatriculacionModel {
 		// Fecha de la solicitud (formato ISO YYYY-MM-DD)
 		String fecha = solicitud.getFechaSolicitud();
 		if (fecha == null || fecha.trim().isEmpty()) {
-			fecha = LocalDate.now().toString();
+			fecha = FechaSistema.hoyStr();
 			solicitud.setFechaSolicitud(fecha);
 		} else {
 			fecha = fecha.trim();
@@ -604,7 +604,7 @@ public class MatriculacionModel {
 		resumen.setAlumnoId(cleanAlumnoId);
 		resumen.setGradoId(gradoId);
 		resumen.setAnioAcademicoId(getAnioAcademicoActual());
-		resumen.setFechaSolicitud(LocalDate.now().toString());
+		resumen.setFechaSolicitud(FechaSistema.hoyStr());
 
 		if (cleanAlumnoId != null && !cleanAlumnoId.trim().isEmpty()) {
 			Object[] r = alumnoRepository.findDatosAlumno(cleanAlumnoId.trim());

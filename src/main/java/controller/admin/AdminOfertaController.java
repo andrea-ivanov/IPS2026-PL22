@@ -1,5 +1,6 @@
 package controller.admin;
 
+import util.FechaSistema;
 import view.admin.AdminOfertaView;
 import view.admin.AnoAcademicoFormDialog;
 import view.admin.CursoFormDialog;
@@ -27,7 +28,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -168,12 +168,12 @@ public class AdminOfertaController {
 	// TODO: cuando GradoFormDialog tenga el desplegable de ramas, leer aqui y en onModificarGrado el valor de BD
 	// de la rama seleccionada (sin tilde) en lugar de getTxtRama().getText(), y preseleccionar la actual al modificar
 	private void onAnadirGrado() {
-		gradoModel.validarCreacionGrado(getAnioActualId(), LocalDate.now().toString());
+		gradoModel.validarCreacionGrado(getAnioActualId(), FechaSistema.hoyStr());
 		GradoFormDialog form = new GradoFormDialog(view.getFrame());
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
 			String nombre = form.getTxtNombre().getText();
 			gradoModel.crearGrado(nombre, form.getTxtFacultad().getText(), form.getTxtRama().getText(),
-					getAnioActualId(), LocalDate.now().toString());
+					getAnioActualId(), FechaSistema.hoyStr());
 			form.cerrar();
 			JOptionPane.showMessageDialog(view.getFrame(), "Grado " + nombre.trim() + " añadido correctamente.",
 					"Añadir grado", JOptionPane.INFORMATION_MESSAGE);
@@ -317,7 +317,7 @@ public class AdminOfertaController {
 	}
 
 	private void onNuevoAnoAcademico() {
-		anoAcademicoModel.validarAnoAnteriorTerminado(LocalDate.now().toString());
+		anoAcademicoModel.validarAnoAnteriorTerminado(FechaSistema.hoyStr());
 
 		AnoAcademicoFormDialog form = new AnoAcademicoFormDialog(view.getFrame());
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
@@ -326,7 +326,7 @@ public class AdminOfertaController {
 			Date inicioMatriculacion = parsearFechaInput(form.getTxtInicioMatriculacion().getText());
 			Date finMatriculacion = parsearFechaInput(form.getTxtFinMatriculacion().getText());
 
-			String anioId = anoAcademicoModel.validarNuevoAnoAcademico(LocalDate.now().toString(), inicioAnio, finAnio, inicioMatriculacion,
+			String anioId = anoAcademicoModel.validarNuevoAnoAcademico(FechaSistema.hoyStr(), inicioAnio, finAnio, inicioMatriculacion,
 					finMatriculacion);
 
 			int confirm = JOptionPane.showConfirmDialog(form.getDialog(),
@@ -338,7 +338,7 @@ public class AdminOfertaController {
 				return;
 			}
 
-			anoAcademicoModel.iniciarNuevoAnoAcademico(LocalDate.now().toString(), inicioAnio, finAnio, inicioMatriculacion, finMatriculacion);
+			anoAcademicoModel.iniciarNuevoAnoAcademico(FechaSistema.hoyStr(), inicioAnio, finAnio, inicioMatriculacion, finMatriculacion);
 			form.cerrar();
 			JOptionPane.showMessageDialog(view.getFrame(), "Año académico " + anioId + " configurado correctamente.",
 					"Configurar Nuevo Año Académico", JOptionPane.INFORMATION_MESSAGE);

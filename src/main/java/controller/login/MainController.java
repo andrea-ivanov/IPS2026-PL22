@@ -1,5 +1,6 @@
 package controller.login;
 
+import util.FechaSistema;
 import view.login.MainView;
 import view.admin.AdminOfertaView;
 import view.estudiante.EstudianteView;
@@ -11,6 +12,7 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 import controller.admin.AdminOfertaController;
 import controller.estudiante.EstudianteController;
@@ -56,36 +58,78 @@ public class MainController {
 
         view.getBtnAcceder().addActionListener(e -> SwingUtil.exceptionWrapper(this::gestionarAcceso));
         view.getBtnRecargarBD().addActionListener(e -> SwingUtil.exceptionWrapper(this::recargarBaseDatos));
+        view.getBtnCambiarFecha().addActionListener(e -> SwingUtil.exceptionWrapper(this::cambiarFecha));
+        mostrarFechaSistema();
+    }
+
+    private void mostrarFechaSistema() {
+        view.setFechaSistema(FechaSistema.hoyStr(), FechaSistema.esSimulada());
     }
 
     /**
-     * Lo que el sistema actualiza solo segun la fecha actual: se hace al arrancar y
-     * al recargar la BD
+     * Fija la fecha que la aplicación usa como hoy (vacía = fecha real) y aplica lo que el sistema hace solo
+     * según la fecha. Lo aplicado no se deshace al volver a una fecha anterior: para eso hay que recargar la BD
+     */
+    private void cambiarFecha() {
+        Object entrada = JOptionPane.showInputDialog(view.getFrame(),
+                "Fecha que usará la aplicación como hoy (aaaa-mm-dd).\n"
+                        + "Déjela vacía para volver a la fecha real (" + LocalDate.now() + ").\n"
+                        + "Los procesos automáticos por fecha (cierre de actas, ciclo de vida de matrículas...)\n"
+                        + "se aplican al cambiarla y no se deshacen al volver atrás (para eso, recargue la BD).",
+                "Cambiar fecha del sistema", JOptionPane.QUESTION_MESSAGE, null, null, FechaSistema.hoyStr());
+        if (entrada == null)
+            return; // cancelado
+        String texto = entrada.toString().trim();
+        if (texto.isEmpty()) {
+            FechaSistema.restablecer();
+        } else {
+            try {
+                FechaSistema.setFecha(LocalDate.parse(texto));
+            } catch (DateTimeParseException ex) {
+                JOptionPane.showMessageDialog(view.getFrame(),
+                        "La fecha \"" + texto + "\" no es válida. Use el formato aaaa-mm-dd (por ejemplo 2026-09-15).",
+                        "Fecha no válida", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
+
+        actualizarEstadosPorFecha();
+        cargarProfesores();
+        cargarAlumnos();
+        mostrarFechaSistema();
+        JOptionPane.showMessageDialog(view.getFrame(),
+                "Fecha del sistema: " + FechaSistema.hoyStr() + (FechaSistema.esSimulada() ? " (simulada)." : " (real)."),
+                "Éxito", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /**
+     * Lo que el sistema actualiza solo segun la fecha actual: se hace al arrancar,
+     * al recargar la BD y al cambiar la fecha del sistema
      */
     private void actualizarEstadosPorFecha() {
         // HU 36455: al empezar el año, los grados en extinción, los pendientes de renovación sin dictamen y los
         // que no tienen matrículas pagadas pasan a EXTINTO y se cancelan sus matrículas del año. Va antes que el
         // ciclo de vida, para que este no active las matrículas que se cancelan
-        SwingUtil.exceptionWrapper(() -> new GradoModel(db).extinguirGradosAlIniciarAnio(LocalDate.now().toString()));
+        SwingUtil.exceptionWrapper(() -> new GradoModel(db).extinguirGradosAlIniciarAnio(FechaSistema.hoyStr()));
         // HU 35229: el sistema mantiene al día el estado de las matrículas en cada
         // arranque,
         // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA ->
         // FINALIZADA al terminarlo)
         SwingUtil.exceptionWrapper(() -> new GestionMatriculaModel(db)
-                .actualizarCicloVida(LocalDate.now().toString()));
+                .actualizarCicloVida(FechaSistema.hoyStr()));
         // HU 35239: las actas abiertas cuya convocatoria ya ha terminado las cierra el
         // sistema
         // (cierreAutomatico = 1); secretaria las consulta como avisos en su vista
-        SwingUtil.exceptionWrapper(() -> new ActaModel(db).cerrarActasVencidas(LocalDate.now().toString()));
+        SwingUtil.exceptionWrapper(() -> new ActaModel(db).cerrarActasVencidas(FechaSistema.hoyStr()));
         // HU 36410: el sistema cancela automáticamente por baja demanda las microcredenciales
         // que no alcancen el 10% de plazas pagadas el día antes de cerrar su periodo de matriculación
         SwingUtil.exceptionWrapper(() -> new MicrocredencialModel(db)
-                .cancelarPorBajaDemanda(LocalDate.now().toString()));
+                .cancelarPorBajaDemanda(FechaSistema.hoyStr()));
         // HU 36459: el sistema cierra las actas de microcredenciales que el profesor no cerró en los 15 días
         // siguientes al fin de la impartición. Va después de la baja demanda, que cancela antes las inscripciones
         // sin pagar
         SwingUtil.exceptionWrapper(() -> new ActaMicrocredencialModel(db)
-                .cerrarActasVencidas(LocalDate.now().toString()));
+                .cerrarActasVencidas(FechaSistema.hoyStr()));
     }
 
     /**

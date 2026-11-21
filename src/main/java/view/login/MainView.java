@@ -25,6 +25,7 @@ public class MainView {
     private JComboBox<ProfesorDTO> cbProfesores;
     private JButton btnAcceder;
     private JMenuItem btnRecargarBD;
+    private JMenuItem btnCambiarFecha;
 
     public MainView() {
         initialize();
@@ -123,6 +124,11 @@ public class MainView {
         btnRecargarBD.setMnemonic(KeyEvent.VK_R);
         btnRecargarBD.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK));
         menuArchivo.add(btnRecargarBD);
+        btnCambiarFecha = new JMenuItem("Cambiar fecha del sistema...");
+        btnCambiarFecha.setToolTipText("Fija la fecha que usa la aplicación como \"hoy\" (para probar los procesos por fecha)");
+        btnCambiarFecha.setMnemonic(KeyEvent.VK_F);
+        btnCambiarFecha.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK));
+        menuArchivo.add(btnCambiarFecha);
         menuArchivo.addSeparator();
         JMenuItem itemSalir = new JMenuItem("Salir");
         itemSalir.setMnemonic(KeyEvent.VK_S);
@@ -172,7 +178,9 @@ public class MainView {
                 + "(tasas de éxito y abandono, aprobados y matriculados).</li>"
                 + "</ul><p>Desde cada panel, <b>Volver al inicio</b> (o Cerrar Sesión) regresa a esta pantalla.</p>"
                 + "<p><b>Archivo &gt; Recargar base de datos</b> vuelve a cargar los datos iniciales "
-                + "(se pierden los cambios hechos en la aplicación).</p></body></html>";
+                + "(se pierden los cambios hechos en la aplicación).</p>"
+                + "<p><b>Archivo &gt; Cambiar fecha del sistema</b> fija la fecha que la aplicación toma como hoy "
+                + "(se muestra en el título de la ventana); déjela vacía para volver a la fecha real.</p></body></html>";
         JOptionPane.showMessageDialog(frame, texto, "Manual de uso", JOptionPane.INFORMATION_MESSAGE);
     }
 
@@ -216,5 +224,15 @@ public class MainView {
     /** Opción "Recargar base de datos" del menú Archivo. */
     public JMenuItem getBtnRecargarBD() {
         return btnRecargarBD;
+    }
+
+    /** Opción "Cambiar fecha del sistema" del menú Archivo. */
+    public JMenuItem getBtnCambiarFecha() {
+        return btnCambiarFecha;
+    }
+
+    /** Muestra en el título la fecha que usa la aplicación como hoy. */
+    public void setFechaSistema(String fecha, boolean simulada) {
+        frame.setTitle(NOMBRE_APLICACION + " - Login (fecha: " + fecha + (simulada ? ", simulada" : "") + ")");
     }
 }

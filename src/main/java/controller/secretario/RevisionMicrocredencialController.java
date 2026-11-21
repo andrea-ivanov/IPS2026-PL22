@@ -1,8 +1,8 @@
 package controller.secretario;
 
+import util.FechaSistema;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.time.LocalDate;
 import java.util.List;
 
 import javax.swing.JLabel;
@@ -169,6 +169,6 @@ public class RevisionMicrocredencialController {
     }
 
     private String hoy() {
-        return LocalDate.now().toString();
+        return FechaSistema.hoyStr();
     }
 }
