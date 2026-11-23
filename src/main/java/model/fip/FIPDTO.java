@@ -91,4 +91,10 @@ public class FIPDTO {
 	public boolean hayPlazasDisponibles() {
 		return plazasMaximas <= 0 || plazasOcupadas < plazasMaximas;
 	}
+
+	/** Texto del desplegable de FIP de Secretaría */
+	@Override
+	public String toString() {
+		return fipId + " - " + nombre + " (empieza el " + fechaInicio + ")";
+	}
 }

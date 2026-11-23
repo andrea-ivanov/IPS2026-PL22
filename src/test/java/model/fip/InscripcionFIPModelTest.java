@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -304,7 +303,6 @@ public class InscripcionFIPModelTest {
 	 * 2027-07-15 (este con dos contratos solapados); AL0002 no tiene ninguno
 	 */
 	@Nested
-	@Disabled("Pendiente de la tabla ContratoAlumno en schema.sql (la añade otro miembro del equipo)")
 	class ContratoDelAlumno {
 		@BeforeEach
 		public void cargarContratos() {

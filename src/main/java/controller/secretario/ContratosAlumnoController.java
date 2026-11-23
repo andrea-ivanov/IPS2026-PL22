@@ -36,7 +36,7 @@ public class ContratosAlumnoController {
 		SwingUtil.exceptionWrapper(this::cargarAlumnos);
 	}
 
-	/** Mismo desplegable buscable que el de la pantalla de inicio: «AL0001 - Nombre Apellidos» */
+	/** Mismo desplegable buscable que el de la pantalla de inicio: «UO0001 - Nombre Apellidos» (el id real lo da resolverAlumnoId) */
 	private void cargarAlumnos() {
 		panel.getCbAlumno().setModel(SwingUtil.getComboModelFromList(alumnoModel.getListaAlumnos()));
 		ComboBuscable.hacerBuscable(panel.getCbAlumno());
@@ -44,7 +44,7 @@ public class ContratosAlumnoController {
 
 	private void cargarHistorial() {
 		String alumno = alumnoSeleccionado();
-		List<ContratoAlumnoDTO> contratos = model.getContratos(alumnoId(alumno));
+		List<ContratoAlumnoDTO> contratos = model.getContratos(alumnoModel.resolverAlumnoId(alumno));
 		DefaultTableModel tabla = (DefaultTableModel) panel.getTabContratos().getModel();
 		tabla.setRowCount(0);
 		LocalDate hoy = LocalDate.now();
@@ -60,7 +60,7 @@ public class ContratosAlumnoController {
 
 	private void registrarContrato() {
 		String alumno = alumnoSeleccionado();
-		String contratoId = model.registrarContrato(alumnoId(alumno), panel.getTxtDescripcion().getText(),
+		String contratoId = model.registrarContrato(alumnoModel.resolverAlumnoId(alumno), panel.getTxtDescripcion().getText(),
 				panel.getTxtFechaInicio().getText(), panel.getTxtFechaFin().getText());
 		JOptionPane.showMessageDialog(panel.getPanel(),
 				"Contrato " + contratoId + " registrado para " + alumno + ".", "Contrato registrado",
@@ -85,11 +85,5 @@ public class ContratosAlumnoController {
 			throw new ValidationException("Escriba o seleccione un alumno de la lista");
 		}
 		return seleccion.toString().trim();
-	}
-
-	/** «AL0001 - Lucia Pascual» -> «AL0001» */
-	private static String alumnoId(String alumno) {
-		int separador = alumno.indexOf(" - ");
-		return separador > 0 ? alumno.substring(0, separador).trim() : alumno;
 	}
 }

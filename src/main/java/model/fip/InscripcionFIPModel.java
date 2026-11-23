@@ -3,9 +3,13 @@ package model.fip;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Collection;
+import java.util.List;
 
 import model.contrato.ContratoAlumnoModel;
+import repository.AlumnoRepository;
+import repository.InscripcionFipRepository;
 import util.Database;
+import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
 
 /**
@@ -24,16 +28,117 @@ import util.exception.ValidationException;
  */
 public class InscripcionFIPModel {
 	public static final double PRECIO_MATRICULA = 0.0;
+	private static final String PREFIJO_ID = "IF";
 
 	private final ContratoAlumnoModel contratoModel;
+	private final Database db;
+	private final InscripcionFipRepository repository;
+	private final AlumnoRepository alumnoRepository;
 
 	public InscripcionFIPModel(Database db) {
 		this.contratoModel = new ContratoAlumnoModel(db);
+		this.db = db;
+		this.repository = new InscripcionFipRepository(db);
+		this.alumnoRepository = new AlumnoRepository(db);
 	}
 
+	/** Solo para comprobar las reglas sin base de datos (no se puede guardar ni consultar) */
 	public InscripcionFIPModel(ContratoAlumnoModel contratoModel) {
 		this.contratoModel = contratoModel;
+		this.db = null;
+		this.repository = null;
+		this.alumnoRepository = null;
 	}
+
+	// =========================================================================
+	// Consulta y guardado (tablas Fip e InscripcionFip)
+	// =========================================================================
+
+	/** Todas las FIP con sus plazas ocupadas, de la que empieza más tarde a la que empezó antes */
+	public List<FIPDTO> getFips() {
+		return repositorio().findFips();
+	}
+
+	/** Inscritos en la FIP, con su nombre, tipo y resultado */
+	public List<InscritoFipDTO> getInscritos(String fipId) {
+		validarObligatorio(fipId, "Seleccione una FIP");
+		return repositorio().findInscritos(fipId.trim());
+	}
+
+	/**
+	 * Matricula al alumno o profesor en la FIP con fecha de inscripción fechaHoy y resultado PENDIENTE,
+	 * comprobando todas las reglas de validarMatricula. Las FIP no tienen todavía un máximo de plazas en la base de
+	 * datos, así que de momento no se limitan (plazasMaximas = 0).
+	 * @return identificador de la inscripción (IF00001, IF00002...)
+	 * @throws ResourceNotFoundException si no existe la FIP o el usuario
+	 * @throws ValidationException si se incumple alguna regla
+	 */
+	public String matricular(String fipId, String usuarioId, TipoUsuarioFIP tipoUsuario, String fechaHoy) {
+		validarObligatorio(fipId, "Seleccione una FIP");
+		validarObligatorio(usuarioId, "Seleccione el usuario que se va a matricular");
+		comprobarNoEsFormadorExterno(tipoUsuario);
+		String fip = fipId.trim();
+		String usuario = usuarioId.trim();
+		comprobarUsuarioExiste(usuario, tipoUsuario);
+		String alumnoId = tipoUsuario == TipoUsuarioFIP.ALUMNO ? usuario : null;
+		String profesorId = tipoUsuario == TipoUsuarioFIP.PROFESOR ? usuario : null;
+		return db.enTransaccion(conn -> {
+			FIPDTO datos = repository.findFip(conn, fip);
+			if (datos == null) {
+				throw new ResourceNotFoundException("FIP", fip);
+			}
+			validarMatricula(fip, datos.getFechaInicio(), fechaHoy, usuario, tipoUsuario,
+					datos.getProfesorResponsableId(), datos.getPlazasOcupadas(), datos.getPlazasMaximas(),
+					repository.existeInscripcion(conn, fip, alumnoId, profesorId));
+			String inscripcionId = String.format("%s%05d", PREFIJO_ID, repository.siguienteNumero(conn));
+			repository.insertar(conn, inscripcionId, fip, alumnoId, profesorId, parsearFecha(fechaHoy, "hoy").toString(),
+					ResultadoInscripcionFIP.PENDIENTE.name());
+			return inscripcionId;
+		});
+	}
+
+	/**
+	 * Anula una inscripción antes de que empiece su FIP.
+	 * @throws ResourceNotFoundException si no existe la inscripción
+	 * @throws ValidationException si la FIP ya ha empezado
+	 */
+	public void anularInscripcion(String inscripcionId, String fechaHoy) {
+		validarObligatorio(inscripcionId, "Seleccione la inscripción que quiere anular");
+		String id = inscripcionId.trim();
+		repositorio();
+		db.enTransaccion(conn -> {
+			String fipId = repository.findFipDeInscripcion(conn, id);
+			if (fipId == null) {
+				throw new ResourceNotFoundException("Inscripción", id);
+			}
+			comprobarPlazoAnulacion(repository.findFip(conn, fipId).getFechaInicio(), fechaHoy);
+			return repository.anular(conn, id);
+		});
+	}
+
+	private void comprobarUsuarioExiste(String usuarioId, TipoUsuarioFIP tipoUsuario) {
+		boolean existe = tipoUsuario == TipoUsuarioFIP.ALUMNO ? alumnoRepositorio().existeAlumnoId(usuarioId)
+				: repositorio().existeProfesor(usuarioId);
+		if (!existe) {
+			throw new ResourceNotFoundException(tipoUsuario == TipoUsuarioFIP.ALUMNO ? "Alumno" : "Profesor", usuarioId);
+		}
+	}
+
+	private InscripcionFipRepository repositorio() {
+		if (repository == null) {
+			throw new IllegalStateException("Este InscripcionFIPModel se creó sin base de datos");
+		}
+		return repository;
+	}
+
+	private AlumnoRepository alumnoRepositorio() {
+		repositorio();
+		return alumnoRepository;
+	}
+
+	// =========================================================================
+	// Reglas de la matrícula (no usan la base de datos, salvo el contrato del alumno)
+	// =========================================================================
 
 	/**
 	 * Comprueba que todavía se puede matricular: hoy tiene que ser anterior al inicio de la FIP

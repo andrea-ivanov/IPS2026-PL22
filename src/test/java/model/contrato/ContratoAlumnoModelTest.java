@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import util.Database;
@@ -22,7 +21,6 @@ import util.exception.ValidationException;
  * Pruebas de la HU 37045: el secretario registra y consulta los contratos de los alumnos.
  * Cada prueba parte de sus propios datos (loadCleanDatabase), independientes de data.sql
  */
-@Disabled("Pendiente de la tabla ContratoAlumno en schema.sql (la añade otro miembro del equipo)")
 public class ContratoAlumnoModelTest {
 	private static Database db = new Database("jdbc:sqlite:TestDB.db?foreign_keys=true");
 	private ContratoAlumnoModel model;
@@ -47,14 +45,14 @@ public class ContratoAlumnoModelTest {
 	 */
 	public static void loadCleanDatabase(Database db) {
 		db.executeBatch(new String[] {
-				"DELETE FROM ContratoAlumno", "DELETE FROM RevisionGrado", "DELETE FROM MatriculaMicrocredencial",
+				"DELETE FROM InscripcionFip", "DELETE FROM ContratoAlumno", "DELETE FROM RevisionGrado", "DELETE FROM MatriculaMicrocredencial",
 				"DELETE FROM Microcredencial", "DELETE FROM Calificacion", "DELETE FROM MatriculaGrupo",
 				"DELETE FROM MatriculaCurso", "DELETE FROM Matricula", "DELETE FROM Alumno",
 				"INSERT INTO Alumno VALUES ('AL0001','10000001A','Lucia','Pascual Santos','lpascual@alumno.es')",
 				"INSERT INTO Alumno VALUES ('AL0002','10000002B','Pablo','Garcia Ruiz','pgarcia@alumno.es')",
-				"INSERT INTO ContratoAlumno VALUES ('CT0001','AL0001','Becaria del departamento','2026-09-01','2027-06-30')",
-				"INSERT INTO ContratoAlumno VALUES ('CT0002','AL0001','Colaboracion en biblioteca','2025-10-01','2026-06-30')",
-				"INSERT INTO ContratoAlumno VALUES ('CT0003','AL0001','Apoyo a la docencia','2027-01-15','2027-07-15')"
+				"INSERT INTO ContratoAlumno (contratoId, alumnoId, descripcion, fechaInicio, fechaFin) VALUES ('CT0001','AL0001','Becaria del departamento','2026-09-01','2027-06-30')",
+				"INSERT INTO ContratoAlumno (contratoId, alumnoId, descripcion, fechaInicio, fechaFin) VALUES ('CT0002','AL0001','Colaboracion en biblioteca','2025-10-01','2026-06-30')",
+				"INSERT INTO ContratoAlumno (contratoId, alumnoId, descripcion, fechaInicio, fechaFin) VALUES ('CT0003','AL0001','Apoyo a la docencia','2027-01-15','2027-07-15')"
 		});
 	}
 
