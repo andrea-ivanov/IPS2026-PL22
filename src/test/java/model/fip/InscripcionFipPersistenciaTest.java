@@ -18,7 +18,7 @@ import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
 
 /**
- * Pruebas de la HU 37046 que guardan en la base de datos: matricular y anular inscripciones en una FIP.
+ * Pruebas de la HU 37046 que guardan en la base de datos: matricular en una FIP.
  * Cada prueba parte de sus propios datos (loadCleanDatabase), independientes de data.sql
  */
 public class InscripcionFipPersistenciaTest {
@@ -39,6 +39,7 @@ public class InscripcionFipPersistenciaTest {
 	public void tearDown() {
 		db.executeBatch(new String[] { "DELETE FROM InscripcionFip", "DELETE FROM Fip", "DELETE FROM FormadorExterno",
 				"DELETE FROM ContratoAlumno" });
+		db.createDatabase(false); // deja la tabla Fip como en schema.sql
 	}
 
 	/**
@@ -56,13 +57,33 @@ public class InscripcionFipPersistenciaTest {
 				"INSERT INTO FormadorExterno VALUES ('FE001','Elena','Vega Morales','elena.vega@externa.es')",
 				"INSERT INTO ContratoAlumno (contratoId, alumnoId, descripcion, fechaInicio, fechaFin) "
 						+ "VALUES ('CT0001','AL0001','Becaria del departamento','2026-09-01','2027-06-30')",
-				"INSERT INTO Fip (fipId, nombre, profesorId, formadorExternoId, fechaCreacion, fechaInicio, fechaFin) "
-						+ "VALUES ('FIP001','Metodologias Docentes','P001',NULL,'2026-11-01','2026-12-01','2026-12-10')",
-				"INSERT INTO Fip (fipId, nombre, profesorId, formadorExternoId, fechaCreacion, fechaInicio, fechaFin) "
-						+ "VALUES ('FIP002','Ciberseguridad',NULL,'FE001','2026-10-01','2026-11-10','2026-11-30')",
+				insertFip(db, "'FIP001','Metodologias Docentes','P001',NULL,'2026-11-01','2026-12-01','2026-12-10'"),
+				insertFip(db, "'FIP002','Ciberseguridad',NULL,'FE001','2026-10-01','2026-11-10','2026-11-30'"),
 				"INSERT INTO InscripcionFip (inscripcionId, fipId, alumnoId, profesorId, fechaInscripcion, resultado) "
 						+ "VALUES ('IF00001','FIP002','AL0001',NULL,'2026-10-05','PENDIENTE')"
 		});
+	}
+
+	/** Si el esquema ya tiene Fip.plazas se inserta con 30 plazas; si no, sin esa columna */
+	private static String insertFip(Database db, String valores) {
+		boolean plazas = tienePlazas(db);
+		return "INSERT INTO Fip (fipId, nombre, profesorId, formadorExternoId, fechaCreacion, fechaInicio, fechaFin"
+				+ (plazas ? ", plazas" : "") + ") VALUES (" + valores + (plazas ? ",30" : "") + ")";
+	}
+
+	private static boolean tienePlazas(Database db) {
+		return !db.executeQueryArray("SELECT 1 FROM pragma_table_info('Fip') WHERE name = 'plazas'").isEmpty();
+	}
+
+	/**
+	 * Fija el máximo de plazas de la FIP. Mientras el esquema no tenga Fip.plazas, la añade solo en la base de datos
+	 * de pruebas (createDatabase la vuelve a crear según schema.sql).
+	 */
+	public static void fijarPlazas(Database db, String fipId, int plazas) {
+		if (!tienePlazas(db)) {
+			db.executeBatch(new String[] { "ALTER TABLE Fip ADD COLUMN plazas INT" });
+		}
+		db.executeUpdate("UPDATE Fip SET plazas = ? WHERE fipId = ?", plazas, fipId);
 	}
 
 	// //////////////////////////////////////////////
@@ -98,6 +119,16 @@ public class InscripcionFipPersistenciaTest {
 				() -> assertEquals("ALUMNO", i.getTipo()),
 				() -> assertEquals(HOY, i.getFechaInscripcion()),
 				() -> assertEquals("PENDIENTE", i.getResultado()));
+	}
+
+	/** Una FIP creada por el administrador (HU 37165) admite matrículas desde ese mismo día, salvo la de su responsable */
+	@Test
+	public void testMatricularEnFipCreadaPorAdministrador() {
+		String fipId = new FipModel(db).crearFip("Excel avanzado", "P002", "2026-12-05", "2026-12-20", HOY);
+		assertEquals(fipId, model.getFips().get(0).getFipId());
+		model.matricular(fipId, "AL0001", TipoUsuarioFIP.ALUMNO, HOY);
+		assertThrows(ValidationException.class, () -> model.matricular(fipId, "P002", TipoUsuarioFIP.PROFESOR, HOY));
+		assertEquals(1, model.getInscritos(fipId).size());
 	}
 
 	/** Un profesor que no es el responsable se matricula directamente */
@@ -143,6 +174,29 @@ public class InscripcionFipPersistenciaTest {
 		assertTrue(model.getInscritos("FIP001").isEmpty());
 	}
 
+	/** La matrícula se abre el día en que se crea la FIP: antes (solo posible con una fecha simulada) no se admite */
+	@Test
+	public void testFipSinCrear() {
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.matricular("FIP001", "AL0001", TipoUsuarioFIP.ALUMNO, "2026-10-31"));
+		assertTrue(e.getMessage().contains("2026-11-01"), e.getMessage());
+		assertTrue(model.getInscritos("FIP001").isEmpty());
+		model.matricular("FIP001", "AL0001", TipoUsuarioFIP.ALUMNO, "2026-11-01");
+		assertEquals(1, model.getInscritos("FIP001").size());
+	}
+
+	/** Al llenarse las plazas de la FIP se bloquea la matrícula */
+	@Test
+	public void testPlazasLlenas() {
+		fijarPlazas(db, "FIP001", 1);
+		model.matricular("FIP001", "AL0001", TipoUsuarioFIP.ALUMNO, HOY);
+		assertEquals(1, model.getFips().get(0).getPlazasMaximas());
+		ValidationException e = assertThrows(ValidationException.class,
+				() -> model.matricular("FIP001", "P002", TipoUsuarioFIP.PROFESOR, HOY));
+		assertTrue(e.getMessage().contains("No quedan plazas"), e.getMessage());
+		assertEquals(1, model.getInscritos("FIP001").size());
+	}
+
 	/** Los formadores externos no se matriculan */
 	@Test
 	public void testFormadorExterno() {
@@ -156,31 +210,5 @@ public class InscripcionFipPersistenciaTest {
 		assertThrows(ResourceNotFoundException.class, () -> model.matricular("FIP999", "AL0001", TipoUsuarioFIP.ALUMNO, HOY));
 		assertThrows(ResourceNotFoundException.class, () -> model.matricular("FIP001", "AL9999", TipoUsuarioFIP.ALUMNO, HOY));
 		assertThrows(ResourceNotFoundException.class, () -> model.matricular("FIP001", "P999", TipoUsuarioFIP.PROFESOR, HOY));
-	}
-
-	// //////////////////////////////////////////////
-	// Anular
-	// //////////////////////////////////////////////
-
-	/** Antes del inicio de la FIP se puede anular la inscripción */
-	@Test
-	public void testAnular() {
-		String id = model.matricular("FIP001", "AL0001", TipoUsuarioFIP.ALUMNO, HOY);
-		model.anularInscripcion(id, HOY);
-		assertTrue(model.getInscritos("FIP001").isEmpty());
-	}
-
-	/** Con la FIP ya empezada la inscripción no se anula */
-	@Test
-	public void testAnularFipEmpezada() {
-		assertThrows(ValidationException.class, () -> model.anularInscripcion("IF00001", HOY));
-		assertEquals(1, model.getInscritos("FIP002").size());
-	}
-
-	/** Una inscripción que no existe da error de recurso no encontrado */
-	@Test
-	public void testAnularInexistente() {
-		assertThrows(ResourceNotFoundException.class, () -> model.anularInscripcion("IF99999", HOY));
-		assertThrows(ValidationException.class, () -> model.anularInscripcion(" ", HOY));
 	}
 }

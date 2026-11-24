@@ -18,7 +18,7 @@ import javax.swing.table.DefaultTableModel;
 
 /**
  * Pestaña «Matrícula FIP» de Secretaría (HU 37046): elegir una FIP, buscar al profesor o alumno y matricularlo,
- * y ver los inscritos para anular una inscripción antes del inicio. Va en su propia clase para no mezclarse con
+ * y ver los inscritos. Las matrículas no se pueden anular. Va en su propia clase para no mezclarse con
  * el resto de SecretarioView.
  */
 public class MatriculaFipPanel {
@@ -30,10 +30,10 @@ public class MatriculaFipPanel {
 	private JComboBox<String> cbTipo;
 	private JComboBox<Object> cbUsuario;
 	private JButton btnMatricular;
-	private JButton btnAnular;
 	private JTable tabInscritos;
 	private JLabel lblTitulo;
 	private JLabel lblResultados;
+	private JLabel ayuda;
 
 	public MatriculaFipPanel() {
 		panel = new JPanel(new BorderLayout(12, 0));
@@ -54,14 +54,12 @@ public class MatriculaFipPanel {
 		addFiltro(form, "Usuario (escriba para buscar)", cbUsuario);
 		btnMatricular = botonPrimario("Matricular");
 		addBoton(form, btnMatricular);
-		btnAnular = botonPeligro("Anular inscripción");
-		btnAnular.setToolTipText("Anula la inscripción seleccionada en la tabla (solo antes del inicio de la FIP)");
-		addBoton(form, btnAnular);
 
 		form.add(Box.createVerticalStrut(12));
-		JLabel ayuda = textoSecundario("<html>Se matricula hasta el día anterior al inicio de la FIP. Un alumno necesita "
+		ayuda = textoSecundario("<html><div style='width:200px'>Se matricula hasta el día anterior al inicio de la FIP, "
+				+ "mientras queden plazas. Un alumno necesita "
 				+ "un contrato vigente en la fecha de inicio. Los formadores externos y el responsable de la FIP no se "
-				+ "matriculan. La matrícula es gratuita y queda PENDIENTE hasta que califique el responsable.</html>");
+				+ "matriculan. La matrícula es gratuita, no se puede anular y queda PENDIENTE hasta que califique el responsable.</div></html>");
 		ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
 		form.add(ayuda);
 		return form;
@@ -117,16 +115,16 @@ public class MatriculaFipPanel {
 		return btnMatricular;
 	}
 
-	public JButton getBtnAnular() {
-		return btnAnular;
-	}
-
 	public JTable getTabInscritos() {
 		return tabInscritos;
 	}
 
 	public JLabel getLblTitulo() {
 		return lblTitulo;
+	}
+
+	public JLabel getAyuda() {
+		return ayuda;
 	}
 
 	public JLabel getLblResultados() {

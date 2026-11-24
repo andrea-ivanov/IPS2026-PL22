@@ -34,6 +34,7 @@ public class ContratosAlumnoPanel {
 	private JTable tabContratos;
 	private JLabel lblTitulo;
 	private JLabel lblResultados;
+	private JLabel ayuda;
 
 	public ContratosAlumnoPanel() {
 		panel = new JPanel(new BorderLayout(12, 0));
@@ -66,8 +67,8 @@ public class ContratosAlumnoPanel {
 		addBoton(form, btnRegistrar);
 
 		form.add(Box.createVerticalStrut(12));
-		JLabel ayuda = textoSecundario("<html>Un alumno puede tener varios contratos, aunque se solapen. "
-				+ "Se admiten contratos pasados y futuros. Los contratos no se modifican ni se borran.</html>");
+		ayuda = textoSecundario("<html><div style='width:200px'>Un alumno puede tener varios contratos, aunque se solapen. "
+				+ "Se admiten contratos pasados y futuros. Los contratos no se modifican ni se borran.</div></html>");
 		ayuda.setAlignmentX(Component.LEFT_ALIGNMENT);
 		form.add(ayuda);
 		return form;
@@ -137,6 +138,10 @@ public class ContratosAlumnoPanel {
 
 	public JLabel getLblTitulo() {
 		return lblTitulo;
+	}
+
+	public JLabel getAyuda() {
+		return ayuda;
 	}
 
 	public JLabel getLblResultados() {

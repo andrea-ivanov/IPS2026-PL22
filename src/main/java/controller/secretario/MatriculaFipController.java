@@ -5,7 +5,6 @@ import java.util.List;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
-import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 
 import model.alumno.AlumnoModel;
@@ -17,17 +16,16 @@ import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
 import util.ComboBuscable;
 import util.Database;
+import util.RelojSistema;
 import util.SwingUtil;
 import util.exception.ValidationException;
 import view.secretario.MatriculaFipPanel;
 
 /**
  * Controlador de la pestaña «Matrícula FIP» de Secretaría (HU 37046): elegir la FIP, ver sus inscritos,
- * matricular a un alumno o profesor y anular una inscripción. Las reglas están en InscripcionFIPModel.
+ * y matricular a un alumno o profesor. Las reglas están en InscripcionFIPModel.
  */
 public class MatriculaFipController {
-	private static final int COLUMNA_INSCRIPCION = 0;
-
 	private final MatriculaFipPanel panel;
 	private final InscripcionFIPModel model;
 	private final AlumnoModel alumnoModel;
@@ -44,7 +42,6 @@ public class MatriculaFipController {
 		panel.getCbTipo().addActionListener(e -> SwingUtil.exceptionWrapper(this::cargarUsuarios));
 		panel.getCbFip().addActionListener(e -> SwingUtil.exceptionWrapper(this::cargarInscritos));
 		panel.getBtnMatricular().addActionListener(e -> SwingUtil.exceptionWrapper(this::matricular));
-		panel.getBtnAnular().addActionListener(e -> SwingUtil.exceptionWrapper(this::anular));
 		SwingUtil.exceptionWrapper(() -> {
 			cargarUsuarios();
 			cargarFips();
@@ -85,12 +82,27 @@ public class MatriculaFipController {
 					"NO_APTO".equals(i.getResultado()) ? "NO APTO" : i.getResultado() });
 		}
 		panel.getLblTitulo().setText("Inscritos en " + fip.getFipId() + " - " + fip.getNombre());
-		boolean abierta = LocalDate.parse(hoy()).isBefore(LocalDate.parse(fip.getFechaInicio()));
-		panel.getLblResultados().setText(inscritos.size() + " inscritos · "
-				+ (abierta ? "matrícula abierta hasta el " + LocalDate.parse(fip.getFechaInicio()).minusDays(1)
-						: "la FIP ya ha empezado: no admite altas ni anulaciones"));
+		panel.getLblResultados().setText(inscritos.size() + (inscritos.size() == 1 ? " inscrito" : " inscritos")
+				+ (fip.getPlazasMaximas() > 0 ? " de " + fip.getPlazasMaximas() + " plazas" : "") + " · " + plazo(fip));
 	}
 
+	/** En qué punto está la matrícula: se abre al crear la FIP y se cierra el día anterior a su inicio */
+	private static String plazo(FIPDTO fip) {
+		LocalDate hoy = LocalDate.parse(hoy());
+		LocalDate inicio = LocalDate.parse(fip.getFechaInicio());
+		if (!hoy.isBefore(inicio)) {
+			return "la FIP ya ha empezado: no admite altas";
+		}
+		if (hoy.isBefore(LocalDate.parse(fip.getFechaCreacion()))) {
+			return "la matrícula se abre el " + fip.getFechaCreacion();
+		}
+		if (!fip.hayPlazasDisponibles()) {
+			return "la FIP está completa";
+		}
+		return "matrícula abierta hasta el " + inicio.minusDays(1);
+	}
+
+	/** Pide confirmación, porque la matrícula no se puede anular */
 	private void matricular() {
 		FIPDTO fip = (FIPDTO) panel.getCbFip().getSelectedItem();
 		if (fip == null) {
@@ -100,35 +112,18 @@ public class MatriculaFipController {
 		if (usuario == null) {
 			throw new ValidationException("Escriba o seleccione el usuario que se va a matricular");
 		}
+		int confirm = JOptionPane.showConfirmDialog(panel.getPanel(),
+				"¿Desea matricular a " + usuario + " en " + fip.getNombre() + "?\nLa matrícula no se puede anular.",
+				"Matricular en FIP", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+		if (confirm != JOptionPane.YES_OPTION) {
+			return;
+		}
 		String inscripcionId = model.matricular(fip.getFipId(), usuarioId(usuario), tipoSeleccionado(), hoy());
 		JOptionPane.showMessageDialog(panel.getPanel(),
 				usuario + " matriculado en " + fip.getNombre() + " (" + inscripcionId + ").\n"
 						+ "La matrícula es gratuita y queda PENDIENTE hasta que califique el responsable.",
 				"Matrícula registrada", JOptionPane.INFORMATION_MESSAGE);
 		cargarFipsManteniendo(fip.getFipId());
-	}
-
-	/** Pide confirmación: la inscripción anulada desaparece de la FIP */
-	private void anular() {
-		JTable tabla = panel.getTabInscritos();
-		int fila = tabla.getSelectedRow();
-		if (fila < 0) {
-			throw new ValidationException("Seleccione en la tabla la inscripción que quiere anular");
-		}
-		int filaModelo = tabla.convertRowIndexToModel(fila);
-		String inscripcionId = String.valueOf(tabla.getModel().getValueAt(filaModelo, COLUMNA_INSCRIPCION));
-		String usuario = String.valueOf(tabla.getModel().getValueAt(filaModelo, 1));
-		int confirm = JOptionPane.showConfirmDialog(panel.getPanel(),
-				"¿Desea anular la inscripción " + inscripcionId + " de " + usuario + "?", "Anular inscripción",
-				JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-		if (confirm != JOptionPane.YES_OPTION) {
-			return;
-		}
-		model.anularInscripcion(inscripcionId, hoy());
-		JOptionPane.showMessageDialog(panel.getPanel(), "Inscripción " + inscripcionId + " anulada.",
-				"Inscripción anulada", JOptionPane.INFORMATION_MESSAGE);
-		FIPDTO fip = (FIPDTO) panel.getCbFip().getSelectedItem();
-		cargarFipsManteniendo(fip == null ? null : fip.getFipId());
 	}
 
 	/** Recarga las FIP (cambian las plazas ocupadas) sin perder la FIP elegida */
@@ -155,6 +150,6 @@ public class MatriculaFipController {
 	}
 
 	private static String hoy() {
-		return LocalDate.now().toString();
+		return RelojSistema.getInstance().hoyIso();
 	}
 }

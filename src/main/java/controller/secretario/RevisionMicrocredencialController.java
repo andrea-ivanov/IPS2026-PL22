@@ -2,7 +2,6 @@ package controller.secretario;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.time.LocalDate;
 import java.util.List;
 
 import javax.swing.JLabel;
@@ -18,6 +17,7 @@ import javax.swing.table.DefaultTableModel;
 import model.microcredencial.PropuestaMicrocredencialDTO;
 import model.microcredencial.RevisionMicrocredencialModel;
 import util.Database;
+import util.RelojSistema;
 import util.SwingUtil;
 import util.exception.ValidationException;
 import view.secretario.SecretarioView;
@@ -169,6 +169,6 @@ public class RevisionMicrocredencialController {
     }
 
     private String hoy() {
-        return LocalDate.now().toString();
+        return RelojSistema.getInstance().hoyIso();
     }
 }

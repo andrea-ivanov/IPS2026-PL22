@@ -21,10 +21,12 @@ import util.exception.ValidationException;
  * - El profesor responsable de una FIP no puede matricularse como asistente en ella (no se puede ser docente y alumno en el mismo curso).
  * - Un alumno solo puede matricularse si tiene un contrato registrado vigente en la fecha de inicio de la FIP.
  * - Solo se puede matricular hasta el día anterior al inicio de la FIP; desde el día de inicio no se admiten nuevas altas.
+ * - La matrícula se abre el día en que se crea la FIP (Fip.fechaCreacion).
  * - No se puede matricular dos veces al mismo usuario en la misma FIP.
  * - La matrícula en una FIP es siempre gratuita: no hay pago.
  * - Al matricular, la inscripción queda con resultado PENDIENTE hasta que la califique el profesor responsable.
- * - Secretaría puede anular una inscripción antes de que empiece la FIP.
+ * - Las matrículas no se pueden anular: la plaza asignada queda ocupada.
+ * - Si la FIP tiene un máximo de plazas (Fip.plazas), se bloquea la matrícula al llenarse.
  */
 public class InscripcionFIPModel {
 	public static final double PRECIO_MATRICULA = 0.0;
@@ -67,8 +69,8 @@ public class InscripcionFIPModel {
 
 	/**
 	 * Matricula al alumno o profesor en la FIP con fecha de inscripción fechaHoy y resultado PENDIENTE,
-	 * comprobando todas las reglas de validarMatricula. Las FIP no tienen todavía un máximo de plazas en la base de
-	 * datos, así que de momento no se limitan (plazasMaximas = 0).
+	 * comprobando todas las reglas de validarMatricula. Mientras la tabla Fip no tenga la columna plazas no hay máximo
+	 * (plazasMaximas = 0).
 	 * @return identificador de la inscripción (IF00001, IF00002...)
 	 * @throws ResourceNotFoundException si no existe la FIP o el usuario
 	 * @throws ValidationException si se incumple alguna regla
@@ -87,6 +89,7 @@ public class InscripcionFIPModel {
 			if (datos == null) {
 				throw new ResourceNotFoundException("FIP", fip);
 			}
+			comprobarMatriculaAbierta(datos.getFechaCreacion(), fechaHoy);
 			validarMatricula(fip, datos.getFechaInicio(), fechaHoy, usuario, tipoUsuario,
 					datos.getProfesorResponsableId(), datos.getPlazasOcupadas(), datos.getPlazasMaximas(),
 					repository.existeInscripcion(conn, fip, alumnoId, profesorId));
@@ -94,25 +97,6 @@ public class InscripcionFIPModel {
 			repository.insertar(conn, inscripcionId, fip, alumnoId, profesorId, parsearFecha(fechaHoy, "hoy").toString(),
 					ResultadoInscripcionFIP.PENDIENTE.name());
 			return inscripcionId;
-		});
-	}
-
-	/**
-	 * Anula una inscripción antes de que empiece su FIP.
-	 * @throws ResourceNotFoundException si no existe la inscripción
-	 * @throws ValidationException si la FIP ya ha empezado
-	 */
-	public void anularInscripcion(String inscripcionId, String fechaHoy) {
-		validarObligatorio(inscripcionId, "Seleccione la inscripción que quiere anular");
-		String id = inscripcionId.trim();
-		repositorio();
-		db.enTransaccion(conn -> {
-			String fipId = repository.findFipDeInscripcion(conn, id);
-			if (fipId == null) {
-				throw new ResourceNotFoundException("Inscripción", id);
-			}
-			comprobarPlazoAnulacion(repository.findFip(conn, fipId).getFechaInicio(), fechaHoy);
-			return repository.anular(conn, id);
 		});
 	}
 
@@ -141,6 +125,17 @@ public class InscripcionFIPModel {
 	// =========================================================================
 
 	/**
+	 * La matrícula se abre el día en que el administrador crea la FIP.
+	 * @throws ValidationException si hoy es anterior a la creación de la FIP o las fechas no son válidas
+	 */
+	public void comprobarMatriculaAbierta(String fechaCreacionFip, String fechaHoy) {
+		LocalDate creacion = parsearFecha(fechaCreacionFip, "creación de la FIP");
+		if (parsearFecha(fechaHoy, "hoy").isBefore(creacion)) {
+			throw new ValidationException("La matrícula de la FIP no se abre hasta el " + creacion);
+		}
+	}
+
+	/**
 	 * Comprueba que todavía se puede matricular: hoy tiene que ser anterior al inicio de la FIP
 	 * (desde el día de inicio no se admiten nuevas altas).
 	 * @throws ValidationException si el plazo ha terminado o las fechas no son válidas
@@ -150,19 +145,6 @@ public class InscripcionFIPModel {
 		LocalDate hoy = parsearFecha(fechaHoy, "hoy");
 		if (!hoy.isBefore(inicio)) {
 			throw new ValidationException("El plazo de matrícula terminó el día anterior al inicio de la FIP ("
-					+ inicio.minusDays(1) + ")");
-		}
-	}
-
-	/**
-	 * Secretaría solo puede anular una inscripción antes de que empiece la FIP (hasta el día anterior).
-	 * @throws ValidationException si la FIP ya ha comenzado o las fechas no son válidas
-	 */
-	public void comprobarPlazoAnulacion(String fechaInicioFip, String fechaHoy) {
-		LocalDate inicio = parsearFecha(fechaInicioFip, "inicio de la FIP");
-		LocalDate hoy = parsearFecha(fechaHoy, "hoy");
-		if (!hoy.isBefore(inicio)) {
-			throw new ValidationException("Solo se puede anular una inscripción antes de que empiece la FIP (hasta el "
 					+ inicio.minusDays(1) + ")");
 		}
 	}
@@ -291,24 +273,8 @@ public class InscripcionFIPModel {
 		dto.setTipoUsuario(tipoUsuario);
 		dto.setFechaInscripcion(fechaInscripcion.trim());
 		dto.setResultado(ResultadoInscripcionFIP.PENDIENTE);
-		dto.setEstado(EstadoInscripcionFIP.ACTIVA);
 		dto.setPrecio(PRECIO_MATRICULA);
 		return dto;
-	}
-
-	/**
-	 * Anula una inscripción antes del inicio de la FIP.
-	 * @throws ValidationException si está fuera de plazo o ya estaba anulada
-	 */
-	public void validarYAnularInscripcion(InscripcionFIPDTO inscripcion, String fechaInicioFip, String fechaHoy) {
-		if (inscripcion == null) {
-			throw new ValidationException("No se ha seleccionado ninguna inscripción para anular");
-		}
-		comprobarPlazoAnulacion(fechaInicioFip, fechaHoy);
-		if (inscripcion.getEstado() == EstadoInscripcionFIP.ANULADA) {
-			throw new ValidationException("La inscripción ya se encuentra anulada");
-		}
-		inscripcion.setEstado(EstadoInscripcionFIP.ANULADA);
 	}
 
 	private LocalDate parsearFecha(String fecha, String cual) {

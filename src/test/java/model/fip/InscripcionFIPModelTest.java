@@ -3,7 +3,6 @@ package model.fip;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,13 +21,13 @@ import util.exception.ValidationException;
 /**
  * Pruebas unitarias de las reglas de matrícula presencial en FIP (HU 37046).
  * Valida todas las reglas de negocio sin requerir la base de datos de FIP:
- * - Plazo de matrícula y plazo de anulación
+ * - Plazo de matrícula
  * - Formadores externos no pueden matricularse (solo imparten)
  * - El profesor responsable no puede matricularse en su propia FIP
  * - Control de plazas máximas
  * - Prohibición de matrículas duplicadas
  * - Gratuidad de la matrícula (precio 0.0)
- * - Estado inicial PENDIENTE y ciclo de anulación
+ * - Resultado inicial PENDIENTE
  */
 public class InscripcionFIPModelTest {
 	private static Database db = new Database("jdbc:sqlite:TestDB.db?foreign_keys=true");
@@ -68,37 +67,7 @@ public class InscripcionFIPModelTest {
 	}
 
 	// //////////////////////////////////////////////
-	// 2. Plazo de anulación de inscripción
-	// //////////////////////////////////////////////
-
-	@Test
-	@DisplayName("Secretaría puede anular una inscripción antes de que empiece la FIP")
-	public void testAnulacionDentroDelPlazo() {
-		assertDoesNotThrow(() -> model.comprobarPlazoAnulacion("2026-12-01", "2026-11-30"));
-		assertDoesNotThrow(() -> model.comprobarPlazoAnulacion("2026-12-01", "2026-11-15"));
-	}
-
-	@Test
-	@DisplayName("No se puede anular la inscripción desde el día de inicio de la FIP ni posteriormente")
-	public void testAnulacionFueraDelPlazo() {
-		ValidationException eDiaInicio = assertThrows(ValidationException.class,
-				() -> model.comprobarPlazoAnulacion("2026-12-01", "2026-12-01"));
-		assertTrue(eDiaInicio.getMessage().contains("2026-11-30"), eDiaInicio.getMessage());
-
-		ValidationException ePosterior = assertThrows(ValidationException.class,
-				() -> model.comprobarPlazoAnulacion("2026-12-01", "2026-12-05"));
-		assertTrue(ePosterior.getMessage().contains("antes de que empiece"), ePosterior.getMessage());
-	}
-
-	@Test
-	@DisplayName("Sin fechas válidas no se puede comprobar el plazo de anulación")
-	public void testAnulacionFechasNoValidas() {
-		assertThrows(ValidationException.class, () -> model.comprobarPlazoAnulacion(null, "2026-11-30"));
-		assertThrows(ValidationException.class, () -> model.comprobarPlazoAnulacion("2026-12-01", ""));
-	}
-
-	// //////////////////////////////////////////////
-	// 3. Formadores externos (no pueden matricularse)
+	// 2. Formadores externos (no pueden matricularse)
 	// //////////////////////////////////////////////
 
 	@Test
@@ -126,7 +95,7 @@ public class InscripcionFIPModelTest {
 	}
 
 	// //////////////////////////////////////////////
-	// 4. Profesor responsable no puede matricularse en su FIP
+	// 3. Profesor responsable no puede matricularse en su FIP
 	// //////////////////////////////////////////////
 
 	@Test
@@ -145,7 +114,7 @@ public class InscripcionFIPModelTest {
 	}
 
 	// //////////////////////////////////////////////
-	// 5. Plazas de la FIP
+	// 4. Plazas de la FIP
 	// //////////////////////////////////////////////
 
 	@Test
@@ -167,7 +136,7 @@ public class InscripcionFIPModelTest {
 	}
 
 	// //////////////////////////////////////////////
-	// 6. Matrículas duplicadas
+	// 5. Matrículas duplicadas
 	// //////////////////////////////////////////////
 
 	@Test
@@ -188,7 +157,7 @@ public class InscripcionFIPModelTest {
 	}
 
 	// //////////////////////////////////////////////
-	// 7. Gratuidad y resultado inicial PENDIENTE
+	// 6. Gratuidad y resultado inicial PENDIENTE
 	// //////////////////////////////////////////////
 
 	@Test
@@ -200,50 +169,16 @@ public class InscripcionFIPModelTest {
 	}
 
 	@Test
-	@DisplayName("Al matricular, la inscripción queda con resultado PENDIENTE y estado ACTIVA")
-	public void testEstadoInicialPendienteYActiva() {
+	@DisplayName("Al matricular, la inscripción queda con resultado PENDIENTE")
+	public void testResultadoInicialPendiente() {
 		InscripcionFIPDTO dto = model.crearInscripcion("INS0001", "FIP001", "PR0002", TipoUsuarioFIP.PROFESOR, "2026-11-20");
 		assertEquals(ResultadoInscripcionFIP.PENDIENTE, dto.getResultado());
-		assertEquals(EstadoInscripcionFIP.ACTIVA, dto.getEstado());
 		assertEquals("PR0002", dto.getUsuarioId());
 		assertEquals("FIP001", dto.getFipId());
 	}
 
 	// //////////////////////////////////////////////
-	// 8. Ciclo de anulación
-	// //////////////////////////////////////////////
-
-	@Test
-	@DisplayName("Secretaría anula una inscripción antes del inicio y pasa a estado ANULADA")
-	public void testAnularInscripcionValida() {
-		InscripcionFIPDTO dto = model.crearInscripcion("INS0001", "FIP001", "PR0002", TipoUsuarioFIP.PROFESOR, "2026-11-20");
-		assertEquals(EstadoInscripcionFIP.ACTIVA, dto.getEstado());
-
-		model.validarYAnularInscripcion(dto, "2026-12-01", "2026-11-25");
-		assertEquals(EstadoInscripcionFIP.ANULADA, dto.getEstado());
-	}
-
-	@Test
-	@DisplayName("No se puede anular una inscripción que ya ha sido anulada previamente")
-	public void testAnularInscripcionYaAnulada() {
-		InscripcionFIPDTO dto = model.crearInscripcion("INS0001", "FIP001", "PR0002", TipoUsuarioFIP.PROFESOR, "2026-11-20");
-		model.validarYAnularInscripcion(dto, "2026-12-01", "2026-11-25");
-
-		ValidationException e = assertThrows(ValidationException.class,
-				() -> model.validarYAnularInscripcion(dto, "2026-12-01", "2026-11-26"));
-		assertTrue(e.getMessage().contains("ya se encuentra anulada"), e.getMessage());
-	}
-
-	@Test
-	@DisplayName("No se puede anular una inscripción si la FIP ya ha empezado")
-	public void testAnularInscripcionFueraDePlazo() {
-		InscripcionFIPDTO dto = model.crearInscripcion("INS0001", "FIP001", "PR0002", TipoUsuarioFIP.PROFESOR, "2026-11-20");
-		assertThrows(ValidationException.class,
-				() -> model.validarYAnularInscripcion(dto, "2026-12-01", "2026-12-01"));
-	}
-
-	// //////////////////////////////////////////////
-	// 9. Validación completa orquestada
+	// 7. Validación completa orquestada
 	// //////////////////////////////////////////////
 
 	@Test
@@ -277,7 +212,7 @@ public class InscripcionFIPModelTest {
 	}
 
 	// //////////////////////////////////////////////
-	// 10. DTO de FIP
+	// 8. DTO de FIP
 	// //////////////////////////////////////////////
 
 	@Test

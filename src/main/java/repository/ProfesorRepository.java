@@ -1,6 +1,11 @@
 package repository;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
+
+import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import model.asignaciondocente.AsignacionDocenteDisplayDTO;
 import model.asignaciondocente.RolDocente;
@@ -21,6 +26,13 @@ public class ProfesorRepository {
     public List<ProfesorDTO> getProfesores() {
         String sql = "SELECT profesorId, nombre, apellidos FROM Profesor ORDER BY profesorId";
         return db.executeQueryPojo(ProfesorDTO.class, sql);
+    }
+
+    /** Si existe un profesor con ese id (dentro de la transacción del modelo) */
+    public boolean existe(Connection conn, String profesorId) throws SQLException {
+        Number existentes = new QueryRunner().query(conn, "SELECT COUNT(*) FROM Profesor WHERE profesorId = ?",
+                new ScalarHandler<Number>(), profesorId);
+        return existentes.intValue() > 0;
     }
 
     /**

@@ -11,13 +11,11 @@ public class InscripcionFIPDTO {
 	private TipoUsuarioFIP tipoUsuario;
 	private String fechaInscripcion;
 	private ResultadoInscripcionFIP resultado;
-	private EstadoInscripcionFIP estado;
 	private double precio;
 
 	public InscripcionFIPDTO() {
 		super();
 		this.resultado = ResultadoInscripcionFIP.PENDIENTE;
-		this.estado = EstadoInscripcionFIP.ACTIVA;
 		this.precio = 0.0;
 	}
 
@@ -29,7 +27,6 @@ public class InscripcionFIPDTO {
 		this.tipoUsuario = tipoUsuario;
 		this.fechaInscripcion = fechaInscripcion;
 		this.resultado = ResultadoInscripcionFIP.PENDIENTE;
-		this.estado = EstadoInscripcionFIP.ACTIVA;
 		this.precio = 0.0; // La matrícula en una FIP es siempre gratuita
 	}
 
@@ -79,14 +76,6 @@ public class InscripcionFIPDTO {
 
 	public void setResultado(ResultadoInscripcionFIP resultado) {
 		this.resultado = resultado;
-	}
-
-	public EstadoInscripcionFIP getEstado() {
-		return estado;
-	}
-
-	public void setEstado(EstadoInscripcionFIP estado) {
-		this.estado = estado;
 	}
 
 	public double getPrecio() {

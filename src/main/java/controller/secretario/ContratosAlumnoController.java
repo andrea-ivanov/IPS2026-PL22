@@ -11,6 +11,7 @@ import model.contrato.ContratoAlumnoDTO;
 import model.contrato.ContratoAlumnoModel;
 import util.ComboBuscable;
 import util.Database;
+import util.RelojSistema;
 import util.SwingUtil;
 import util.exception.ValidationException;
 import view.secretario.ContratosAlumnoPanel;
@@ -47,7 +48,7 @@ public class ContratosAlumnoController {
 		List<ContratoAlumnoDTO> contratos = model.getContratos(alumnoModel.resolverAlumnoId(alumno));
 		DefaultTableModel tabla = (DefaultTableModel) panel.getTabContratos().getModel();
 		tabla.setRowCount(0);
-		LocalDate hoy = LocalDate.now();
+		LocalDate hoy = RelojSistema.getInstance().hoy();
 		for (ContratoAlumnoDTO c : contratos) {
 			tabla.addRow(new Object[] { c.getContratoId(), c.getDescripcion(), c.getFechaInicio(), c.getFechaFin(),
 					situacion(c, hoy) });
@@ -55,7 +56,7 @@ public class ContratosAlumnoController {
 		panel.getLblTitulo().setText("Historial de contratos de " + alumno);
 		panel.getLblResultados().setText(contratos.isEmpty()
 				? "El alumno no tiene ningún contrato registrado"
-				: contratos.size() + " contratos registrados");
+				: contratos.size() + (contratos.size() == 1 ? " contrato registrado" : " contratos registrados"));
 	}
 
 	private void registrarContrato() {

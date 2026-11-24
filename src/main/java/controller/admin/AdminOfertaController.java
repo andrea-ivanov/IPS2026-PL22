@@ -3,10 +3,13 @@ package controller.admin;
 import view.admin.AdminOfertaView;
 import view.admin.AnoAcademicoFormDialog;
 import view.admin.CursoFormDialog;
+import view.admin.FipFormDialog;
 import view.admin.GradoFormDialog;
 import model.anoacademico.AnoAcademico;
 import model.curso.CursoDisplayDTO;
 import model.curso.CursoEdicionDTO;
+import model.fip.FipDisplayDTO;
+import model.fip.FipModel;
 import model.grado.GradoDisplayDTO;
 import model.matriculacion.MatriculacionDisplayDTO;
 import model.matriculacion.MatriculacionModel;
@@ -15,8 +18,11 @@ import model.curso.CursoModel;
 import model.grado.GradoModel;
 import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
+import util.ComboBuscable;
 import util.Database;
+import util.RelojSistema;
 import util.SwingUtil;
+import util.Util;
 import util.exception.ValidationException;
 
 import javax.swing.JOptionPane;
@@ -27,7 +33,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -54,6 +59,7 @@ public class AdminOfertaController {
 	private CursoModel cursoModel;
 	private MatriculacionModel matriculacionModel;
 	private AnoAcademicoModel anoAcademicoModel;
+	private FipModel fipModel;
 
 	// Estado del Año Académico actual
 	private AnoAcademico anoAcademicoActual;
@@ -62,6 +68,7 @@ public class AdminOfertaController {
 	private List<GradoDisplayDTO> todosLosGrados = new ArrayList<>();
 	private List<CursoDisplayDTO> todosLosCursos = new ArrayList<>();
 	private List<MatriculacionDisplayDTO> todasLasMatriculaciones = new ArrayList<>();
+	private List<FipDisplayDTO> todasLasFips = new ArrayList<>();
 
 	// Grado y curso que se están viendo en los paneles CURSOS y MATRICULACION
 	private String gradoActualId;
@@ -76,6 +83,7 @@ public class AdminOfertaController {
 		this.cursoModel = new CursoModel(db);
 		this.matriculacionModel = new MatriculacionModel(db);
 		this.anoAcademicoModel = new AnoAcademicoModel(db);
+		this.fipModel = new FipModel(db);
 		this.initView();
 	}
 
@@ -89,6 +97,7 @@ public class AdminOfertaController {
 		this.cursoModel = cursoModel;
 		this.matriculacionModel = matriculacionModel;
 		this.anoAcademicoModel = new AnoAcademicoModel(db);
+		this.fipModel = new FipModel(db);
 		this.initView();
 	}
 
@@ -155,6 +164,15 @@ public class AdminOfertaController {
 		view.getBtnModificarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onModificarCurso));
 		view.getBtnEliminarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarCurso));
 
+		// 7. Menú y FIP (HU 37165)
+		view.getBtnGrados().addActionListener(e -> view.showGradosView());
+		view.getBtnFips().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+			cargarFips();
+			view.showFipsView();
+		}));
+		view.setOnVerFip(fila -> view.showFipView(todasLasFips.get(fila)));
+		view.getBtnCrearFip().addActionListener(e -> SwingUtil.exceptionWrapper(this::onCrearFip));
+
 		// Se muestra al final: si la carga falla, no queda una ventana vacía abierta
 		view.getFrame().setVisible(true);
 	}
@@ -168,12 +186,12 @@ public class AdminOfertaController {
 	// TODO: cuando GradoFormDialog tenga el desplegable de ramas, leer aqui y en onModificarGrado el valor de BD
 	// de la rama seleccionada (sin tilde) en lugar de getTxtRama().getText(), y preseleccionar la actual al modificar
 	private void onAnadirGrado() {
-		gradoModel.validarCreacionGrado(getAnioActualId(), LocalDate.now().toString());
+		gradoModel.validarCreacionGrado(getAnioActualId(), RelojSistema.getInstance().hoyIso());
 		GradoFormDialog form = new GradoFormDialog(view.getFrame());
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
 			String nombre = form.getTxtNombre().getText();
 			gradoModel.crearGrado(nombre, form.getTxtFacultad().getText(), form.getTxtRama().getText(),
-					getAnioActualId(), LocalDate.now().toString());
+					getAnioActualId(), RelojSistema.getInstance().hoyIso());
 			form.cerrar();
 			JOptionPane.showMessageDialog(view.getFrame(), "Grado " + nombre.trim() + " añadido correctamente.",
 					"Añadir grado", JOptionPane.INFORMATION_MESSAGE);
@@ -256,6 +274,54 @@ public class AdminOfertaController {
 		}
 	}
 
+	/**
+	 * Formulario "Crear FIP" (HU 37165): al pulsar "Crear" se pide confirmación y, con "Sí", se intenta crear.
+	 * Si falla, se muestra el motivo y el formulario sigue abierto con lo escrito.
+	 */
+	private void onCrearFip() {
+		FipFormDialog form = new FipFormDialog(view.getFrame());
+		for (ProfesorDTO profesor : new ProfesorModel(db).getProfesores()) {
+			form.getCbProfesor().addItem(profesor);
+		}
+		form.getCbProfesor().setSelectedIndex(-1);
+		ComboBuscable.hacerBuscable(form.getCbProfesor());
+
+		form.getBtnCrear().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+			int confirm = JOptionPane.showConfirmDialog(form.getDialog(),
+					"¿Estás seguro de que quieres crear la FIP?",
+					"Crear FIP", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+			if (confirm != JOptionPane.YES_OPTION) {
+				return;
+			}
+			try {
+				ProfesorDTO profesor = ComboBuscable.getSeleccion(form.getCbProfesor());
+				fipModel.crearFip(form.getTxtNombre().getText(), profesor != null ? profesor.getProfesorId() : null,
+						fechaInputAIso(form.getTxtFechaInicio().getText()),
+						fechaInputAIso(form.getTxtFechaFin().getText()), RelojSistema.getInstance().hoyIso());
+			} catch (ValidationException ex) {
+				JOptionPane.showMessageDialog(form.getDialog(), "No se ha podido crear la FIP: " + ex.getMessage(),
+						"Crear FIP", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			form.cerrar();
+			JOptionPane.showMessageDialog(view.getFrame(), "Se ha creado con éxito.", "Crear FIP",
+					JOptionPane.INFORMATION_MESSAGE);
+			cargarFips();
+		}));
+		form.mostrar();
+	}
+
+	/** Fecha dd/mm/aa del formulario en formato ISO; null si está vacía o incompleta */
+	private String fechaInputAIso(String text) {
+		Date fecha = parsearFechaInput(text);
+		return fecha != null ? Util.dateToIsoString(fecha) : null;
+	}
+
+	private void cargarFips() {
+		todasLasFips = fipModel.getFips();
+		view.actualizarTablaFips(todasLasFips);
+	}
+
 	private void onEliminarGrado() {
 		String anioActualId = getAnioActualId();
 		gradoModel.validarEliminacion(gradoActualId, anioActualId);
@@ -317,7 +383,7 @@ public class AdminOfertaController {
 	}
 
 	private void onNuevoAnoAcademico() {
-		anoAcademicoModel.validarAnoAnteriorTerminado(LocalDate.now().toString());
+		anoAcademicoModel.validarAnoAnteriorTerminado(RelojSistema.getInstance().hoyIso());
 
 		AnoAcademicoFormDialog form = new AnoAcademicoFormDialog(view.getFrame());
 		form.getBtnGuardar().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
@@ -326,7 +392,7 @@ public class AdminOfertaController {
 			Date inicioMatriculacion = parsearFechaInput(form.getTxtInicioMatriculacion().getText());
 			Date finMatriculacion = parsearFechaInput(form.getTxtFinMatriculacion().getText());
 
-			String anioId = anoAcademicoModel.validarNuevoAnoAcademico(LocalDate.now().toString(), inicioAnio, finAnio, inicioMatriculacion,
+			String anioId = anoAcademicoModel.validarNuevoAnoAcademico(RelojSistema.getInstance().hoyIso(), inicioAnio, finAnio, inicioMatriculacion,
 					finMatriculacion);
 
 			int confirm = JOptionPane.showConfirmDialog(form.getDialog(),
@@ -338,7 +404,7 @@ public class AdminOfertaController {
 				return;
 			}
 
-			anoAcademicoModel.iniciarNuevoAnoAcademico(LocalDate.now().toString(), inicioAnio, finAnio, inicioMatriculacion, finMatriculacion);
+			anoAcademicoModel.iniciarNuevoAnoAcademico(RelojSistema.getInstance().hoyIso(), inicioAnio, finAnio, inicioMatriculacion, finMatriculacion);
 			form.cerrar();
 			JOptionPane.showMessageDialog(view.getFrame(), "Año académico " + anioId + " configurado correctamente.",
 					"Configurar Nuevo Año Académico", JOptionPane.INFORMATION_MESSAGE);
@@ -480,7 +546,7 @@ public class AdminOfertaController {
 	}
 
 	private void initView() {
-		view.showGradosView();
+		view.showMenuView();
 	}
 }
 

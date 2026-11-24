@@ -1,20 +1,43 @@
 package view.estudiante;
 
-import model.matriculacion.OfertaCursoDTO;
-import model.grado.GradoDisplayDTO;
-import model.matriculacion.ResumenSolicitudDTO;
-import view.comun.Estilo;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.util.ArrayList;
+import java.util.List;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.SwingConstants;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
+
+import model.grado.GradoDisplayDTO;
+import model.matriculacion.OfertaCursoDTO;
+import model.matriculacion.ResumenSolicitudDTO;
+import view.comun.Estilo;
 
 /**
  * Vista de Solicitud de Matrícula (HU 35235 / Fase 3).
@@ -66,7 +89,6 @@ public class SolicitudMatriculaView {
     private JRadioButton rbTransferencia;
     private JRadioButton rbCartaPago;
     private ButtonGroup grupoPago;
-    private JTextArea txtInfoMetodoPago;
     private JLabel lblPagoImporteFinal;
     private JButton btnConfirmarMatricula;
     private JButton btnVolverPaso2;
@@ -431,19 +453,24 @@ public class SolicitudMatriculaView {
         JPanel panel = new JPanel(new BorderLayout(12, 12));
         panel.setOpaque(false);
 
-        // Subpanel central con opciones de pago y advertencia
-        JPanel panelContenido = new JPanel();
-        panelContenido.setLayout(new BoxLayout(panelContenido, BoxLayout.Y_AXIS));
+        // Subpanel central: arriba selección e importe; abajo recuadro de reglas por
+        // método
+        JPanel panelContenido = new JPanel(new BorderLayout(0, 20));
         panelContenido.setBackground(Color.WHITE);
         panelContenido.setBorder(new CompoundBorder(
                 new LineBorder(new Color(222, 226, 230), 1, true),
-                new EmptyBorder(20, 25, 20, 25)));
+                new EmptyBorder(26, 25, 16, 25)));
 
-        JLabel lblTituloPago = new JLabel("Seleccione la Modalidad de Pago");
-        lblTituloPago.setFont(new Font("Tahoma", Font.BOLD, 16));
+        JPanel bloqueSuperior = new JPanel();
+        bloqueSuperior.setLayout(new BoxLayout(bloqueSuperior, BoxLayout.Y_AXIS));
+        bloqueSuperior.setOpaque(false);
+
+        JLabel lblTituloPago = new JLabel("Seleccione la Modalidad de Pago", SwingConstants.CENTER);
+        lblTituloPago.setFont(new Font("Tahoma", Font.BOLD, 18));
         lblTituloPago.setForeground(new Color(33, 37, 41));
-        panelContenido.add(lblTituloPago);
-        panelContenido.add(Box.createVerticalStrut(15));
+        lblTituloPago.setAlignmentX(Component.CENTER_ALIGNMENT);
+        bloqueSuperior.add(lblTituloPago);
+        bloqueSuperior.add(Box.createVerticalStrut(16));
 
         rbTarjeta = new JRadioButton("Tarjeta de Crédito / Débito (Pasarela de pago segura en línea)");
         rbTarjeta.setFont(new Font("Tahoma", Font.BOLD, 13));
@@ -463,43 +490,59 @@ public class SolicitudMatriculaView {
         grupoPago.add(rbTransferencia);
         grupoPago.add(rbCartaPago);
 
-        panelContenido.add(rbTarjeta);
-        panelContenido.add(Box.createVerticalStrut(8));
-        panelContenido.add(rbTransferencia);
-        panelContenido.add(Box.createVerticalStrut(8));
-        panelContenido.add(rbCartaPago);
-        panelContenido.add(Box.createVerticalStrut(18));
-
-        // Cuadro explicativo / condiciones de validación
-        JPanel panelAviso = new JPanel(new BorderLayout());
-        panelAviso.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(new Color(13, 110, 253), 1, true),
-                "Información de Validación Administrativa",
-                TitledBorder.LEFT, TitledBorder.TOP,
-                new Font("Tahoma", Font.BOLD, 12),
-                new Color(13, 110, 253)));
-        panelAviso.setBackground(new Color(240, 248, 255));
-
-        txtInfoMetodoPago = new JTextArea(
-                "• Pago con Tarjeta: La transacción se valida de forma inmediata. Su matrícula quedará registrada y las asignaturas pasarán directamente al estado 'PAGADA'.\n\n"
-                        +
-                        "• Pago por Transferencia o Carta de Pago: La matrícula quedará registrada en estado 'SOLICITADA' con asignaturas pendientes de pago. Deberá presentar el justificante de abono en secretaría para su validación manual definitiva.");
-        txtInfoMetodoPago.setFont(new Font("Tahoma", Font.PLAIN, 12));
-        txtInfoMetodoPago.setWrapStyleWord(true);
-        txtInfoMetodoPago.setLineWrap(true);
-        txtInfoMetodoPago.setEditable(false);
-        txtInfoMetodoPago.setOpaque(false);
-        txtInfoMetodoPago.setBorder(new EmptyBorder(10, 12, 10, 12));
-        panelAviso.add(txtInfoMetodoPago, BorderLayout.CENTER);
-
-        panelContenido.add(panelAviso);
-        panelContenido.add(Box.createVerticalStrut(15));
+        bloqueSuperior.add(PagoStepHelper.crearCajaOpcionesPago(rbTarjeta, rbTransferencia, rbCartaPago));
+        bloqueSuperior.add(Box.createVerticalStrut(14));
 
         lblPagoImporteFinal = new JLabel("Importe definitivo a abonar: 0.00 €", SwingConstants.CENTER);
         lblPagoImporteFinal.setFont(new Font("Tahoma", Font.BOLD, 16));
         lblPagoImporteFinal.setForeground(new Color(25, 135, 84));
         lblPagoImporteFinal.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panelContenido.add(lblPagoImporteFinal);
+        bloqueSuperior.add(lblPagoImporteFinal);
+
+        JPanel wrapperSuperior = new JPanel(new GridBagLayout());
+        wrapperSuperior.setOpaque(false);
+        wrapperSuperior.add(bloqueSuperior);
+        panelContenido.add(wrapperSuperior, BorderLayout.CENTER);
+
+        // Recuadro compacto con una sección por método y sus reglas en Matrícula de
+        // Grado
+        JPanel panelAviso = new JPanel(new BorderLayout(0, 8));
+        panelAviso.setBorder(BorderFactory.createTitledBorder(
+                new LineBorder(new Color(13, 110, 253), 1, true),
+                "Condiciones para cada método de pago en el grado",
+                TitledBorder.CENTER, TitledBorder.TOP,
+                new Font("Tahoma", Font.BOLD, 12),
+                new Color(13, 110, 253)));
+        panelAviso.setBackground(new Color(240, 248, 255));
+
+        JPanel gridMetodos = new JPanel(new GridLayout(1, 3, 10, 0));
+        gridMetodos.setOpaque(false);
+        gridMetodos.setBorder(new EmptyBorder(6, 10, 10, 10));
+
+        gridMetodos.add(PagoStepHelper.crearTarjetaReglaPago(
+                "Tarjeta (Instantáneo)",
+                "<b>• Pago:</b> Inmediato en línea.<br>"
+                        + "<b>• Asignaturas:</b> El pago de las asignaturas queda validado.<br>"
+                        + "<b>• Gestión:</b> Sin trámites presenciales en secretaría."));
+
+        gridMetodos.add(PagoStepHelper.crearTarjetaReglaPago(
+                "Transferencia (Diferido)",
+                "<b>• Pago:</b> No es instantáneo.<br>"
+                        + "<b>• Asignaturas:</b> El pago de las asignaturas queda pendiente.<br>"
+                        + "<b>• Gestión:</b> Requiere presentar el justificante de pago en secretaría."));
+
+        gridMetodos.add(PagoStepHelper.crearTarjetaReglaPago(
+                "Carta de Pago (Diferido)",
+                "<b>• Pago:</b> No es instantáneo (abono presencial).<br>"
+                        + "<b>• Asignaturas:</b> El pago de las asignaturas queda pendiente.<br>"
+                        + "<b>• Gestión:</b> Abone en banco y entregue justificante en secretaría para validarla."));
+
+        panelAviso.add(gridMetodos, BorderLayout.CENTER);
+
+        JPanel wrapperAviso = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        wrapperAviso.setOpaque(false);
+        wrapperAviso.add(panelAviso);
+        panelContenido.add(wrapperAviso, BorderLayout.SOUTH);
 
         panel.add(panelContenido, BorderLayout.CENTER);
 

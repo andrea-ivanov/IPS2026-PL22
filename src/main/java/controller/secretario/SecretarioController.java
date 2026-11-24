@@ -10,12 +10,12 @@ import model.acta.ActaModel;
 import view.secretario.SecretarioView;
 import util.Database;
 import util.Paginacion;
+import util.RelojSistema;
 import util.SwingUtil;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.GridLayout;
-import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -530,7 +530,7 @@ public class SecretarioController {
     // =========================================================================
 
     private String hoy() {
-        return LocalDate.now().toString();
+        return RelojSistema.getInstance().hoyIso();
     }
 
     /** Valor seleccionado en un desplegable de filtro, o nulo si es "TODOS" (no filtra). */

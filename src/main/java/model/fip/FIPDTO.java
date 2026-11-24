@@ -1,12 +1,13 @@
 package model.fip;
 
 /**
- * Datos de una Formación para la Integración Profesional (FIP) (HU 37046).
+ * Datos de una Formación Interna del Personal (FIP) (HU 37046).
  * Sin Lombok a propósito: getters y setters escritos a mano.
  */
 public class FIPDTO {
 	private String fipId;
 	private String nombre;
+	private String fechaCreacion;
 	private String fechaInicio;
 	private String fechaFin;
 	private String profesorResponsableId;
@@ -44,6 +45,14 @@ public class FIPDTO {
 		this.nombre = nombre;
 	}
 
+	public String getFechaCreacion() {
+		return fechaCreacion;
+	}
+
+	public void setFechaCreacion(String fechaCreacion) {
+		this.fechaCreacion = fechaCreacion;
+	}
+
 	public String getFechaInicio() {
 		return fechaInicio;
 	}
@@ -74,6 +83,11 @@ public class FIPDTO {
 
 	public void setPlazasMaximas(int plazasMaximas) {
 		this.plazasMaximas = plazasMaximas;
+	}
+
+	/** Columna plazas de la tabla Fip (máximo que fija el administrador); 0 si no hay máximo */
+	public void setPlazas(int plazas) {
+		this.plazasMaximas = plazas;
 	}
 
 	public int getPlazasOcupadas() {

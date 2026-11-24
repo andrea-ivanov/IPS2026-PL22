@@ -3,7 +3,6 @@ package model.matriculacion;
 import model.grado.GradoDisplayDTO;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +12,7 @@ import repository.AnoAcademicoRepository;
 import repository.GradoRepository;
 import repository.MatriculaRepository;
 import util.Database;
+import util.RelojSistema;
 import util.UnexpectedException;
 import util.exception.ValidationException;
 
@@ -523,7 +523,7 @@ public class MatriculacionModel {
 		// Fecha de la solicitud (formato ISO YYYY-MM-DD)
 		String fecha = solicitud.getFechaSolicitud();
 		if (fecha == null || fecha.trim().isEmpty()) {
-			fecha = LocalDate.now().toString();
+			fecha = RelojSistema.getInstance().hoyIso();
 			solicitud.setFechaSolicitud(fecha);
 		} else {
 			fecha = fecha.trim();
@@ -604,7 +604,7 @@ public class MatriculacionModel {
 		resumen.setAlumnoId(cleanAlumnoId);
 		resumen.setGradoId(gradoId);
 		resumen.setAnioAcademicoId(getAnioAcademicoActual());
-		resumen.setFechaSolicitud(LocalDate.now().toString());
+		resumen.setFechaSolicitud(RelojSistema.getInstance().hoyIso());
 
 		if (cleanAlumnoId != null && !cleanAlumnoId.trim().isEmpty()) {
 			Object[] r = alumnoRepository.findDatosAlumno(cleanAlumnoId.trim());

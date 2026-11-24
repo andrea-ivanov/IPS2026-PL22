@@ -19,8 +19,8 @@ import util.Database;
  * Solo SQL y mapeo a DTO; las reglas de negocio están en InscripcionFIPModel.
  */
 public class InscripcionFipRepository {
-	private static final String SELECT_FIP = "SELECT f.fipId, f.nombre, f.fechaInicio, f.fechaFin, "
-			+ "f.profesorId AS profesorResponsableId, "
+	// f.* y no la lista de columnas: así se lee también el máximo de plazas en cuanto la tabla Fip tenga la columna plazas
+	private static final String SELECT_FIP = "SELECT f.*, f.profesorId AS profesorResponsableId, "
 			+ "(SELECT COUNT(*) FROM InscripcionFip i WHERE i.fipId = f.fipId) AS plazasOcupadas "
 			+ "FROM Fip f ";
 
@@ -80,19 +80,5 @@ public class InscripcionFipRepository {
 			String fechaInscripcion, String resultado) throws SQLException {
 		update(conn, "INSERT INTO InscripcionFip (inscripcionId, fipId, alumnoId, profesorId, fechaInscripcion, resultado) "
 				+ "VALUES (?, ?, ?, ?, ?, ?)", inscripcionId, fipId, alumnoId, profesorId, fechaInscripcion, resultado);
-	}
-
-	/** FIP de la inscripción; nulo si la inscripción no existe */
-	public String findFipDeInscripcion(Connection conn, String inscripcionId) throws SQLException {
-		return new QueryRunner().query(conn, "SELECT fipId FROM InscripcionFip WHERE inscripcionId = ?",
-				new ScalarHandler<String>(), inscripcionId);
-	}
-
-	/**
-	 * Anula la inscripción. InscripcionFip no tiene estado, así que de momento se borra la fila;
-	 * si se añade un estado (ACTIVA / ANULADA) basta con cambiar esta sentencia por un UPDATE.
-	 */
-	public int anular(Connection conn, String inscripcionId) throws SQLException {
-		return update(conn, "DELETE FROM InscripcionFip WHERE inscripcionId = ?", inscripcionId);
 	}
 }
