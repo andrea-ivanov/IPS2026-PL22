@@ -1,29 +1,52 @@
 package view.estudiante;
 
-import model.matriculacion.MatriculacionModel;
-import model.microcredencial.OfertaMicrocredencialDTO;
-import model.microcredencial.ResumenSolicitudMicrocredencialDTO;
-import view.comun.Estilo;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.util.ArrayList;
+import java.util.List;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.SwingConstants;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
+
+import model.matriculacion.MatriculacionModel;
+import model.microcredencial.OfertaMicrocredencialDTO;
+import model.microcredencial.ResumenSolicitudMicrocredencialDTO;
+import view.comun.Estilo;
 
 /**
  * Vista de Solicitud de Matrícula en Microcredenciales (HU 35987).
  * Flujo por pasos (Asistente de Microcredenciales):
- * - Paso 1: Oferta de microcredenciales filtrada por rama de conocimiento del estudiante,
- *           con cálculo en vivo y exclusión de permanencia.
+ * - Paso 1: Oferta de microcredenciales filtrada por rama de conocimiento del
+ * estudiante,
+ * con cálculo en vivo y exclusión de permanencia.
  * - Paso 2: Resumen previo consolidado antes de confirmar.
- * - Paso 3: Selección de modalidad de pago (Tarjeta, Transferencia, Carta de pago)
- *           con aviso normativo de abono previo al inicio del curso.
+ * - Paso 3: Selección de modalidad de pago (Tarjeta, Transferencia, Carta de
+ * pago)
+ * con aviso normativo de abono previo al inicio del curso.
  */
 public class SolicitudMicrocredencialView {
     public static final String PASO_SELECCION = "PASO_SELECCION";
@@ -65,7 +88,6 @@ public class SolicitudMicrocredencialView {
     private JRadioButton rbTransferencia;
     private JRadioButton rbCartaPago;
     private ButtonGroup grupoPago;
-    private JTextArea txtInfoMetodoPago;
     private JLabel lblPagoImporteFinal;
     private JButton btnConfirmarMatricula;
     private JButton btnVolverPaso2;
@@ -188,7 +210,8 @@ public class SolicitudMicrocredencialView {
         cbFiltroRama.setFont(new Font("Tahoma", Font.PLAIN, 12));
         panelFiltroRama.add(cbFiltroRama);
 
-        JLabel lblAvisoNormativa = new JLabel("(Solo se muestran microcredenciales de ramas que estés cursando o hayas superado)");
+        JLabel lblAvisoNormativa = new JLabel(
+                "(Solo se muestran microcredenciales de ramas que estés cursando o hayas superado)");
         lblAvisoNormativa.setFont(new Font("Tahoma", Font.ITALIC, 11));
         lblAvisoNormativa.setForeground(new Color(108, 117, 125));
         panelFiltroRama.add(lblAvisoNormativa);
@@ -276,7 +299,8 @@ public class SolicitudMicrocredencialView {
         panelTotales.add(lblTotalImporte);
         panelIndicadores.add(panelTotales, BorderLayout.WEST);
 
-        JLabel lblAvisoPermanencia = new JLabel("(20,00 €/crédito — Los créditos de microcredencial NO computan para la permanencia)");
+        JLabel lblAvisoPermanencia = new JLabel(
+                "(20,00 €/crédito — Los créditos de microcredencial NO computan para la permanencia)");
         lblAvisoPermanencia.setFont(new Font("Tahoma", Font.BOLD, 11));
         lblAvisoPermanencia.setForeground(new Color(108, 117, 125));
         panelIndicadores.add(lblAvisoPermanencia, BorderLayout.EAST);
@@ -399,18 +423,22 @@ public class SolicitudMicrocredencialView {
         JPanel panel = new JPanel(new BorderLayout(12, 12));
         panel.setOpaque(false);
 
-        JPanel panelContenido = new JPanel();
-        panelContenido.setLayout(new BoxLayout(panelContenido, BoxLayout.Y_AXIS));
+        JPanel panelContenido = new JPanel(new BorderLayout(0, 20));
         panelContenido.setBackground(Color.WHITE);
         panelContenido.setBorder(new CompoundBorder(
                 new LineBorder(new Color(222, 226, 230), 1, true),
-                new EmptyBorder(20, 25, 20, 25)));
+                new EmptyBorder(26, 25, 16, 25)));
 
-        JLabel lblTituloPago = new JLabel("Modalidad de Pago de la Microcredencial");
-        lblTituloPago.setFont(new Font("Tahoma", Font.BOLD, 16));
+        JPanel bloqueSuperior = new JPanel();
+        bloqueSuperior.setLayout(new BoxLayout(bloqueSuperior, BoxLayout.Y_AXIS));
+        bloqueSuperior.setOpaque(false);
+
+        JLabel lblTituloPago = new JLabel("Modalidad de Pago de la Microcredencial", SwingConstants.CENTER);
+        lblTituloPago.setFont(new Font("Tahoma", Font.BOLD, 18));
         lblTituloPago.setForeground(new Color(33, 37, 41));
-        panelContenido.add(lblTituloPago);
-        panelContenido.add(Box.createVerticalStrut(15));
+        lblTituloPago.setAlignmentX(Component.CENTER_ALIGNMENT);
+        bloqueSuperior.add(lblTituloPago);
+        bloqueSuperior.add(Box.createVerticalStrut(16));
 
         rbTarjeta = new JRadioButton("Tarjeta de Crédito / Débito (Validación inmediata de la plaza)");
         rbTarjeta.setFont(new Font("Tahoma", Font.BOLD, 13));
@@ -430,42 +458,66 @@ public class SolicitudMicrocredencialView {
         grupoPago.add(rbTransferencia);
         grupoPago.add(rbCartaPago);
 
-        panelContenido.add(rbTarjeta);
-        panelContenido.add(Box.createVerticalStrut(8));
-        panelContenido.add(rbTransferencia);
-        panelContenido.add(Box.createVerticalStrut(8));
-        panelContenido.add(rbCartaPago);
-        panelContenido.add(Box.createVerticalStrut(18));
-
-        // Cuadro normativo específico de Microcredenciales
-        JPanel panelAviso = new JPanel(new BorderLayout());
-        panelAviso.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(new Color(13, 110, 253), 1, true),
-                "Condiciones Normativas Oficiales",
-                TitledBorder.LEFT, TitledBorder.TOP,
-                new Font("Tahoma", Font.BOLD, 12),
-                new Color(13, 110, 253)));
-        panelAviso.setBackground(new Color(240, 248, 255));
-
-        txtInfoMetodoPago = new JTextArea(
-                "• Plazo de Matrícula y Pago: El periodo de matriculación es previo al inicio de la microcredencial. El pago debe quedar completamente realizado antes de la fecha de inicio del curso.\n\n"
-                        + "• Cómputo de Permanencia: Conforme a la normativa universitaria, los créditos matriculados en microcredenciales no computan en los umbrales del régimen de permanencia ni cuentan con limitación de créditos máximos.");
-        txtInfoMetodoPago.setFont(new Font("Tahoma", Font.PLAIN, 12));
-        txtInfoMetodoPago.setWrapStyleWord(true);
-        txtInfoMetodoPago.setLineWrap(true);
-        txtInfoMetodoPago.setEditable(false);
-        txtInfoMetodoPago.setOpaque(false);
-        txtInfoMetodoPago.setBorder(new EmptyBorder(10, 12, 10, 12));
-        panelAviso.add(txtInfoMetodoPago, BorderLayout.CENTER);
-
-        panelContenido.add(panelAviso);
-        panelContenido.add(Box.createVerticalStrut(15));
+        bloqueSuperior.add(PagoStepHelper.crearCajaOpcionesPago(rbTarjeta, rbTransferencia, rbCartaPago));
+        bloqueSuperior.add(Box.createVerticalStrut(14));
 
         lblPagoImporteFinal = new JLabel("Importe definitivo a abonar: 0.00 €", SwingConstants.CENTER);
         lblPagoImporteFinal.setFont(new Font("Tahoma", Font.BOLD, 16));
         lblPagoImporteFinal.setForeground(new Color(25, 135, 84));
         lblPagoImporteFinal.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panelContenido.add(lblPagoImporteFinal);
+        bloqueSuperior.add(lblPagoImporteFinal);
+
+        JPanel wrapperSuperior = new JPanel(new GridBagLayout());
+        wrapperSuperior.setOpaque(false);
+        wrapperSuperior.add(bloqueSuperior);
+        panelContenido.add(wrapperSuperior, BorderLayout.CENTER);
+
+        // Recuadro compacto con una sección por método, estados y plazos de cierre
+        JPanel panelAviso = new JPanel(new BorderLayout(0, 6));
+        panelAviso.setBorder(BorderFactory.createTitledBorder(
+                new LineBorder(new Color(13, 110, 253), 1, true),
+                "Condiciones para cada método de pago en la microcredencial",
+                TitledBorder.CENTER, TitledBorder.TOP,
+                new Font("Tahoma", Font.BOLD, 12),
+                new Color(13, 110, 253)));
+        panelAviso.setBackground(new Color(240, 248, 255));
+
+        JPanel gridMetodos = new JPanel(new GridLayout(1, 3, 10, 0));
+        gridMetodos.setOpaque(false);
+        gridMetodos.setBorder(new EmptyBorder(6, 10, 4, 10));
+
+        gridMetodos.add(PagoStepHelper.crearTarjetaReglaPago(
+                "Tarjeta (Instantáneo)",
+                "<b>• Pago:</b> Inmediato en línea.<br>"
+                        + "<b>• Estado:</b> Queda el pago validado y usted inscrit@.<br>"
+                        + "<b>• Plaza:</b> Queda la plaza confirmada al instante salvo cancelación del curso por baja demanda."));
+
+        gridMetodos.add(PagoStepHelper.crearTarjetaReglaPago(
+                "Transferencia (Diferido)",
+                "<b>• Pago:</b> No es instantáneo.<br>"
+                        + "<b>• Estado:</b> Queda solicitada sin la plaza confirmada.<br>"
+                        + "<b>• Plazo:</b> Abone y valide antes del cierre de matrícula (1 día antes del fin de plazo); si cierra sin validar, se cancela por impago."));
+
+        gridMetodos.add(PagoStepHelper.crearTarjetaReglaPago(
+                "Carta de Pago (Diferido)",
+                "<b>• Pago:</b> No es instantáneo (abono presencial).<br>"
+                        + "<b>• Estado:</b> Queda solicitada sin la plaza confirmada.<br>"
+                        + "<b>• Plazo:</b> Abone y entregue justificante antes del cierre de matrícula; si cierra sin validar, se cancela por impago."));
+
+        panelAviso.add(gridMetodos, BorderLayout.CENTER);
+
+        JLabel lblNormativa = new JLabel(
+                "Normativa: El pago debe completarse antes del inicio del curso. Los créditos de microcredencial no computan para la permanencia ni tienen límite máximo.",
+                SwingConstants.CENTER);
+        lblNormativa.setFont(new Font("Tahoma", Font.ITALIC, 11));
+        lblNormativa.setForeground(new Color(73, 80, 87));
+        lblNormativa.setBorder(new EmptyBorder(2, 10, 8, 10));
+        panelAviso.add(lblNormativa, BorderLayout.SOUTH);
+
+        JPanel wrapperAviso = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        wrapperAviso.setOpaque(false);
+        wrapperAviso.add(panelAviso);
+        panelContenido.add(wrapperAviso, BorderLayout.SOUTH);
 
         panel.add(panelContenido, BorderLayout.CENTER);
 
@@ -565,8 +617,9 @@ public class SolicitudMicrocredencialView {
                         " &nbsp;|&nbsp; <b>DNI:</b> " + (resumen.getDni() != null ? resumen.getDni() : "") +
                         " &nbsp;|&nbsp; <b>Identificador:</b> "
                         + (resumen.getAlumnoId() != null ? resumen.getAlumnoId() : "") + "</html>");
-        lblResumenFecha.setText("<html><b>Tipo de matrícula:</b> Microcredenciales Universitarias &nbsp;|&nbsp; <b>Fecha:</b> "
-                + (resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : "") + "</html>");
+        lblResumenFecha
+                .setText("<html><b>Tipo de matrícula:</b> Microcredenciales Universitarias &nbsp;|&nbsp; <b>Fecha:</b> "
+                        + (resumen.getFechaSolicitud() != null ? resumen.getFechaSolicitud() : "") + "</html>");
 
         modelResumen.setRowCount(0);
         if (resumen.getMicrocredenciales() != null) {
@@ -647,4 +700,3 @@ public class SolicitudMicrocredencialView {
         return rbCartaPago;
     }
 }
-

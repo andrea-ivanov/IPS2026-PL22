@@ -70,10 +70,7 @@ public class MisMatriculasView {
         // =========================================================================
         // Panel superior: Título, selector de grado e Hitos de Permanencia
         // =========================================================================
-        btnVolver = Estilo.botonSecundario("‹  Atrás");
-        btnVolver.setToolTipText("Volver al menú del estudiante");
-        JPanel panelNorte = Estilo.cabecera("MI EXPEDIENTE", new JLabel("Listado de mis matrículas y expediente"),
-                btnVolver);
+        JPanel panelNorte = Estilo.cabecera("MI EXPEDIENTE", new JLabel("Listado de mis matrículas y expediente"));
 
         JPanel panelDatos = new JPanel(new BorderLayout(0, 12));
         panelDatos.setOpaque(false);
@@ -175,6 +172,20 @@ public class MisMatriculasView {
         panelPestanaFip = crearPestanaFip();
 
         panelPrincipal.add(tabbedPane, BorderLayout.CENTER);
+
+        // =========================================================================
+        // Panel inferior: Botón Atrás abajo a la izquierda (consistente con el resto)
+        // =========================================================================
+        JPanel panelSur = new JPanel(new BorderLayout());
+        panelSur.setOpaque(false);
+        panelSur.setBorder(new EmptyBorder(4, 0, 0, 0));
+
+        btnVolver = Estilo.estilizarSecundario(new JButton("‹  Atrás"));
+        btnVolver.setToolTipText("Volver al menú del estudiante");
+        btnVolver.setPreferredSize(new Dimension(140, 34));
+        panelSur.add(btnVolver, BorderLayout.WEST);
+
+        panelPrincipal.add(panelSur, BorderLayout.SOUTH);
 
         frame.getContentPane().add(panelPrincipal, BorderLayout.CENTER);
     }
