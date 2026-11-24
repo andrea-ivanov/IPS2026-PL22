@@ -20,6 +20,7 @@ import model.grado.GradoRevisionDisplayDTO;
 import model.grado.MetricasGradoModel;
 import model.grado.ResultadoRevision;
 import util.Database;
+import util.RelojSistema;
 import util.SwingUtil;
 import view.revisor.RevisorView;
 
@@ -59,7 +60,7 @@ public class RevisorController {
 		view.getBtnVolverInicio().addActionListener(e -> volverInicio());
 
 		cargarAnios();
-		todasLasMetricas = metricasModel.getMetricasGrados(null, null, null, LocalDate.now().toString());
+		todasLasMetricas = metricasModel.getMetricasGrados(null, null, null, RelojSistema.getInstance().hoyIso());
 
 		view.getCbAnioAcademico().addActionListener(e -> aplicarFiltros());
 		addDocumentListener(view.getTxtFiltroRama(), this::aplicarFiltros);
@@ -135,7 +136,7 @@ public class RevisorController {
 		gradoActualNombre = grado.getNombre();
 		actualizarEstadoEnMemoria(idGrado, grado.getEstado());
 		view.mostrarGrado(grado, metricas);
-		view.getBtnTomarDecision().setEnabled(gradoModel.admiteDictamen(idGrado, LocalDate.now().toString()));
+		view.getBtnTomarDecision().setEnabled(gradoModel.admiteDictamen(idGrado, RelojSistema.getInstance().hoyIso()));
 		view.showGradoView();
 	}
 
@@ -156,7 +157,7 @@ public class RevisorController {
 			return;
 		}
 
-		gradoModel.emitirDictamen(gradoActualId, resultado, LocalDate.now().toString());
+		gradoModel.emitirDictamen(gradoActualId, resultado, RelojSistema.getInstance().hoyIso());
 		JOptionPane.showMessageDialog(view.getFrame(),
 				"Dictamen " + resultado + " registrado para el grado " + gradoActualNombre + ".", TITULO_DECISION,
 				JOptionPane.INFORMATION_MESSAGE);

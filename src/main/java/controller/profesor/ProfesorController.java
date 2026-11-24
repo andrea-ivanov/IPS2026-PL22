@@ -16,6 +16,7 @@ import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
 import model.propuesta.PropuestaDisplayDTO;
 import util.Database;
+import util.RelojSistema;
 import util.SwingUtil;
 import util.exception.ResourceNotFoundException;
 import util.exception.ValidationException;
@@ -269,7 +270,7 @@ public class ProfesorController {
 
         if (confirm == JOptionPane.YES_OPTION) {
             actaModel.cerrarActa(profesorId, acta.getCursoId(), acta.getAnioAcademicoId(),
-                    acta.getTipoConvocatoria(), LocalDate.now().toString());
+                    acta.getTipoConvocatoria(), RelojSistema.getInstance().hoyIso());
 
             JOptionPane.showMessageDialog(view.getFrame(), "Acta cerrada correctamente.", "Éxito",
                     JOptionPane.INFORMATION_MESSAGE);
@@ -327,7 +328,7 @@ public class ProfesorController {
             return;
 
         List<String> creadas = propuestaModel.crearPropuestas(profesorId, gradoIds, nombre, anio, creditos,
-                descripcion, LocalDate.now().toString());
+                descripcion, RelojSistema.getInstance().hoyIso());
         JOptionPane.showMessageDialog(view.getFrame(),
                 "Propuesta enviada correctamente: " + String.join(", ", creadas) + " (PENDIENTE).", "Éxito",
                 JOptionPane.INFORMATION_MESSAGE);
@@ -407,7 +408,7 @@ public class ProfesorController {
                     (String) form.getCbRama().getSelectedItem(), form.getTxtPlazas().getText(),
                     form.getTxtCreditos().getText(), form.getTxtInicioMatriculacion().getText(),
                     form.getTxtInicioImparticion().getText(), form.getTxtFinImparticion().getText(),
-                    LocalDate.now().toString());
+                    RelojSistema.getInstance().hoyIso());
             form.cerrar();
             JOptionPane.showMessageDialog(view.getFrame(), "Microcredencial " + nombre.trim() + " propuesta correctamente ("
                     + id + ", PROPUESTA).", "Proponer microcredencial", JOptionPane.INFORMATION_MESSAGE);
@@ -441,7 +442,7 @@ public class ProfesorController {
             return;
         }
 
-        String hoy = LocalDate.now().toString();
+        String hoy = RelojSistema.getInstance().hoyIso();
         boolean editable = ActaMicrocredencialModel.puedeEditarNotas(mc, hoy);
         boolean cerrable = ActaMicrocredencialModel.puedeCerrarActa(mc, hoy);
         List<CalificacionMicrocredencialDTO> notas = actaMicrocredencialModel.getCalificaciones(profesorId,
@@ -506,7 +507,7 @@ public class ProfesorController {
         if (mc == null)
             return;
         actaMicrocredencialModel.guardarNotas(profesorId, mc.getMicrocredencialId(), getNotasMicrocredencial(),
-                LocalDate.now().toString());
+                RelojSistema.getInstance().hoyIso());
         JOptionPane.showMessageDialog(view.getFrame(), "Notas guardadas correctamente.", "Guardar notas",
                 JOptionPane.INFORMATION_MESSAGE);
         cargarActaMicrocredencial();
@@ -529,7 +530,7 @@ public class ProfesorController {
         if (confirm != JOptionPane.YES_OPTION)
             return;
 
-        String hoy = LocalDate.now().toString();
+        String hoy = RelojSistema.getInstance().hoyIso();
         actaMicrocredencialModel.guardarNotas(profesorId, mc.getMicrocredencialId(), notas, hoy);
         actaMicrocredencialModel.cerrarActa(profesorId, mc.getMicrocredencialId(), hoy);
         JOptionPane.showMessageDialog(view.getFrame(), "Acta cerrada correctamente.", "Acta cerrada",

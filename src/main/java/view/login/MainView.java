@@ -25,6 +25,8 @@ public class MainView {
     private JComboBox<ProfesorDTO> cbProfesores;
     private JButton btnAcceder;
     private JMenuItem btnRecargarBD;
+    private JMenuItem btnCambiarFecha;
+    private JLabel lblFechaSistema;
 
     public MainView() {
         initialize();
@@ -43,8 +45,12 @@ public class MainView {
         contenido.add(Estilo.cabecera(NOMBRE_APLICACION.toUpperCase(), lblTitulo), BorderLayout.NORTH);
         contenido.add(crearTarjetaAcceso(), BorderLayout.CENTER);
 
+        lblFechaSistema = Estilo.textoSecundario("Fecha del sistema: ");
+        lblFechaSistema.setHorizontalAlignment(SwingConstants.CENTER);
+        contenido.add(lblFechaSistema, BorderLayout.SOUTH);
+
         // Tamaño fijo con hueco para la fila del profesor o del alumno, que aparece y desaparece según el rol
-        frame.setSize(480, 400);
+        frame.setSize(480, 420);
         frame.setResizable(false);
         frame.setLocationRelativeTo(null);
     }
@@ -123,6 +129,11 @@ public class MainView {
         btnRecargarBD.setMnemonic(KeyEvent.VK_R);
         btnRecargarBD.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK));
         menuArchivo.add(btnRecargarBD);
+        btnCambiarFecha = new JMenuItem("Cambiar fecha del sistema...");
+        btnCambiarFecha.setToolTipText("Simula otra fecha del sistema para probar plazos y cierres automáticos");
+        btnCambiarFecha.setMnemonic(KeyEvent.VK_F);
+        btnCambiarFecha.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK));
+        menuArchivo.add(btnCambiarFecha);
         menuArchivo.addSeparator();
         JMenuItem itemSalir = new JMenuItem("Salir");
         itemSalir.setMnemonic(KeyEvent.VK_S);
@@ -216,5 +227,21 @@ public class MainView {
     /** Opción "Recargar base de datos" del menú Archivo. */
     public JMenuItem getBtnRecargarBD() {
         return btnRecargarBD;
+    }
+
+    /** Opción "Cambiar fecha del sistema" del menú Archivo. */
+    public JMenuItem getBtnCambiarFecha() {
+        return btnCambiarFecha;
+    }
+
+    /** Actualiza el indicador inferior con la fecha activa del sistema. */
+    public void actualizarFechaSistema(String fechaIso, boolean simulada) {
+        if (simulada) {
+            lblFechaSistema.setText("Fecha del sistema: " + fechaIso + " (simulada)");
+            lblFechaSistema.setForeground(Estilo.AVISO);
+        } else {
+            lblFechaSistema.setText("Fecha del sistema: " + fechaIso + " (real)");
+            lblFechaSistema.setForeground(Estilo.TEXTO_SECUNDARIO);
+        }
     }
 }
