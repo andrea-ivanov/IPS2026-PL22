@@ -7,13 +7,17 @@ import javax.swing.border.LineBorder;
 import javax.swing.border.MatteBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
+import model.fip.FipDisplayDTO;
 import model.grado.GradoDisplayDTO;
 import model.curso.CursoDisplayDTO;
 import model.matriculacion.MatriculacionDisplayDTO;
+import util.Util;
 import view.comun.Estilo;
 
 public class AdminOfertaView {
@@ -56,12 +60,29 @@ public class AdminOfertaView {
     private JButton btnModificarCurso;
     private JButton btnEliminarCurso;
 
+    // -- MENU VIEW --
+    private JButton btnGrados;
+    private JButton btnFips;
+
+    // -- FIPS VIEW (HU 37165) --
+    private JTable tabFips;
+    private JButton btnCrearFip;
+    private JButton btnAtrasFips;
+
+    // -- FIP VIEW (HU 37165) --
+    private JLabel lblTituloFip;
+    private JLabel lblProfesorFip;
+    private JLabel lblCorreoFip;
+    private JLabel lblFormacionFip;
+    private JButton btnAtrasFip;
+
     // State for back navigation
-    private String currentView = "GRADOS";
+    private String currentView = "MENU";
 
     // Callbacks de navegación para el controlador
     private BiConsumer<String, String> onVerGrado;
     private BiConsumer<String, String> onVerCurso;
+    private Consumer<Integer> onVerFip;
 
     public AdminOfertaView() {
         initialize();
@@ -103,14 +124,19 @@ public class AdminOfertaView {
         cardsPanel = new JPanel(cardLayout);
         cardsPanel.setOpaque(false);
 
+        cardsPanel.add(createMenuPanel(), "MENU");
         cardsPanel.add(createGradosPanel(), "GRADOS");
         cardsPanel.add(createCursosPanel(), "CURSOS");
         cardsPanel.add(createMatriculacionPanel(), "MATRICULACION");
+        cardsPanel.add(createFipsPanel(), "FIPS");
+        cardsPanel.add(createFipPanel(), "FIP");
 
         contenido.add(cardsPanel, BorderLayout.CENTER);
 
         // Navigation actions
         btnVolver.addActionListener(e -> goBack());
+        btnAtrasFips.addActionListener(e -> goBack());
+        btnAtrasFip.addActionListener(e -> goBack());
     }
 
     /** Etiqueta de fechas con aspecto de "píldora" informativa. */
@@ -122,6 +148,88 @@ public class AdminOfertaView {
         label.setBackground(Estilo.TARJETA);
         label.setBorder(new CompoundBorder(new LineBorder(Estilo.BORDE, 1, true), new EmptyBorder(5, 10, 5, 10)));
         return label;
+    }
+
+    /** Menú inicial: una tarjeta por cada parte del panel, como el menú de la vista del estudiante. */
+    private JPanel createMenuPanel() {
+        JPanel opciones = new JPanel(new GridLayout(1, 2, 25, 0));
+        opciones.setOpaque(false);
+        btnGrados = Estilo.botonPrimario("Grados");
+        opciones.add(tarjetaOpcion("Oferta Académica",
+                "Consulte y gestione los grados, sus cursos y las matrículas de cada curso.", btnGrados));
+        btnFips = Estilo.botonPrimario("FIPs");
+        opciones.add(tarjetaOpcion("Formación Interna del Personal (FIP)",
+                "Consulte las FIP y cree nuevas asignándoles un profesor.", btnFips));
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        panel.add(opciones, BorderLayout.NORTH);
+        return panel;
+    }
+
+    private static JPanel tarjetaOpcion(String titulo, String descripcion, JButton boton) {
+        JPanel card = Estilo.tarjeta(new BorderLayout(8, 15));
+        JLabel lblTitulo = Estilo.tituloTarjeta(titulo);
+        lblTitulo.setHorizontalAlignment(SwingConstants.CENTER);
+        card.add(lblTitulo, BorderLayout.NORTH);
+        card.add(Estilo.textoSecundario("<html>" + descripcion + "</html>"), BorderLayout.CENTER);
+        JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        panelBoton.setOpaque(false);
+        panelBoton.add(boton);
+        card.add(panelBoton, BorderLayout.SOUTH);
+        return card;
+    }
+
+    private JPanel createFipsPanel() {
+        JLabel lblTitle = new JLabel("Vista admin - FIPs");
+
+        String[] columnNames = { "Nombre", "Nombre Profesor", "Fecha inicio", "Fecha fin", "Acciones" };
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 4;
+            }
+        };
+        tabFips = new JTable(model);
+        Estilo.estilizarTabla(tabFips);
+        anchos(tabFips, 300, 260, 110, 110, 100);
+        tabFips.getColumnModel().getColumn(4).setMinWidth(90);
+        actualizarTablaFips(new ArrayList<>());
+
+        btnCrearFip = Estilo.botonPrimario("Crear FIP");
+        btnAtrasFips = Estilo.botonSecundario("Atrás");
+
+        JPanel tablaCard = Estilo.tarjeta(new BorderLayout(0, 10));
+        Estilo.estilizarTituloTarjeta(lblTitle);
+        tablaCard.add(lblTitle, BorderLayout.NORTH);
+        tablaCard.add(Estilo.scrollTabla(tabFips), BorderLayout.CENTER);
+        tablaCard.add(Estilo.barraAcciones(btnCrearFip, btnAtrasFips), BorderLayout.SOUTH);
+        return tablaCard;
+    }
+
+    private JPanel createFipPanel() {
+        lblTituloFip = new JLabel("FIP - NombreFIP");
+        Estilo.estilizarTituloTarjeta(lblTituloFip);
+        lblProfesorFip = Estilo.etiqueta("Profesor:");
+        lblCorreoFip = Estilo.etiqueta("Correo:");
+        lblFormacionFip = Estilo.etiqueta("Formación:");
+
+        JPanel datos = new JPanel(new GridLayout(3, 1, 0, 10));
+        datos.setOpaque(false);
+        datos.add(lblProfesorFip);
+        datos.add(lblCorreoFip);
+        datos.add(lblFormacionFip);
+        JPanel centro = new JPanel(new BorderLayout());
+        centro.setOpaque(false);
+        centro.add(datos, BorderLayout.NORTH);
+
+        btnAtrasFip = Estilo.botonSecundario("Atrás");
+
+        JPanel card = Estilo.tarjeta(new BorderLayout(0, 10));
+        card.add(lblTituloFip, BorderLayout.NORTH);
+        card.add(centro, BorderLayout.CENTER);
+        card.add(Estilo.barraAcciones(btnAtrasFip), BorderLayout.SOUTH);
+        return card;
     }
 
     private JPanel createGradosPanel() {
@@ -247,10 +355,33 @@ public class AdminOfertaView {
 
     // --- Navigation Methods ---
 
+    public void showMenuView() {
+        cardLayout.show(cardsPanel, "MENU");
+        currentView = "MENU";
+        btnVolver.setEnabled(false);
+    }
+
     public void showGradosView() {
         cardLayout.show(cardsPanel, "GRADOS");
         currentView = "GRADOS";
-        btnVolver.setEnabled(false);
+        btnVolver.setEnabled(true);
+    }
+
+    public void showFipsView() {
+        cardLayout.show(cardsPanel, "FIPS");
+        currentView = "FIPS";
+        btnVolver.setEnabled(true);
+    }
+
+    public void showFipView(FipDisplayDTO fip) {
+        lblTituloFip.setText("FIP - " + fip.getNombre());
+        lblProfesorFip.setText("Profesor: " + fip.getResponsable());
+        lblCorreoFip.setText("Correo: " + fip.getEmail());
+        lblFormacionFip.setText("Formación: " + formatearFecha(fip.getFechaInicio()) + " - "
+                + formatearFecha(fip.getFechaFin()));
+        cardLayout.show(cardsPanel, "FIP");
+        currentView = "FIP";
+        btnVolver.setEnabled(true);
     }
 
     public void showCursosView(String nombreGrado) {
@@ -273,6 +404,10 @@ public class AdminOfertaView {
             currentView = "CURSOS";
         } else if ("CURSOS".equals(currentView)) {
             showGradosView();
+        } else if ("FIP".equals(currentView)) {
+            showFipsView();
+        } else if ("GRADOS".equals(currentView) || "FIPS".equals(currentView)) {
+            showMenuView();
         }
     }
 
@@ -356,6 +491,8 @@ public class AdminOfertaView {
                         if (onVerCurso != null) {
                             onVerCurso.accept(idCurso, nombreCurso);
                         }
+                    } else if ("FIPS".equals(viewType) && onVerFip != null) {
+                        onVerFip.accept(row);
                     }
                 }
             }
@@ -425,6 +562,28 @@ public class AdminOfertaView {
         }
     }
 
+    public void actualizarTablaFips(List<FipDisplayDTO> fips) {
+        DefaultTableModel model = (DefaultTableModel) tabFips.getModel();
+        model.setRowCount(0);
+        if (fips != null) {
+            for (FipDisplayDTO f : fips) {
+                model.addRow(new Object[] {
+                        f.getNombre(),
+                        f.getResponsable(),
+                        formatearFecha(f.getFechaInicio()),
+                        formatearFecha(f.getFechaFin()),
+                        "Ver"
+                });
+            }
+        }
+        setupTableVerButton(tabFips, 4, "FIPS");
+    }
+
+    /** Fecha ISO de la BD en el formato dd/MM/yy que escribe el administrador */
+    private static String formatearFecha(String fechaIso) {
+        return new SimpleDateFormat("dd/MM/yy").format(Util.isoStringToDate(fechaIso));
+    }
+
     // --- Callbacks y Getters para controlador ---
 
     public void setOnVerGrado(BiConsumer<String, String> onVerGrado) {
@@ -433,6 +592,27 @@ public class AdminOfertaView {
 
     public void setOnVerCurso(BiConsumer<String, String> onVerCurso) {
         this.onVerCurso = onVerCurso;
+    }
+
+    /** Recibe la fila de la tabla de FIP en la que se pulsó "Ver" */
+    public void setOnVerFip(Consumer<Integer> onVerFip) {
+        this.onVerFip = onVerFip;
+    }
+
+    public JButton getBtnGrados() {
+        return btnGrados;
+    }
+
+    public JButton getBtnFips() {
+        return btnFips;
+    }
+
+    public JTable getTabFips() {
+        return tabFips;
+    }
+
+    public JButton getBtnCrearFip() {
+        return btnCrearFip;
     }
 
     public JLabel getLblTituloCursos() {
