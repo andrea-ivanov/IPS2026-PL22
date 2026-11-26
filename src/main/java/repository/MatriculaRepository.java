@@ -210,7 +210,7 @@ public class MatriculaRepository {
 				+ "JOIN AnioAcademico a ON a.anioAcademicoId = m.anioAcademicoId "
 				+ "WHERE m.alumnoId = ? AND mc.estado = 'SOLICITADA' "
 				+ "  AND (mc.metodoPago IS NULL OR mc.pagoValidado = 0) "
-				+ "  AND a.fechaInicio <= date('now')", alumnoId);
+				+ "  AND a.fechaInicio <= ?", alumnoId, util.RelojSistema.getInstance().hoyIso());
 	}
 
 	/** Cancelaciones por IMPAGO del alumno (de la matrícula entera o de alguna asignatura) */

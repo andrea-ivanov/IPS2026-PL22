@@ -4,13 +4,13 @@ import model.matriculacion.MatriculacionModel;
 import model.microcredencial.InscripcionMicrocredencialModel;
 import model.microcredencial.OfertaMicrocredencialDTO;
 import model.microcredencial.ResumenSolicitudMicrocredencialDTO;
+import util.RelojSistema;
 import util.SwingUtil;
 import view.comun.Estilo;
 import view.estudiante.SolicitudMicrocredencialView;
 
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableModel;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -115,7 +115,7 @@ public class SolicitudMicrocredencialController {
         }
 
         // Consultar oferta compatible
-        todasMicrocredenciales = inscripcionModel.getOferta(cleanId, LocalDate.now().toString());
+        todasMicrocredenciales = inscripcionModel.getOferta(cleanId, RelojSistema.getInstance().hoyIso());
         actualizarTablaConLista(todasMicrocredenciales);
     }
 
@@ -206,7 +206,7 @@ public class SolicitudMicrocredencialController {
         resumenActual.setAlumnoId(cleanId);
         resumenActual.setNombreCompleto(nombreCompleto != null ? nombreCompleto : cleanId);
         resumenActual.setDni("-");
-        resumenActual.setFechaSolicitud(LocalDate.now().toString());
+        resumenActual.setFechaSolicitud(RelojSistema.getInstance().hoyIso());
         resumenActual.setMicrocredenciales(seleccionadas);
         resumenActual.setCreditosTotales(totalCreditos);
         resumenActual.setImporteTotal(totalImporte);
@@ -245,7 +245,7 @@ public class SolicitudMicrocredencialController {
         }
         boolean[] guardada = { false };
         SwingUtil.exceptionWrapper(() -> {
-            inscripcionModel.inscribir(resumenActual.getAlumnoId(), ids, metodoPago, LocalDate.now().toString());
+            inscripcionModel.inscribir(resumenActual.getAlumnoId(), ids, metodoPago, RelojSistema.getInstance().hoyIso());
             guardada[0] = true;
         });
         if (!guardada[0]) {

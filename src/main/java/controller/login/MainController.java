@@ -6,11 +6,16 @@ import view.estudiante.EstudianteView;
 import view.secretario.SecretarioView; // Tu vista de secretario
 import view.profesor.ProfesorView;
 import view.revisor.RevisorView;
+import java.awt.BorderLayout;
 import java.awt.EventQueue;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.UIManager;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 import controller.admin.AdminOfertaController;
 import controller.estudiante.EstudianteController;
@@ -27,6 +32,7 @@ import model.microcredencial.ActaMicrocredencialModel;
 import model.microcredencial.MicrocredencialModel;
 import util.ComboBuscable;
 import util.Database;
+import util.RelojSistema;
 import util.SwingUtil;
 
 public class MainController {
@@ -47,6 +53,7 @@ public class MainController {
         UIManager.put("OptionPane.okButtonText", "Aceptar");
         UIManager.put("OptionPane.cancelButtonText", "Cancelar");
 
+        actualizarIndicadorFecha();
         actualizarEstadosPorFecha();
         cargarProfesores();
         cargarAlumnos();
@@ -56,36 +63,79 @@ public class MainController {
 
         view.getBtnAcceder().addActionListener(e -> SwingUtil.exceptionWrapper(this::gestionarAcceso));
         view.getBtnRecargarBD().addActionListener(e -> SwingUtil.exceptionWrapper(this::recargarBaseDatos));
+        view.getBtnCambiarFecha().addActionListener(e -> SwingUtil.exceptionWrapper(this::cambiarFechaSistema));
     }
 
     /**
-     * Lo que el sistema actualiza solo segun la fecha actual: se hace al arrancar y
-     * al recargar la BD
+     * Lo que el sistema actualiza solo segun la fecha actual: se hace al arrancar,
+     * al recargar la BD y al cambiar la fecha simulada del sistema.
      */
     private void actualizarEstadosPorFecha() {
+        String hoy = RelojSistema.getInstance().hoyIso();
         // HU 36455: al empezar el año, los grados en extinción, los pendientes de renovación sin dictamen y los
         // que no tienen matrículas pagadas pasan a EXTINTO y se cancelan sus matrículas del año. Va antes que el
         // ciclo de vida, para que este no active las matrículas que se cancelan
-        SwingUtil.exceptionWrapper(() -> new GradoModel(db).extinguirGradosAlIniciarAnio(LocalDate.now().toString()));
+        SwingUtil.exceptionWrapper(() -> new GradoModel(db).extinguirGradosAlIniciarAnio(hoy));
         // HU 35229: el sistema mantiene al día el estado de las matrículas en cada
         // arranque,
         // antes de abrir cualquier vista (PAGADA -> ACTIVA al iniciar el año, ACTIVA ->
         // FINALIZADA al terminarlo)
-        SwingUtil.exceptionWrapper(() -> new GestionMatriculaModel(db)
-                .actualizarCicloVida(LocalDate.now().toString()));
+        SwingUtil.exceptionWrapper(() -> new GestionMatriculaModel(db).actualizarCicloVida(hoy));
         // HU 35239: las actas abiertas cuya convocatoria ya ha terminado las cierra el
         // sistema
         // (cierreAutomatico = 1); secretaria las consulta como avisos en su vista
-        SwingUtil.exceptionWrapper(() -> new ActaModel(db).cerrarActasVencidas(LocalDate.now().toString()));
+        SwingUtil.exceptionWrapper(() -> new ActaModel(db).cerrarActasVencidas(hoy));
         // HU 36410: el sistema cancela automáticamente por baja demanda las microcredenciales
         // que no alcancen el 10% de plazas pagadas el día antes de cerrar su periodo de matriculación
-        SwingUtil.exceptionWrapper(() -> new MicrocredencialModel(db)
-                .cancelarPorBajaDemanda(LocalDate.now().toString()));
+        SwingUtil.exceptionWrapper(() -> new MicrocredencialModel(db).cancelarPorBajaDemanda(hoy));
         // HU 36459: el sistema cierra las actas de microcredenciales que el profesor no cerró en los 15 días
         // siguientes al fin de la impartición. Va después de la baja demanda, que cancela antes las inscripciones
         // sin pagar
-        SwingUtil.exceptionWrapper(() -> new ActaMicrocredencialModel(db)
-                .cerrarActasVencidas(LocalDate.now().toString()));
+        SwingUtil.exceptionWrapper(() -> new ActaMicrocredencialModel(db).cerrarActasVencidas(hoy));
+    }
+
+    private void actualizarIndicadorFecha() {
+        RelojSistema reloj = RelojSistema.getInstance();
+        view.actualizarFechaSistema(reloj.hoyIso(), reloj.esSimulada());
+    }
+
+    private void cambiarFechaSistema() {
+        RelojSistema reloj = RelojSistema.getInstance();
+        JTextField txtFecha = new JTextField(reloj.hoyIso(), 14);
+        JPanel panel = new JPanel(new BorderLayout(0, 6));
+        panel.add(new JLabel("Introduce la fecha del sistema (AAAA-MM-DD):"), BorderLayout.NORTH);
+        panel.add(txtFecha, BorderLayout.CENTER);
+
+        Object[] opciones = { "Aplicar fecha", "Usar fecha real (hoy)", "Cancelar" };
+        int res = JOptionPane.showOptionDialog(view.getFrame(), panel, "Cambiar fecha del sistema",
+                JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, opciones, opciones[0]);
+
+        if (res == 0) {
+            String texto = txtFecha.getText() != null ? txtFecha.getText().trim() : "";
+            LocalDate nuevaFecha;
+            try {
+                nuevaFecha = LocalDate.parse(texto);
+            } catch (DateTimeParseException ex) {
+                JOptionPane.showMessageDialog(view.getFrame(),
+                        "Formato de fecha no válido. Use AAAA-MM-DD (por ejemplo, 2026-09-15).",
+                        "Fecha inválida", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            reloj.fijarFecha(nuevaFecha);
+            actualizarIndicadorFecha();
+            actualizarEstadosPorFecha();
+            JOptionPane.showMessageDialog(view.getFrame(),
+                    "Fecha del sistema fijada en " + reloj.hoyIso()
+                            + ".\nSe han actualizado los estados automáticos según la nueva fecha.",
+                    "Fecha actualizada", JOptionPane.INFORMATION_MESSAGE);
+        } else if (res == 1) {
+            reloj.restablecerFechaReal();
+            actualizarIndicadorFecha();
+            actualizarEstadosPorFecha();
+            JOptionPane.showMessageDialog(view.getFrame(),
+                    "Se ha restablecido la fecha real del equipo (" + reloj.hoyIso() + ").",
+                    "Fecha restablecida", JOptionPane.INFORMATION_MESSAGE);
+        }
     }
 
     /**

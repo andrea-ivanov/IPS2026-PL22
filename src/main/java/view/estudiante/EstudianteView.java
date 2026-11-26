@@ -8,9 +8,9 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -88,28 +88,39 @@ public class EstudianteView {
     }
 
     private JPanel crearPanelMenu() {
-        JPanel panel = new JPanel(new BorderLayout(15, 20));
-        panel.setBorder(new EmptyBorder(25, 40, 25, 40));
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(new EmptyBorder(10, 20, 10, 20));
         panel.setBackground(new Color(248, 249, 250));
 
-        // --- Encabezado ---
+        // Contenedor centrado en la pantalla para concentrar bienvenida y opciones con
+        // márgenes amplios
+        JPanel panelCentro = new JPanel(new GridBagLayout());
+        panelCentro.setOpaque(false);
+
+        JPanel panelContenido = new JPanel();
+        panelContenido.setLayout(new BoxLayout(panelContenido, BoxLayout.Y_AXIS));
+        panelContenido.setOpaque(false);
+
+        // --- Encabezado con mayor peso y espacio alrededor ---
         JPanel panelNorte = new JPanel();
         panelNorte.setLayout(new BoxLayout(panelNorte, BoxLayout.Y_AXIS));
         panelNorte.setOpaque(false);
+        panelNorte.setBorder(new EmptyBorder(15, 0, 80, 0));
 
         lblTitle = new JLabel("¡Bienvenido!");
-        lblTitle.setFont(new Font("Tahoma", Font.BOLD, 22));
+        lblTitle.setFont(new Font("Tahoma", Font.BOLD, 26));
         lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
         lblTitle.setForeground(new Color(33, 37, 41));
 
         panelNorte.add(lblTitle);
-        panelNorte.add(Box.createVerticalStrut(6));
-        panel.add(panelNorte, BorderLayout.NORTH);
+        panelContenido.add(panelNorte);
 
-        // --- Panel Central con las Opciones Principales ---
-        JPanel panelOpciones = new JPanel(new GridLayout(1, 2, 25, 0));
+        // --- Panel Central con las Opciones Principales (compacto y centrado) ---
+        JPanel panelOpciones = new JPanel(new GridLayout(1, 2, 22, 0));
         panelOpciones.setOpaque(false);
-        panelOpciones.setBorder(new EmptyBorder(15, 10, 15, 10));
+        panelOpciones.setPreferredSize(new Dimension(1200, 600));
+        panelOpciones.setMaximumSize(new Dimension(2000, 900));
+        panelOpciones.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // Opción 1: Consulta de Matrículas (Columna Izquierda)
         JPanel cardConsulta = crearTarjetaOpcion(
@@ -144,13 +155,17 @@ public class EstudianteView {
         panelDerecho.add(cardMicrocredencial);
 
         panelOpciones.add(panelDerecho);
-        panel.add(panelOpciones, BorderLayout.CENTER);
+        panelContenido.add(panelOpciones);
+
+        panelCentro.add(panelContenido);
+        panel.add(panelCentro, BorderLayout.CENTER);
 
         // --- Panel Sur con Botón para Volver al Login ---
         JPanel panelSur = new JPanel(new FlowLayout(FlowLayout.CENTER));
         panelSur.setOpaque(false);
+        panelSur.setBorder(new EmptyBorder(10, 0, 10, 0));
         btnVolverLogin = Estilo.estilizarSecundario(new JButton("Cerrar Sesión"));
-        btnVolverLogin.setPreferredSize(new Dimension(270, 36));
+        btnVolverLogin.setPreferredSize(new Dimension(250, 36));
         btnVolverLogin.setFont(new Font("Tahoma", Font.BOLD, 13));
         panelSur.add(btnVolverLogin);
         panel.add(panelSur, BorderLayout.SOUTH);
@@ -167,13 +182,13 @@ public class EstudianteView {
 
         // Título de la opción
         JLabel lblOpcionTitulo = new JLabel(titulo, SwingConstants.CENTER);
-        lblOpcionTitulo.setFont(new Font("Tahoma", Font.BOLD, compacta ? 14 : 16));
+        lblOpcionTitulo.setFont(new Font("Tahoma", Font.BOLD, 17));
         lblOpcionTitulo.setForeground(new Color(13, 110, 253));
         card.add(lblOpcionTitulo, BorderLayout.NORTH);
 
         // Descripción
         JLabel lblDesc = new JLabel(descripcion);
-        lblDesc.setFont(new Font("Tahoma", Font.PLAIN, compacta ? 12 : 13));
+        lblDesc.setFont(new Font("Tahoma", Font.PLAIN, 14));
         lblDesc.setForeground(new Color(73, 80, 87));
         lblDesc.setVerticalAlignment(SwingConstants.TOP);
         card.add(lblDesc, BorderLayout.CENTER);
