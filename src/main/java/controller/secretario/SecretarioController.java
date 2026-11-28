@@ -39,6 +39,8 @@ public class SecretarioController {
     private final GestionMatriculaModel gestionModel;
     private final ActaModel actaModel;
     private final RevisionMicrocredencialController revisionController;
+    private final ContratosAlumnoController contratosController;
+    private final MatriculaFipController matriculaFipController;
     // Evita recargar la tabla mientras se rellenan los desplegables de filtros
     private boolean cargandoFiltros = false;
     // Accion al pulsar "Volver al inicio" (mostrar la pantalla de seleccion de rol)
@@ -49,6 +51,8 @@ public class SecretarioController {
         this.gestionModel = new GestionMatriculaModel(db);
         this.actaModel = new ActaModel(db);
         this.revisionController = new RevisionMicrocredencialController(view, db);
+        this.contratosController = new ContratosAlumnoController(view.getContratosPanel(), db);
+        this.matriculaFipController = new MatriculaFipController(view.getMatriculaFipPanel(), db);
         this.initView();
     }
 
@@ -92,6 +96,9 @@ public class SecretarioController {
 
         // Revisión de microcredenciales propuestas (HU 35994), en su propio controlador
         revisionController.initController();
+        // Contratos de alumnos (HU 37045) y matrícula en FIP (HU 37046), cada una en su propio controlador
+        contratosController.initController();
+        matriculaFipController.initController();
 
         // El ciclo de vida (activar/finalizar por fechas) ya se ha actualizado al arrancar la aplicación
         // (MainController), así que abrir la consulta no modifica ningún dato

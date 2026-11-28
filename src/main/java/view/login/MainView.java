@@ -183,7 +183,9 @@ public class MainView {
                 + "(tasas de éxito y abandono, aprobados y matriculados).</li>"
                 + "</ul><p>Desde cada panel, <b>Volver al inicio</b> (o Cerrar Sesión) regresa a esta pantalla.</p>"
                 + "<p><b>Archivo &gt; Recargar base de datos</b> vuelve a cargar los datos iniciales "
-                + "(se pierden los cambios hechos en la aplicación).</p></body></html>";
+                + "(se pierden los cambios hechos en la aplicación).</p>"
+                + "<p><b>Archivo &gt; Cambiar fecha del sistema</b> fija la fecha que la aplicación toma como hoy "
+                + "(se muestra debajo del acceso); con Usar fecha real se vuelve a la de hoy.</p></body></html>";
         JOptionPane.showMessageDialog(frame, texto, "Manual de uso", JOptionPane.INFORMATION_MESSAGE);
     }
 

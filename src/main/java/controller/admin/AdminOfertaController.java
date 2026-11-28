@@ -3,10 +3,13 @@ package controller.admin;
 import view.admin.AdminOfertaView;
 import view.admin.AnoAcademicoFormDialog;
 import view.admin.CursoFormDialog;
+import view.admin.FipFormDialog;
 import view.admin.GradoFormDialog;
 import model.anoacademico.AnoAcademico;
 import model.curso.CursoDisplayDTO;
 import model.curso.CursoEdicionDTO;
+import model.fip.FipDisplayDTO;
+import model.fip.FipModel;
 import model.grado.GradoDisplayDTO;
 import model.matriculacion.MatriculacionDisplayDTO;
 import model.matriculacion.MatriculacionModel;
@@ -15,9 +18,11 @@ import model.curso.CursoModel;
 import model.grado.GradoModel;
 import model.profesor.ProfesorDTO;
 import model.profesor.ProfesorModel;
+import util.ComboBuscable;
 import util.Database;
 import util.RelojSistema;
 import util.SwingUtil;
+import util.Util;
 import util.exception.ValidationException;
 
 import javax.swing.JOptionPane;
@@ -54,6 +59,7 @@ public class AdminOfertaController {
 	private CursoModel cursoModel;
 	private MatriculacionModel matriculacionModel;
 	private AnoAcademicoModel anoAcademicoModel;
+	private FipModel fipModel;
 
 	// Estado del Año Académico actual
 	private AnoAcademico anoAcademicoActual;
@@ -62,6 +68,7 @@ public class AdminOfertaController {
 	private List<GradoDisplayDTO> todosLosGrados = new ArrayList<>();
 	private List<CursoDisplayDTO> todosLosCursos = new ArrayList<>();
 	private List<MatriculacionDisplayDTO> todasLasMatriculaciones = new ArrayList<>();
+	private List<FipDisplayDTO> todasLasFips = new ArrayList<>();
 
 	// Grado y curso que se están viendo en los paneles CURSOS y MATRICULACION
 	private String gradoActualId;
@@ -76,6 +83,7 @@ public class AdminOfertaController {
 		this.cursoModel = new CursoModel(db);
 		this.matriculacionModel = new MatriculacionModel(db);
 		this.anoAcademicoModel = new AnoAcademicoModel(db);
+		this.fipModel = new FipModel(db);
 		this.initView();
 	}
 
@@ -89,6 +97,7 @@ public class AdminOfertaController {
 		this.cursoModel = cursoModel;
 		this.matriculacionModel = matriculacionModel;
 		this.anoAcademicoModel = new AnoAcademicoModel(db);
+		this.fipModel = new FipModel(db);
 		this.initView();
 	}
 
@@ -154,6 +163,15 @@ public class AdminOfertaController {
 		view.getBtnEliminarGrado().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarGrado));
 		view.getBtnModificarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onModificarCurso));
 		view.getBtnEliminarCurso().addActionListener(e -> SwingUtil.exceptionWrapper(this::onEliminarCurso));
+
+		// 7. Menú y FIP (HU 37165)
+		view.getBtnGrados().addActionListener(e -> view.showGradosView());
+		view.getBtnFips().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+			cargarFips();
+			view.showFipsView();
+		}));
+		view.setOnVerFip(fila -> view.showFipView(todasLasFips.get(fila)));
+		view.getBtnCrearFip().addActionListener(e -> SwingUtil.exceptionWrapper(this::onCrearFip));
 
 		// Se muestra al final: si la carga falla, no queda una ventana vacía abierta
 		view.getFrame().setVisible(true);
@@ -254,6 +272,54 @@ public class AdminOfertaController {
 		for (ProfesorDTO profesor : new ProfesorModel(db).getProfesores()) {
 			form.getCbCoordinador().addItem(profesor.toString());
 		}
+	}
+
+	/**
+	 * Formulario "Crear FIP" (HU 37165): al pulsar "Crear" se pide confirmación y, con "Sí", se intenta crear.
+	 * Si falla, se muestra el motivo y el formulario sigue abierto con lo escrito.
+	 */
+	private void onCrearFip() {
+		FipFormDialog form = new FipFormDialog(view.getFrame());
+		for (ProfesorDTO profesor : new ProfesorModel(db).getProfesores()) {
+			form.getCbProfesor().addItem(profesor);
+		}
+		form.getCbProfesor().setSelectedIndex(-1);
+		ComboBuscable.hacerBuscable(form.getCbProfesor());
+
+		form.getBtnCrear().addActionListener(e -> SwingUtil.exceptionWrapper(() -> {
+			int confirm = JOptionPane.showConfirmDialog(form.getDialog(),
+					"¿Estás seguro de que quieres crear la FIP?",
+					"Crear FIP", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+			if (confirm != JOptionPane.YES_OPTION) {
+				return;
+			}
+			try {
+				ProfesorDTO profesor = ComboBuscable.getSeleccion(form.getCbProfesor());
+				fipModel.crearFip(form.getTxtNombre().getText(), profesor != null ? profesor.getProfesorId() : null,
+						fechaInputAIso(form.getTxtFechaInicio().getText()),
+						fechaInputAIso(form.getTxtFechaFin().getText()), RelojSistema.getInstance().hoyIso());
+			} catch (ValidationException ex) {
+				JOptionPane.showMessageDialog(form.getDialog(), "No se ha podido crear la FIP: " + ex.getMessage(),
+						"Crear FIP", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			form.cerrar();
+			JOptionPane.showMessageDialog(view.getFrame(), "Se ha creado con éxito.", "Crear FIP",
+					JOptionPane.INFORMATION_MESSAGE);
+			cargarFips();
+		}));
+		form.mostrar();
+	}
+
+	/** Fecha dd/mm/aa del formulario en formato ISO; null si está vacía o incompleta */
+	private String fechaInputAIso(String text) {
+		Date fecha = parsearFechaInput(text);
+		return fecha != null ? Util.dateToIsoString(fecha) : null;
+	}
+
+	private void cargarFips() {
+		todasLasFips = fipModel.getFips();
+		view.actualizarTablaFips(todasLasFips);
 	}
 
 	private void onEliminarGrado() {
@@ -480,7 +546,7 @@ public class AdminOfertaController {
 	}
 
 	private void initView() {
-		view.showGradosView();
+		view.showMenuView();
 	}
 }
 
