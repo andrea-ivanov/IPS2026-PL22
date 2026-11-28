@@ -52,4 +52,12 @@ public class FipRepository {
 				+ "VALUES (?, ?, ?, ?, ?, ?)",
 				fipId, nombre, profesorId, fechaCreacion, fechaInicio, fechaFin);
 	}
+
+	/** Inserta una FIP impartida por un formador externo, sin profesor ni acta (HU 37166, dentro de la transacción) */
+	public void insertarConFormadorExterno(Connection conn, String fipId, String nombre, String formadorExternoId,
+			String fechaCreacion, String fechaInicio, String fechaFin) throws SQLException {
+		update(conn, "INSERT INTO Fip (fipId, nombre, formadorExternoId, fechaCreacion, fechaInicio, fechaFin) "
+				+ "VALUES (?, ?, ?, ?, ?, ?)",
+				fipId, nombre, formadorExternoId, fechaCreacion, fechaInicio, fechaFin);
+	}
 }

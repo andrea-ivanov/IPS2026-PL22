@@ -6,12 +6,14 @@ import lombok.*;
  * Un profesor tal y como se muestra en los combos: el combo guarda el objeto y muestra su toString,
  * así el id se lee del objeto y no hay que sacarlo del texto.
  * Los nombres de los atributos coinciden con las columnas de la query para que DbUtils los mapee.
+ * esExterno: es un formador externo (HU 37166); entonces profesorId es su formadorExternoId (FE001)
  */
 @Getter @Setter
 public class ProfesorDTO {
     private String profesorId;
     private String nombre;
     private String apellidos;
+    private boolean esExterno;
 
     public ProfesorDTO() {
         super();
@@ -26,6 +28,6 @@ public class ProfesorDTO {
 
     @Override
     public String toString() {
-        return profesorId + " - " + nombre + " " + apellidos;
+        return profesorId + " - " + nombre + " " + apellidos + (esExterno ? " (externo)" : "");
     }
 }

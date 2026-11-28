@@ -37,14 +37,15 @@ public class FipModelTest {
 
 	/**
 	 * Datos de prueba:
-	 * - Dos profesores, P001 y P002
+	 * - Dos profesores, P001 y P002, y un formador externo, FE001 (HU 37166)
 	 * - P001 ya tiene la FIP005, así que la siguiente es FIP006
 	 */
 	public static void loadCleanDatabase(Database db) {
 		db.executeBatch(new String[] {
-				"DELETE FROM InscripcionFip", "DELETE FROM Fip", "DELETE FROM Profesor",
+				"DELETE FROM InscripcionFip", "DELETE FROM Fip", "DELETE FROM FormadorExterno", "DELETE FROM Profesor",
 				"INSERT INTO Profesor VALUES ('P001','10000001A','Ana','Garcia','p001@uni.es')",
 				"INSERT INTO Profesor VALUES ('P002','10000002B','Luis','Fernandez','p002@uni.es')",
+				"INSERT INTO FormadorExterno VALUES ('FE001','Elena','Vega Morales','elena.vega@formacion.es')",
 				"INSERT INTO Fip (fipId, nombre, profesorId, fechaCreacion, fechaInicio, fechaFin) "
 						+ "VALUES ('FIP005','Excel basico','P001','2026-10-01','2026-10-20','2026-10-25')"
 		});
@@ -181,7 +182,6 @@ public class FipModelTest {
 	public void testListadoFips() {
 		crear("Excel avanzado", PROFESOR, INICIO, FIN);
 		db.executeBatch(new String[] {
-				"INSERT INTO FormadorExterno VALUES ('FE001','Elena','Vega Morales','elena.vega@formacion.es')",
 				"INSERT INTO Fip (fipId, nombre, formadorExternoId, fechaCreacion, fechaInicio, fechaFin) "
 						+ "VALUES ('FIP004','Prevencion de Riesgos','FE001','2026-10-20','2026-11-05','2026-11-10')"
 		});
@@ -199,5 +199,54 @@ public class FipModelTest {
 				() -> assertEquals("Elena Vega Morales", fips.get(1).getResponsable()),
 				() -> assertEquals("elena.vega@formacion.es", fips.get(1).getEmail()),
 				() -> assertEquals("FIP005", fips.get(2).getFipId()));
+	}
+
+	// //////////////////////////////////////////////
+	// FIP con un formador externo como responsable (HU 37166)
+	// //////////////////////////////////////////////
+
+	private String crearConExterno(String nombre, String formadorExternoId, String fechaInicio, String fechaFin) {
+		return model.crearFipFormadorExterno(nombre, formadorExternoId, fechaInicio, fechaFin, HOY);
+	}
+
+	/** TF-13: el responsable es el formador externo; profesorId queda nulo */
+	@Test
+	public void testCrearFipConFormadorExterno() {
+		assertEquals("FIP006", crearConExterno("  Excel avanzado  ", "FE001", INICIO, FIN));
+
+		List<Object[]> filas = db.executeQueryArray("SELECT nombre, profesorId, formadorExternoId, fechaCreacion, "
+				+ "fechaInicio, fechaFin FROM Fip WHERE fipId = 'FIP006'");
+		assertEquals(1, filas.size());
+		Object[] fila = filas.get(0);
+		assertAll(
+				() -> assertEquals("Excel avanzado", fila[0]),
+				() -> assertNull(fila[1]),
+				() -> assertEquals("FE001", fila[2]),
+				() -> assertEquals(HOY, fila[3]),
+				() -> assertEquals(INICIO, fila[4]),
+				() -> assertEquals(FIN, fila[5]));
+	}
+
+	/** TF-14: formador externo vacío, nulo o que no existe */
+	@Test
+	public void testFormadorExternoVacioONoExiste() {
+		assertError("El formador externo de la FIP es obligatorio",
+				() -> crearConExterno("Excel avanzado", "", INICIO, FIN));
+		assertError("El formador externo de la FIP es obligatorio",
+				() -> crearConExterno("Excel avanzado", null, INICIO, FIN));
+		assertError("El formador externo FE999 no existe", () -> crearConExterno("Excel avanzado", "FE999", INICIO, FIN));
+		assertNoGuarda();
+	}
+
+	/** TF-15: las mismas reglas de nombre y fechas que con un profesor de plantilla */
+	@Test
+	public void testFormadorExternoMismasReglas() {
+		assertError("El nombre de la FIP es obligatorio", () -> crearConExterno("  ", "FE001", INICIO, FIN));
+		assertError("La fecha de inicio debe ser posterior al 28/11/26",
+				() -> crearConExterno("Excel avanzado", "FE001", "2026-11-28", FIN));
+		assertError("La fecha de fin es obligatoria", () -> crearConExterno("Excel avanzado", "FE001", INICIO, null));
+		assertError("La fecha de fin no puede ser anterior a la de inicio",
+				() -> crearConExterno("Excel avanzado", "FE001", INICIO, "2026-12-09"));
+		assertNoGuarda();
 	}
 }
